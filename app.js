@@ -147,8 +147,7 @@ function createOrderCard(order, status) {
             </div>
             <div class="order-time">
                 <div class="time-label">Pedido</div>
-                <div class="time-value">${formatTime(order.timestamp)}</div>
-                <div class="elapsed-time ${elapsedClass}">⏱️ ${minutes} min</div>
+                <div class="time-value">${formatTime(order.timestamp)} - <span class="elapsed-time ${elapsedClass}">⏱️ ${minutes} min</span></div>
             </div>
         </div>
         
