@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DEMO - KDS</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Agregar margen inferior a las columnas para evitar que se corten los elementos */
+        .cards-container {
+            padding-bottom: 1.5rem !important;
+        }
+        
+        .demo-controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 1rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            z-index: 999;
+            max-width: 250px;
+        }
+        
+        .demo-controls h3 {
+            font-size: 1rem;
+            margin: 0 0 0.75rem 0;
+        }
+        
+        .demo-btn {
+            display: block;
+            width: 100%;
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .demo-btn-primary {
+            background: #2563eb;
+            color: white;
+        }
+        
+        .demo-btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .demo-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🍔 Kitchen Display System</h1>
+            <div class="stats">
+                <div class="stat">
+                    <span class="stat-number" id="pendingCount">2</span>
+                    <span class="stat-label">En Cola</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-number" id="cookingCount">1</span>
+                    <span class="stat-label">Cocinando</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-number" id="readyCount">1</span>
+                    <span class="stat-label">Listos</span>
+                </div>
+            </div>
+            <div class="current-time" id="currentTime">8:45:32 PM</div>
+        </header>
+
+        <!-- Kanban Board -->
+        <div class="board">
+            <!-- Columna: Pendientes -->
+            <div class="column">
+                <div class="column-header pending-header">
+                    <h2>📋 En Cola</h2>
+                    <span class="count">2</span>
+                </div>
+                <div class="cards-container">
+                    <!-- Pedido 1 -->
+                    <div class="order-card pending new-order">
+                        <div class="card-header">
+                            <div class="order-id-section">
+                                <div class="order-id">#42</div>
+                                <div class="order-total">$45.500</div>
+                            </div>
+                            <div class="order-time">
+                                <div class="time-label">Pedido</div>
+                                <div class="time-value">8:30 PM</div>
+                                <div class="elapsed-time">⏱️ 15 min</div>
+                            </div>
+                        </div>
+                        
+                        <div class="customer-info">
+                            <div class="customer-name">👤 Juan Pérez</div>
+                            <div class="customer-phone">📱 300 123 4567</div>
+                        </div>
+                        
+                        <ul class="items-list">
+                            <li class="item">
+                                <div>
+                                    <span class="item-quantity">2</span>
+                                    <span class="item-name">Hamburguesa Especial</span>
+                                    <div class="item-notes">📝 Sin cebolla, extra queso</div>
+                                </div>
+                            </li>
+                            <li class="item">
+                                <div>
+                                    <span class="item-quantity">1</span>
+                                    <span class="item-name">Papas Grandes</span>
+                                </div>
+                            </li>
+                            <li class="item">
+                                <div>
+                                    <span class="item-quantity">2</span>
+                                    <span class="item-name">Gaseosa 400ml</span>
+                                </div>
+                            </li>
+                        </ul>
+                        
+                        <div class="card-footer">
+                            <button class="btn btn-start">
+                                👨‍🍳 Empezar a Cocinar
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Pedido 2 -->
+                    <div class="order-card pending">
+                        <div class="card-header">
+                            <div class="order-id-section">
+                                <div class="order-id">#43</div>
+                                <div class="order-total">$62.000</div>
+                            </div>
+                            <div class="order-time">
+                                <div class="time-label">Pedido</div>
+                                <div class="time-value">8:35 PM</div>
+                                <div class="elapsed-time">⏱️ 10 min</div>
+                            </div>
+                        </div>
+                        
+                        <div class="customer-info">
+                            <div class="customer-name">👤 María García</div>
+                            <div class="customer-phone">📱 301 987 6543</div>
+                        </div>
+                        
+                        <ul class="items-list">
+                            <li class="item">
+                                <div>
+                                    <span class="item-quantity">1</span>
+                                    <span class="item-name">Pizza Familiar</span>
+                                    <div class="item-notes">📝 Mitad hawaiana, mitad pepperoni</div>
+                                </div>
+                            </li>
+                            <li class="item">
+                                <div>
+                                    <span class="item-quantity">3</span>
+                                    <span class="item-name">Coca-Cola 1.5L</span>
+                                </div>
+                            </li>
+                        </ul>
+                        
+                        <div class="card-footer">
+                            <button class="btn btn-start">
+                                👨‍🍳 Empezar a Cocinar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Columna: Cocinando -->
+            <div class="column">
+                <div class="column-header cooking-header">
+                    <h2>👨‍🍳 Preparando</h2>
+                    <span class="count">1</span>
+                </div>
+                <div class="cards-container">
+                    <!-- Pedido en preparación -->
+                    <div class="order-card cooking">
+                        <div class="urgent-indicator">🔥 Urgente</div>
+                        
+                        <div class="card-header">
+                            <div class="order-id-section">
+                                <div class="order-id">#41</div>
+                                <div class="order-total">$38.900</div>
+                            </div>
+                            <div class="order-time">
+                                <div class="time-label">Pedido</div>
+                                <div class="time-value">8:10 PM</div>
+                                <div class="elapsed-time danger">⏱️ 35 min</div>
+                            </div>
+                        </div>
+                        
+                        <div class="customer-info">
+                            <div class="customer-name">👤 Carlos López</div>
+                            <div class="customer-phone">📱 302 555 8888</div>
+                        </div>
+                        
+                        <ul class="items-list">
+                            <li class="item">
+                                <div>
+                                    <span class="item-quantity">3</span>
+                                    <span class="item-name">Hot Dog Premium</span>
+                                </div>
+                            </li>
+                            <li class="item">
+                                <div>
+                                    <span class="item-quantity">1</span>
+                                    <span class="item-name">Papas Medianas</span>
+                                </div>
+                            </li>
+                        </ul>
+                        
+                        <div class="card-footer">
+                            <button class="btn btn-ready">
+                                ✅ Marcar como Listo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Columna: Listos -->
+            <div class="column">
+                <div class="column-header ready-header">
+                    <h2>✅ Listos</h2>
+                    <span class="count">1</span>
+                </div>
+                <div class="cards-container">
+                    <!-- Pedido listo -->
+                    <div class="order-card ready">
+                        <div class="card-header">
+                            <div class="order-id-section">
+                                <div class="order-id">#40</div>
+                                <div class="order-total">$28.500</div>
+                            </div>
+                            <div class="order-time">
+                                <div class="time-label">Pedido</div>
+                                <div class="time-value">8:00 PM</div>
+                                <div class="elapsed-time warning">⏱️ 45 min</div>
+                            </div>
+                        </div>
+                        
+                        <div class="customer-info">
+                            <div class="customer-name">👤 Ana Martínez</div>
+                            <div class="customer-phone">📱 300 111 2222</div>
+                        </div>
+                        
+                        <ul class="items-list">
+                            <li class="item">
+                                <div>
+                                    <span class="item-quantity">2</span>
+                                    <span class="item-name">Sándwich Vegetariano</span>
+                                </div>
+                            </li>
+                            <li class="item">
+                                <div>
+                                    <span class="item-quantity">2</span>
+                                    <span class="item-name">Jugo Natural 500ml</span>
+                                </div>
+                            </li>
+                        </ul>
+                        
+                        <div class="card-footer">
+                            <button class="btn btn-complete">
+                                📦 Entregado
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Controles de Demo -->
+    <div class="demo-controls">
+        <h3 style="margin-bottom: 1rem; color: var(--text);">🎮 Controles Demo</h3>
+        <button class="demo-btn demo-btn-primary" onclick="addDemoOrder()">
+            ➕ Agregar Pedido
+        </button>
+        <button class="demo-btn demo-btn-danger" onclick="location.reload()">
+            🔄 Reiniciar
+        </button>
+        <p style="margin-top: 1rem; font-size: 0.75rem; color: var(--text-light);">
+            En producción, los pedidos llegarán automáticamente desde n8n
+        </p>
+    </div>
+
+    <script>
+        // Actualizar reloj
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('currentTime').textContent = 
+                now.toLocaleTimeString('es-CO');
+        }, 1000);
+
+        // Simular agregar pedido
+        function addDemoOrder() {
+            alert('En producción, esto sucedería automáticamente cuando:\n\n' +
+                  '1. Cliente hace pedido por WhatsApp\n' +
+                  '2. n8n valida el pago\n' +
+                  '3. n8n envía a Firebase\n' +
+                  '4. Aparece aquí instantáneamente\n\n' +
+                  '¡Todo sin recargar la página! 🚀');
+        }
+
+        // Hacer botones interactivos
+        document.querySelectorAll('.btn-start').forEach(btn => {
+            btn.onclick = () => {
+                alert('En producción, esto movería el pedido a "Preparando"');
+            };
+        });
+
+        document.querySelectorAll('.btn-ready').forEach(btn => {
+            btn.onclick = () => {
+                alert('En producción, esto movería el pedido a "Listos" y notificaría al cliente');
+            };
+        });
+
+        document.querySelectorAll('.btn-complete').forEach(btn => {
+            btn.onclick = () => {
+                alert('En producción, esto marcaría el pedido como entregado y lo guardaría en el historial');
+            };
+        });
+    </script>
+</body>
+</html>

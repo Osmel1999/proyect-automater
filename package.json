@@ -1,0 +1,16 @@
+{
+  "name": "kds-webapp",
+  "version": "1.0.0",
+  "description": "Kitchen Display System para cocina oculta",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve .",
+    "deploy": "firebase deploy"
+  },
+  "keywords": ["kds", "cocina", "pedidos", "firebase"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "firebase-tools": "^13.0.0"
+  }
+}
