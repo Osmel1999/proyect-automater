@@ -191,11 +191,11 @@ Si quieres completar la automatización completa:
 
 **Proveedores recomendados:**
 
-**1. Meta Cloud API** (Recomendado para empezar)
-   - **Costo**: Gratis primeros 1,000 mensajes/mes, luego $0.005-$0.05/mensaje
+**1. Meta Cloud API** ⭐ RECOMENDADO - GRATIS
+   - **Costo**: **1,000 conversaciones GRATIS/mes**, luego $0.015/conversación
    - **Setup**: https://business.facebook.com/wa/manage/home/
-   - **Ventajas**: Oficial, sin intermediarios
-   - **Desventajas**: Requiere Facebook Business Manager
+   - **Ventajas**: Oficial, sin intermediarios, FREE tier muy generoso
+   - **Ideal para**: Hasta ~30-40 pedidos/día completamente gratis
 
 **2. Twilio** (Más fácil de configurar)
    - **Costo**: ~$0.005-$0.05/mensaje
@@ -283,15 +283,22 @@ Si quieres completar la automatización completa:
 
 ---
 
-## 💰 COSTOS ESTIMADOS
+## 💰 COSTOS REALES (CORREGIDO)
 
 | Concepto | Actual | Con WhatsApp/n8n |
 |----------|--------|------------------|
 | **Firebase** | $0 (free tier) | $0 (suficiente) |
 | **KDS Hosting** | $0 (Firebase) | $0 |
-| **WhatsApp API** | N/A | $50-100/mes |
-| **n8n Hosting** | N/A | $0-6/mes |
-| **TOTAL/MES** | **$0** | **$50-106/mes** |
+| **WhatsApp API** | N/A | **$0/mes** (hasta 1,000 conversaciones gratis) |
+| **n8n Hosting** | N/A | $0/mes (Railway free tier) |
+| **TOTAL/MES** | **$0** | **$0/mes inicialmente** 🎉 |
+
+**Nota importante:** Meta Cloud API ofrece 1,000 conversaciones GRATIS al mes, que equivalen a ~30-40 pedidos/día. Solo pagas si excedes ese límite ($0.015 por conversación adicional).
+
+**Costos reales según volumen:**
+- 0-30 pedidos/día: **$0/mes**
+- 30-70 pedidos/día: **$5-20/mes**
+- 70-150 pedidos/día: **$20-85/mes**
 
 ---
 
@@ -338,7 +345,7 @@ Tu KDS actual puede:
 
 ### **B. Completar la automatización primero** (WhatsApp + n8n)
 - 5-8 días adicionales
-- $50-106/mes
+- **$0/mes inicialmente** (hasta 1,000 conversaciones gratis con Meta Cloud API)
 - Sistema 100% automatizado
 - Empiezas después de implementar
 
