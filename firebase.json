@@ -16,7 +16,11 @@
       },
       {
         "source": "/kds",
-        "destination": "/index.html"
+        "destination": "/kds.html"
+      },
+      {
+        "source": "/index.html",
+        "destination": "/kds.html"
       },
       {
         "source": "/login",
