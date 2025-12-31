@@ -138,15 +138,13 @@ function createOrderCard(order, status) {
     const isUrgent = minutes > 25;
     
     card.innerHTML = `
-        ${isUrgent ? '<div class="urgent-indicator">🔥 Urgente</div>' : ''}
-        
         <div class="card-header">
             <div class="order-id-section">
                 <div class="order-id">#${order.id}</div>
                 ${order.total ? `<div class="order-total">$${formatMoney(order.total)}</div>` : ''}
             </div>
             <div class="order-time">
-                <div class="time-label">Pedido</div>
+                <div class="time-label">Pedido${isUrgent ? ' - 🔥 Urgente' : ''}</div>
                 <div class="time-value">${formatTime(order.timestamp)} - <span class="elapsed-time ${elapsedClass}">⏱️ ${minutes} min</span></div>
             </div>
         </div>
