@@ -11,6 +11,10 @@ firebase-debug.log
 .env
 .env.local
 .env.production
+.env.whatsapp
+.env.n8n
+credentials.json
+*credentials*
 
 # IDE
 .vscode/
