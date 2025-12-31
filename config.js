@@ -1,13 +1,14 @@
 // Configuración de Firebase
-// IMPORTANTE: Reemplaza estos valores con los de tu proyecto Firebase
+// Proyecto: kds-app-7f1d3
 const firebaseConfig = {
-    apiKey: "TU_API_KEY_AQUI",
-    authDomain: "tu-proyecto.firebaseapp.com",
-    databaseURL: "https://tu-proyecto-default-rtdb.firebaseio.com",
-    projectId: "tu-proyecto",
-    storageBucket: "tu-proyecto.appspot.com",
-    messagingSenderId: "123456789",
-    appId: "1:123456789:web:abcdef123456"
+    apiKey: "AIzaSyAChWEnXztMe5YWJTPevIY5afgHMYxZBzQ",
+    authDomain: "kds-app-7f1d3.firebaseapp.com",
+    databaseURL: "https://kds-app-7f1d3-default-rtdb.firebaseio.com",
+    projectId: "kds-app-7f1d3",
+    storageBucket: "kds-app-7f1d3.firebasestorage.app",
+    messagingSenderId: "236480135078",
+    appId: "1:236480135078:web:246c759f840c5f140e1967",
+    measurementId: "G-0Q1V5WV35X"
 };
 
 // Inicializar Firebase
