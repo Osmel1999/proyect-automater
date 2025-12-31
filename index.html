@@ -25,7 +25,12 @@
                     <span class="stat-label">Listos</span>
                 </div>
             </div>
-            <div class="current-time" id="currentTime"></div>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <div class="current-time" id="currentTime"></div>
+                <button id="logoutBtn" class="btn-logout" style="display:none;">
+                    🚪 Cerrar Sesión
+                </button>
+            </div>
         </header>
 
         <!-- Kanban Board -->
@@ -71,7 +76,39 @@
     <!-- Scripts -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="config.js"></script>
+    
+    <!-- Script de autenticación -->
+    <script>
+        // Verificar autenticación antes de cargar la app
+        const logoutBtn = document.getElementById('logoutBtn');
+        
+        firebase.auth().onAuthStateChanged((user) => {
+            if (!user) {
+                // No autenticado, redirigir al login
+                window.location.href = 'login.html';
+            } else {
+                // Usuario autenticado, mostrar botón de logout
+                logoutBtn.style.display = 'block';
+                logoutBtn.textContent = `🚪 Cerrar Sesión (${user.email})`;
+            }
+        });
+        
+        // Manejar cierre de sesión
+        logoutBtn.addEventListener('click', async () => {
+            if (confirm('¿Seguro que quieres cerrar sesión?')) {
+                try {
+                    await firebase.auth().signOut();
+                    window.location.href = 'login.html';
+                } catch (error) {
+                    console.error('Error al cerrar sesión:', error);
+                    alert('Error al cerrar sesión. Intenta de nuevo.');
+                }
+            }
+        });
+    </script>
+    
     <script src="app.js"></script>
 </body>
 </html>
