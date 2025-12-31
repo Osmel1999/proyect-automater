@@ -20,9 +20,22 @@ let previousOrderCount = 0;
 
 // Inicializar la aplicación
 function init() {
+    // Crear sonido de notificación si no existe
+    if (!notificationSound.src) {
+        createNotificationSound();
+    }
+    
     updateClock();
     setInterval(updateClock, 1000);
     listenToOrders();
+}
+
+// Crear sonido de notificación con Web Audio API
+function createNotificationSound() {
+    // Usar un beep simple de data URL (compatible con todos los navegadores)
+    // Este es un sonido corto de notificación en formato base64
+    const audioDataUrl = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTOH0fPTgjMGHm7A7+OZSA0PVqzn77BfGAg+lt/yxnMlBSh+zPHcjzsKF2G56+ukUBELTKXj8bllHAU1jdXzz38qBSF1xu/glkcOE1qw6+6nVRUMR5/f88JyJgUp';
+    notificationSound.src = audioDataUrl;
 }
 
 // Actualizar reloj
