@@ -1,194 +1,101 @@
 # 🍔 KDS - Kitchen Display System
 
-Sistema de pantalla de cocina en tiempo real para tu cocina oculta.
+Sistema de pantalla de cocina en tiempo real para cocina oculta (dark kitchen/ghost kitchen).
 
-## 🚀 Características
+## ✨ Características
 
-✅ **Actualización en tiempo real** - Los pedidos aparecen instantáneamente
-✅ **Sistema Kanban** - 3 columnas: Pendientes → Cocinando → Listos
-✅ **Alertas visuales** - Pedidos urgentes se destacan automáticamente
-✅ **Sonido y vibración** - Notifica cuando llega un pedido nuevo
-✅ **Responsive** - Funciona en tablet, celular o Smart TV
-✅ **Sin backend** - Todo funciona con Firebase (gratis)
+- ✅ **Actualización en tiempo real** - Los pedidos aparecen instantáneamente sin recargar
+- ✅ **Sistema Kanban** - 3 columnas: En Cola → Preparando → Listos
+- ✅ **Temporizador automático** - Muestra minutos transcurridos que se actualizan cada 10 segundos
+- ✅ **Alertas visuales** - Pedidos urgentes (+25 min) se destacan automáticamente
+- ✅ **Sonido y vibración** - Notifica cuando llega un pedido nuevo
+- ✅ **Autenticación segura** - Login con Firebase Authentication
+- ✅ **Responsive** - Funciona en tablet, celular o Smart TV
+- ✅ **PWA Ready** - Se puede instalar como app nativa
 
-## 📋 Requisitos
+## 🏗️ Arquitectura
 
-- Cuenta de Firebase (gratis)
-- Navegador moderno (Chrome, Firefox, Safari)
-
-## 🛠️ Instalación
-
-### Paso 1: Crear proyecto en Firebase
-
-1. Ve a [Firebase Console](https://console.firebase.google.com)
-2. Crea un nuevo proyecto
-3. Habilita **Realtime Database**
-4. En Reglas de seguridad, usa esto temporalmente (después lo mejoramos):
-
-```json
-{
-  "rules": {
-    "pedidos": {
-      ".read": true,
-      ".write": true
-    },
-    "historial": {
-      ".read": true,
-      ".write": true
-    }
-  }
-}
+```
+┌─────────────────┐
+│  WhatsApp API   │
+│  (Futuro)       │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐      ┌──────────────────┐
+│      n8n        │─────▶│  Firebase RTDB   │
+│   (Workflows)   │      │   (Base Datos)   │
+└─────────────────┘      └────────┬─────────┘
+                                  │
+                                  ▼
+                         ┌──────────────────┐
+                         │   KDS WebApp     │
+                         │  (Este proyecto) │
+                         └──────────────────┘
 ```
 
-### Paso 2: Configurar la app
+## 🚀 Despliegue
 
-1. En Firebase Console, ve a **Configuración del proyecto** → **Tus apps**
-2. Crea una app web
-3. Copia la configuración que te dan
-4. Pega los valores en `config.js`:
+### URL en Producción
+- **KDS App**: https://kds-app-7f1d3.web.app
+- **Landing Page**: https://kds-app-7f1d3.web.app/home.html
 
-```javascript
-const firebaseConfig = {
-    apiKey: "TU_API_KEY_AQUI",
-    authDomain: "tu-proyecto.firebaseapp.com",
-    databaseURL: "https://tu-proyecto-default-rtdb.firebaseio.com",
-    projectId: "tu-proyecto",
-    storageBucket: "tu-proyecto.appspot.com",
-    messagingSenderId: "123456789",
-    appId: "1:123456789:web:abcdef123456"
-};
-```
-
-### Paso 3: Desplegar
-
-**Opción A: Firebase Hosting (GRATIS)**
+### Firebase Hosting
 
 ```bash
-# Instalar Firebase CLI
-npm install -g firebase-tools
+# Desplegar cambios
+firebase deploy --only hosting
 
-# Login
-firebase login
-
-# Inicializar en este directorio
-firebase init hosting
-
-# Desplegar
-firebase deploy
+# Ver logs
+firebase hosting:channel:list
 ```
 
-**Opción B: Netlify/Vercel (GRATIS)**
+## 📂 Estructura del Proyecto
 
-1. Arrastra la carpeta completa a Netlify.com
-2. Listo, ya tienes URL pública
-
-**Opción C: Abrir localmente**
-
-Simplemente abre `index.html` en tu navegador (Chrome recomendado)
-
-## 🔗 Integración con n8n
-
-En n8n, cuando crees un pedido, envíalo a Firebase así:
-
-### Nodo HTTP Request en n8n:
-
-```javascript
-// URL: https://tu-proyecto-default-rtdb.firebaseio.com/pedidos.json
-// Método: POST
-// Body:
-{
-  "id": "{{ $json.orderNumber }}",
-  "cliente": "{{ $json.customerName }}",
-  "telefono": "{{ $json.customerPhone }}",
-  "items": {{ $json.items }},
-  "total": {{ $json.total }},
-  "estado": "pendiente",
-  "timestamp": {{ Date.now() }}
-}
+```
+kds-webapp/
+├── index.html              # Página principal (redirige)
+├── home.html               # Landing page
+├── login.html              # Página de login
+├── kds.html                # KDS (pantalla de cocina)
+├── app.js                  # Lógica principal del KDS
+├── config.js               # Configuración de Firebase
+├── styles.css              # Estilos
+├── privacy-policy.html     # Política de privacidad
+├── terms.html              # Términos y condiciones
+├── firebase.json           # Config de Firebase Hosting
+├── package.json            # Dependencias del proyecto
+├── n8n-workflows/          # Workflows de automatización
+│   ├── workflow-1-pedido-manual.json
+│   ├── workflow-1-pedido-manual-v2.json
+│   ├── GUIA-IMPORTAR.md
+│   └── GUIA-RAILWAY.md
+├── CREDENCIALES.md         # Credenciales y accesos (NO SUBIR A GIT)
+├── GUIA-WHATSAPP-API.md    # Guía para integración WhatsApp
+└── README.md               # Este archivo
 ```
 
-### Ejemplo de estructura de pedido:
+## 🔧 Configuración
 
-```json
-{
-  "pedidos": {
-    "42": {
-      "id": "42",
-      "cliente": "Juan Pérez",
-      "telefono": "3001234567",
-      "items": [
-        {
-          "nombre": "Hamburguesa Especial",
-          "cantidad": 2,
-          "notas": "Sin cebolla"
-        },
-        {
-          "nombre": "Papas Grandes",
-          "cantidad": 1
-        }
-      ],
-      "total": 30000,
-      "estado": "pendiente",
-      "timestamp": 1735516800000
-    }
-  }
-}
-```
+### Firebase
 
-## 📱 Uso en la Cocina
+El proyecto ya está configurado con:
+- **Authentication**: Email/Password habilitado
+- **Realtime Database**: Configurado con reglas de seguridad
+- **Hosting**: Desplegado y funcionando
 
-1. Abre la URL en una tablet o Smart TV
-2. Déjala abierta todo el día
-3. Cuando llega un pedido:
-   - 🔊 Suena una notificación
-   - 📱 Vibra (en móviles)
-   - 🎴 Aparece en la columna "En Cola"
+### Usuarios
 
-4. Flujo de trabajo:
-   - Ver pedido en "En Cola"
-   - Presionar **"Empezar a Cocinar"** → Se mueve a "Preparando"
-   - Presionar **"Marcar como Listo"** → Se mueve a "Listos"
-   - Presionar **"Entregado"** → Se archiva en historial
+Ver archivo `CREDENCIALES.md` para accesos (archivo privado, no incluido en git).
 
-## 🎨 Personalización
-
-### Cambiar colores
-
-Edita las variables CSS en `styles.css`:
-
-```css
-:root {
-    --pending: #f59e0b;   /* Color columna "En Cola" */
-    --cooking: #8b5cf6;   /* Color columna "Cocinando" */
-    --ready: #10b981;     /* Color columna "Listos" */
-}
-```
-
-### Cambiar tiempos de alerta
-
-En `app.js` línea 135:
-
-```javascript
-// Alertas por tiempo transcurrido
-const elapsedClass = minutes > 30 ? 'danger' : minutes > 20 ? 'warning' : '';
-const isUrgent = minutes > 25; // Mostrar indicador "URGENTE"
-```
-
-### Agregar sonido personalizado
-
-1. Agrega un archivo `notification.mp3` en la carpeta
-2. O usa una URL: `<audio id="notificationSound" src="https://tu-sonido.mp3">`
-
-## 🔒 Seguridad (Producción)
-
-Cuando vayas a producción, mejora las reglas de Firebase:
+### Reglas de Seguridad de Firebase
 
 ```json
 {
   "rules": {
     "pedidos": {
-      ".read": true,
-      ".write": "auth != null"  // Solo usuarios autenticados
+      ".read": "auth != null",
+      ".write": "auth != null"
     },
     "historial": {
       ".read": "auth != null",
@@ -198,67 +105,172 @@ Cuando vayas a producción, mejora las reglas de Firebase:
 }
 ```
 
-## 📊 Ver Historial
+## 🔗 Integración con n8n
 
-Puedes crear una vista de historial agregando:
+### Crear Pedido desde n8n
 
-```javascript
-// En app.js, agregar:
-const historyRef = window.db.ref('historial');
-historyRef.on('value', (snapshot) => {
-    const history = snapshot.val();
-    // Renderizar historial
-});
+**Endpoint**: `https://[PROJECT_ID]-default-rtdb.firebaseio.com/pedidos.json`
+
+**Método**: `POST`
+
+**Headers**:
+```
+Content-Type: application/json
 ```
 
-## 🐛 Solución de Problemas
+**Body (ejemplo)**:
+```json
+{
+  "id": "PED-1234567890",
+  "cliente": "Juan Pérez",
+  "telefono": "+573001234567",
+  "timestamp": 1704195600000,
+  "estado": "pendiente",
+  "items": [
+    {
+      "nombre": "Hamburguesa Clásica",
+      "cantidad": 2,
+      "notas": "Sin cebolla"
+    }
+  ],
+  "total": 25000
+}
+```
 
-**No aparecen los pedidos:**
-- Verifica que la URL de Firebase en `config.js` sea correcta
-- Abre la consola del navegador (F12) y busca errores
+### Campos Requeridos
 
-**No suena la notificación:**
-- Los navegadores bloquean sonidos automáticos hasta que el usuario interactúe
-- Haz clic en cualquier parte de la página primero
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `id` | string | ID único del pedido (ej: "PED-1234567890") |
+| `cliente` | string | Nombre del cliente |
+| `telefono` | string | Teléfono del cliente (opcional) |
+| `timestamp` | number | Timestamp en milisegundos (ej: `Date.now()`) |
+| `estado` | string | Debe ser `"pendiente"` para que aparezca en la primera columna |
+| `items` | array | Array de productos |
+| `items[].nombre` | string | Nombre del producto |
+| `items[].cantidad` | number | Cantidad |
+| `items[].notas` | string | Notas adicionales (opcional) |
+| `total` | number | Total en pesos (opcional) |
 
-**Los pedidos no se actualizan en tiempo real:**
-- Verifica que las reglas de Firebase permitan lectura
-- Revisa que la conexión a internet esté activa
+### Autenticación con Firebase desde n8n
 
-## 💰 Costos
+Para autenticar las peticiones desde n8n, usa el **Database Secret**:
 
-**Firebase Free Tier incluye:**
-- ✅ 1GB de almacenamiento
-- ✅ 10GB de transferencia/mes
-- ✅ 100,000 descargas simultáneas
+**URL con auth**:
+```
+https://[PROJECT_ID]-default-rtdb.firebaseio.com/pedidos.json?auth=[DATABASE_SECRET]
+```
 
-**Para tu caso:** Puedes tener miles de pedidos al mes sin pagar nada.
+El Database Secret está en: Firebase Console → Project Settings → Service Accounts → Database Secrets
 
-## 📱 Modo Fullscreen (Recomendado)
+## 📱 Uso del KDS
 
-Para usar en tablet/TV:
+### Flujo de Trabajo
 
-1. Abre la app
-2. Presiona F11 (PC) o ícono de pantalla completa
-3. Opcional: Instala como PWA (Chrome → Menú → Instalar app)
+1. **Pedido nuevo** → Aparece en columna "En Cola" 🟦
+2. **Cocinero presiona "Empezar a Cocinar"** → Pasa a "Preparando" 🟧
+3. **Cocinero presiona "Marcar como Listo"** → Pasa a "Listos" 🟩
+4. **Cocinero presiona "Entregado"** → Se mueve a historial (desaparece del KDS)
 
-## 🎯 Próximas Mejoras (Opcionales)
+### Indicadores de Tiempo
 
-- [ ] Agregar autenticación
-- [ ] Dashboard de estadísticas (ventas del día)
+- ⏱️ **Normal** (< 20 min): Color blanco
+- ⏱️ **Warning** (20-30 min): Color amarillo
+- ⏱️ **Danger** (> 30 min): Color rojo
+- 🔥 **Urgente** (> 25 min): Etiqueta "🔥 Urgente"
+
+Los tiempos se actualizan automáticamente cada 10 segundos.
+
+## 🔐 Seguridad
+
+- ✅ Autenticación requerida para acceder al KDS
+- ✅ Reglas de Firebase Database protegen los datos
+- ✅ Solo usuarios autenticados pueden leer/escribir
+- ✅ HTTPS en todas las conexiones
+- ✅ Tokens de sesión con expiración automática
+
+## 🛠️ Desarrollo Local
+
+```bash
+# Clonar el repositorio
+git clone [URL_DEL_REPO]
+cd kds-webapp
+
+# No requiere instalación de dependencias
+# Solo abrir en navegador o usar Firebase Emulator
+
+# Opción 1: Abrir directamente
+open kds.html
+
+# Opción 2: Servidor local simple
+python3 -m http.server 8000
+# Luego abrir http://localhost:8000
+
+# Opción 3: Firebase Emulator
+firebase emulators:start
+```
+
+## 📊 Estructura de Datos en Firebase
+
+```
+/pedidos
+  /-Ohyzb6ZoMJPUCei-x7D
+    id: "PED-1767362162869"
+    cliente: "Juan Pérez"
+    telefono: "+573001234567"
+    timestamp: 1767362162869
+    estado: "pendiente"
+    items: [...]
+    total: 25000
+    inicioCocinado: 1767362200000  (se agrega al cambiar a "cocinando")
+    horaListo: 1767362300000       (se agrega al cambiar a "listo")
+
+/historial
+  /-Ohyzb6ZoMJPUCei-x7D
+    (mismo formato que /pedidos)
+    horaEntrega: 1767362400000     (se agrega al marcar como "entregado")
+```
+
+## 🚧 Próximos Pasos
+
+- [ ] Integración con WhatsApp Business API
+- [ ] Despliegue de n8n en Railway
+- [ ] Webhook desde WhatsApp → n8n → Firebase → KDS
+- [ ] Dashboard de estadísticas e historial
+- [ ] Notificaciones push
 - [ ] Impresión automática de tickets
-- [ ] Modo oscuro
-- [ ] Multi-idioma
+- [ ] Integración con más canales (Instagram, Delivery Apps)
+
+## 📝 Notas Técnicas
+
+### Actualización de Tiempos
+
+El sistema usa `setInterval` para actualizar los minutos transcurridos cada 10 segundos:
+
+```javascript
+// En app.js
+setInterval(updateElapsedTimes, 10000);
+```
+
+La función busca todas las tarjetas en el DOM y actualiza sus tiempos sin necesidad de rerenderizar todo el componente.
+
+### Identificadores
+
+- **Firebase Key**: ID único generado por Firebase (ej: `-Ohyzb6ZoMJPUCei-x7D`)
+- **Display ID**: ID interno del pedido para mostrar al usuario (ej: `PED-1767362162869`)
+
+Las tarjetas usan `data-order-id` con la Firebase Key para operaciones, y `data-display-id` para mostrar al usuario.
+
+## 📄 Licencia
+
+Proyecto privado - Todos los derechos reservados
+
+## 👤 Autor
+
+Desarrollado para cocina oculta - 2025
 
 ---
 
-## 🆘 Soporte
-
-¿Necesitas ayuda? Revisa:
-1. Configuración de Firebase en `config.js`
-2. Consola del navegador (F12)
-3. Reglas de Firebase Database
-
----
-
-**¡Listo para cocinar! 🍔👨‍🍳**
+**Última actualización**: 2 de enero de 2026
+**Versión**: 1.0.0
+**Estado**: ✅ En producción

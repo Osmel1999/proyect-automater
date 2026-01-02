@@ -27,6 +27,10 @@ function init() {
     
     updateClock();
     setInterval(updateClock, 1000);
+    
+    // Actualizar tiempos transcurridos cada 10 segundos
+    setInterval(updateElapsedTimes, 10000);
+    
     listenToOrders();
 }
 
@@ -89,8 +93,12 @@ function renderOrders() {
     const ready = [];
     
     // Clasificar pedidos por estado
-    Object.entries(orders).forEach(([id, order]) => {
-        const orderData = { ...order, id };
+    Object.entries(orders).forEach(([firebaseKey, order]) => {
+        const orderData = { 
+            ...order, 
+            firebaseKey,  // Key de Firebase para operaciones
+            displayId: order.id || firebaseKey  // ID para mostrar al usuario
+        };
         
         switch (order.estado) {
             case 'pendiente':
@@ -140,7 +148,8 @@ function renderColumn(container, orders, status) {
 function createOrderCard(order, status) {
     const card = document.createElement('div');
     card.className = `order-card ${status}`;
-    card.dataset.orderId = order.id;
+    card.dataset.orderId = order.firebaseKey;  // Guardar la key de Firebase para operaciones
+    card.dataset.displayId = order.displayId;  // Guardar el ID de display para búsquedas
     
     // Calcular tiempo transcurrido
     const elapsed = Date.now() - order.timestamp;
@@ -153,7 +162,7 @@ function createOrderCard(order, status) {
     card.innerHTML = `
         <div class="card-header">
             <div class="order-id-section">
-                <div class="order-id">#${order.id}</div>
+                <div class="order-id">#${order.displayId}</div>
                 ${order.total ? `<div class="order-total">$${formatMoney(order.total)}</div>` : ''}
             </div>
             <div class="order-time">
@@ -180,7 +189,7 @@ function createOrderCard(order, status) {
         </ul>
         
         <div class="card-footer">
-            ${getActionButtons(order.estado, order.id)}
+            ${getActionButtons(order.estado, order.firebaseKey)}
         </div>
     `;
     
@@ -271,6 +280,44 @@ function formatTime(timestamp) {
     return date.toLocaleTimeString('es-CO', { 
         hour: '2-digit', 
         minute: '2-digit'
+    });
+}
+
+// Actualizar tiempos transcurridos en las tarjetas
+function updateElapsedTimes() {
+    document.querySelectorAll('.order-card').forEach(card => {
+        const firebaseKey = card.dataset.orderId;
+        const order = orders[firebaseKey];
+        
+        if (!order || !order.timestamp) {
+            return;
+        }
+        
+        // Calcular tiempo transcurrido
+        const elapsed = Date.now() - order.timestamp;
+        const minutes = Math.floor(elapsed / 60000);
+        
+        // Actualizar el texto del tiempo
+        const elapsedSpan = card.querySelector('.elapsed-time');
+        if (elapsedSpan) {
+            // Actualizar clase de color
+            elapsedSpan.className = 'elapsed-time';
+            if (minutes > 30) {
+                elapsedSpan.classList.add('danger');
+            } else if (minutes > 20) {
+                elapsedSpan.classList.add('warning');
+            }
+            
+            // Actualizar texto
+            elapsedSpan.innerHTML = `⏱️ ${minutes} min`;
+        }
+        
+        // Actualizar indicador de urgente
+        const timeLabel = card.querySelector('.time-label');
+        if (timeLabel) {
+            const isUrgent = minutes > 25;
+            timeLabel.textContent = isUrgent ? 'Pedido - 🔥 Urgente' : 'Pedido';
+        }
     });
 }
 
