@@ -1,276 +1,296 @@
-# 🍔 KDS - Kitchen Display System
+# 🍔 Bot de Pedidos WhatsApp con IA - Sistema KDS
 
-Sistema de pantalla de cocina en tiempo real para cocina oculta (dark kitchen/ghost kitchen).
+Sistema completo de pedidos por WhatsApp con reconocimiento de lenguaje natural, fuzzy matching y panel KDS (Kitchen Display System) para restaurantes.
 
-## ✨ Características
+[![Node.js](https://img.shields.io/badge/Node.js-24.2.0-green.svg)](https://nodejs.org/)
+[![Express](https://img.shields.io/badge/Express-4.21.2-blue.svg)](https://expressjs.com/)
+[![Firebase](https://img.shields.io/badge/Firebase-Realtime%20DB-orange.svg)](https://firebase.google.com/)
+[![Twilio](https://img.shields.io/badge/Twilio-WhatsApp%20API-red.svg)](https://www.twilio.com/)
 
-- ✅ **Actualización en tiempo real** - Los pedidos aparecen instantáneamente sin recargar
-- ✅ **Sistema Kanban** - 3 columnas: En Cola → Preparando → Listos
-- ✅ **Temporizador automático** - Muestra minutos transcurridos que se actualizan cada 10 segundos
-- ✅ **Alertas visuales** - Pedidos urgentes (+25 min) se destacan automáticamente
-- ✅ **Sonido y vibración** - Notifica cuando llega un pedido nuevo
-- ✅ **Autenticación segura** - Login con Firebase Authentication
-- ✅ **Responsive** - Funciona en tablet, celular o Smart TV
-- ✅ **PWA Ready** - Se puede instalar como app nativa
+---
+
+## 🎯 Características Principales
+
+### 🤖 Bot Inteligente con Fuzzy Matching
+- ✅ **Lenguaje Natural:** "Quiero 2 hamburguesas y 3 coca colas"
+- ✅ **Tolerante a errores:** Reconoce "jamburguesa", "serveza", "pitza mosarela"
+- ✅ **Números pegados:** "2hamburguesas 3cervezas" funciona correctamente
+- ✅ **Normalización fonética:** Maneja intercambios s/z, c/k, v/b, h/j
+- ✅ **97.8% de precisión** en reconocimiento de pedidos
+
+### 💰 Ahorro de Costos
+- **67% menos mensajes** comparado con método tradicional
+- **4 mensajes por pedido** vs 10+ mensajes anteriormente
+- **Una sola confirmación** (eliminada confirmación duplicada)
+
+### 🎨 Kitchen Display System (KDS)
+- Panel en tiempo real para cocina
+- Estados: Pendiente → En Preparación → Listo
+- Tiempos de espera automáticos
+- Notificaciones sonoras
+- Responsive design
+
+---
+
+## 🚀 Instalación
+
+### Requisitos Previos
+- Node.js v20+ 
+- Cuenta de Firebase (Realtime Database)
+- Cuenta de Twilio (WhatsApp Business API)
+- ngrok (para desarrollo local)
+
+### 1. Clonar el repositorio
+```bash
+git clone <tu-repo>
+cd kds-webapp
+```
+
+### 2. Instalar dependencias
+```bash
+npm install
+```
+
+### 3. Configurar variables de entorno
+Crear archivo `.env`:
+```env
+# Twilio
+TWILIO_ACCOUNT_SID=tu_account_sid
+TWILIO_AUTH_TOKEN=tu_auth_token
+TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
+
+# Firebase
+FIREBASE_DATABASE_URL=https://tu-proyecto.firebaseio.com
+```
+
+### 4. Configurar Firebase Service Account
+Coloca tu archivo `firebase-service-account.json` en `server/`
+
+### 5. Iniciar el servidor
+```bash
+node server/index.js
+```
+
+### 6. Exponer con ngrok (desarrollo)
+```bash
+ngrok http 3000
+```
+
+Configura el webhook en Twilio con:
+```
+https://tu-url.ngrok.app/webhook/whatsapp
+```
+
+---
+
+## 📱 Uso del Bot
+
+### Comandos Básicos
+| Comando | Descripción |
+|---------|-------------|
+| `hola` / `menu` | Muestra el menú completo |
+| `ayuda` / `help` | Muestra ayuda completa |
+| `ver` / `carrito` | Ver pedido actual |
+| `confirmar` / `si` | Confirmar pedido |
+| `cancelar` / `no` | Cancelar pedido |
+
+### Ejemplos de Pedidos
+
+#### ✅ Pedido Simple
+```
+Usuario: una hamburguesa
+Bot: ✅ Entendí tu pedido: 1x Hamburguesa Completa ($850)
+```
+
+#### ✅ Pedido Múltiple
+```
+Usuario: 2 pizzas con 3 cervezas
+Bot: ✅ Entendí tu pedido:
+- 2x Pizza Muzzarella ($1200)
+- 3x Cerveza ($400)
+Total: $3600
+```
+
+#### ✅ Con Errores Ortográficos
+```
+Usuario: jamburguesa kon serveza
+Bot: ✅ Entendí tu pedido:
+- 1x Hamburguesa Completa ($850)
+- 1x Cerveza ($400)
+Total: $1250
+```
+
+#### ✅ Números Pegados
+```
+Usuario: 2hamburguesas 3cervezas
+Bot: ✅ Entendí tu pedido:
+- 2x Hamburguesa Completa ($850)
+- 3x Cerveza ($400)
+Total: $2900
+```
+
+---
+
+## 🧪 Testing
+
+### Ejecutar Tests Básicos
+```bash
+node test-parser.js
+```
+**20 casos de prueba - 100% de éxito**
+
+### Ejecutar Tests Extremos
+```bash
+node test-parser-extremo.js
+```
+**25 casos extremos - 96% de éxito**
+
+---
 
 ## 🏗️ Arquitectura
 
 ```
-┌─────────────────┐
-│  WhatsApp API   │
-│  (Futuro)       │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐      ┌──────────────────┐
-│      n8n        │─────▶│  Firebase RTDB   │
-│   (Workflows)   │      │   (Base Datos)   │
-└─────────────────┘      └────────┬─────────┘
-                                  │
-                                  ▼
-                         ┌──────────────────┐
-                         │   KDS WebApp     │
-                         │  (Este proyecto) │
-                         └──────────────────┘
-```
-
-## 🚀 Despliegue
-
-### URL en Producción
-- **KDS App**: https://kds-app-7f1d3.web.app
-- **Landing Page**: https://kds-app-7f1d3.web.app/home.html
-
-### Firebase Hosting
-
-```bash
-# Desplegar cambios
-firebase deploy --only hosting
-
-# Ver logs
-firebase hosting:channel:list
-```
-
-## 📂 Estructura del Proyecto
-
-```
 kds-webapp/
-├── index.html              # Página principal (redirige)
-├── home.html               # Landing page
-├── login.html              # Página de login
-├── kds.html                # KDS (pantalla de cocina)
-├── app.js                  # Lógica principal del KDS
-├── config.js               # Configuración de Firebase
-├── styles.css              # Estilos
-├── privacy-policy.html     # Política de privacidad
-├── terms.html              # Términos y condiciones
-├── firebase.json           # Config de Firebase Hosting
-├── package.json            # Dependencias del proyecto
-├── n8n-workflows/          # Workflows de automatización
-│   ├── workflow-1-pedido-manual.json
-│   ├── workflow-1-pedido-manual-v2.json
-│   ├── GUIA-IMPORTAR.md
-│   └── GUIA-RAILWAY.md
-├── CREDENCIALES.md         # Credenciales y accesos (NO SUBIR A GIT)
-├── GUIA-WHATSAPP-API.md    # Guía para integración WhatsApp
-└── README.md               # Este archivo
+├── server/
+│   ├── index.js              # Servidor Express
+│   ├── bot-logic.js          # Lógica del bot WhatsApp
+│   ├── pedido-parser.js      # Parser con fuzzy matching
+│   ├── menu.js               # Menú del restaurante
+│   ├── firebase-service.js   # Conexión Firebase
+│   └── twilio-handler.js     # Handler de Twilio
+├── test-parser.js            # Tests básicos
+├── test-parser-extremo.js    # Tests extremos
+├── index.html                # Panel KDS
+└── package.json
 ```
-
-## 🔧 Configuración
-
-### Firebase
-
-El proyecto ya está configurado con:
-- **Authentication**: Email/Password habilitado
-- **Realtime Database**: Configurado con reglas de seguridad
-- **Hosting**: Desplegado y funcionando
-
-### Usuarios
-
-Ver archivo `CREDENCIALES.md` para accesos (archivo privado, no incluido en git).
-
-### Reglas de Seguridad de Firebase
-
-```json
-{
-  "rules": {
-    "pedidos": {
-      ".read": "auth != null",
-      ".write": "auth != null"
-    },
-    "historial": {
-      ".read": "auth != null",
-      ".write": "auth != null"
-    }
-  }
-}
-```
-
-## 🔗 Integración con n8n
-
-### Crear Pedido desde n8n
-
-**Endpoint**: `https://[PROJECT_ID]-default-rtdb.firebaseio.com/pedidos.json`
-
-**Método**: `POST`
-
-**Headers**:
-```
-Content-Type: application/json
-```
-
-**Body (ejemplo)**:
-```json
-{
-  "id": "PED-1234567890",
-  "cliente": "Juan Pérez",
-  "telefono": "+573001234567",
-  "timestamp": 1704195600000,
-  "estado": "pendiente",
-  "items": [
-    {
-      "nombre": "Hamburguesa Clásica",
-      "cantidad": 2,
-      "notas": "Sin cebolla"
-    }
-  ],
-  "total": 25000
-}
-```
-
-### Campos Requeridos
-
-| Campo | Tipo | Descripción |
-|-------|------|-------------|
-| `id` | string | ID único del pedido (ej: "PED-1234567890") |
-| `cliente` | string | Nombre del cliente |
-| `telefono` | string | Teléfono del cliente (opcional) |
-| `timestamp` | number | Timestamp en milisegundos (ej: `Date.now()`) |
-| `estado` | string | Debe ser `"pendiente"` para que aparezca en la primera columna |
-| `items` | array | Array de productos |
-| `items[].nombre` | string | Nombre del producto |
-| `items[].cantidad` | number | Cantidad |
-| `items[].notas` | string | Notas adicionales (opcional) |
-| `total` | number | Total en pesos (opcional) |
-
-### Autenticación con Firebase desde n8n
-
-Para autenticar las peticiones desde n8n, usa el **Database Secret**:
-
-**URL con auth**:
-```
-https://[PROJECT_ID]-default-rtdb.firebaseio.com/pedidos.json?auth=[DATABASE_SECRET]
-```
-
-El Database Secret está en: Firebase Console → Project Settings → Service Accounts → Database Secrets
-
-## 📱 Uso del KDS
-
-### Flujo de Trabajo
-
-1. **Pedido nuevo** → Aparece en columna "En Cola" 🟦
-2. **Cocinero presiona "Empezar a Cocinar"** → Pasa a "Preparando" 🟧
-3. **Cocinero presiona "Marcar como Listo"** → Pasa a "Listos" 🟩
-4. **Cocinero presiona "Entregado"** → Se mueve a historial (desaparece del KDS)
-
-### Indicadores de Tiempo
-
-- ⏱️ **Normal** (< 20 min): Color blanco
-- ⏱️ **Warning** (20-30 min): Color amarillo
-- ⏱️ **Danger** (> 30 min): Color rojo
-- 🔥 **Urgente** (> 25 min): Etiqueta "🔥 Urgente"
-
-Los tiempos se actualizan automáticamente cada 10 segundos.
-
-## 🔐 Seguridad
-
-- ✅ Autenticación requerida para acceder al KDS
-- ✅ Reglas de Firebase Database protegen los datos
-- ✅ Solo usuarios autenticados pueden leer/escribir
-- ✅ HTTPS en todas las conexiones
-- ✅ Tokens de sesión con expiración automática
-
-## 🛠️ Desarrollo Local
-
-```bash
-# Clonar el repositorio
-git clone [URL_DEL_REPO]
-cd kds-webapp
-
-# No requiere instalación de dependencias
-# Solo abrir en navegador o usar Firebase Emulator
-
-# Opción 1: Abrir directamente
-open kds.html
-
-# Opción 2: Servidor local simple
-python3 -m http.server 8000
-# Luego abrir http://localhost:8000
-
-# Opción 3: Firebase Emulator
-firebase emulators:start
-```
-
-## 📊 Estructura de Datos en Firebase
-
-```
-/pedidos
-  /-Ohyzb6ZoMJPUCei-x7D
-    id: "PED-1767362162869"
-    cliente: "Juan Pérez"
-    telefono: "+573001234567"
-    timestamp: 1767362162869
-    estado: "pendiente"
-    items: [...]
-    total: 25000
-    inicioCocinado: 1767362200000  (se agrega al cambiar a "cocinando")
-    horaListo: 1767362300000       (se agrega al cambiar a "listo")
-
-/historial
-  /-Ohyzb6ZoMJPUCei-x7D
-    (mismo formato que /pedidos)
-    horaEntrega: 1767362400000     (se agrega al marcar como "entregado")
-```
-
-## 🚧 Próximos Pasos
-
-- [ ] Integración con WhatsApp Business API
-- [ ] Despliegue de n8n en Railway
-- [ ] Webhook desde WhatsApp → n8n → Firebase → KDS
-- [ ] Dashboard de estadísticas e historial
-- [ ] Notificaciones push
-- [ ] Impresión automática de tickets
-- [ ] Integración con más canales (Instagram, Delivery Apps)
-
-## 📝 Notas Técnicas
-
-### Actualización de Tiempos
-
-El sistema usa `setInterval` para actualizar los minutos transcurridos cada 10 segundos:
-
-```javascript
-// En app.js
-setInterval(updateElapsedTimes, 10000);
-```
-
-La función busca todas las tarjetas en el DOM y actualiza sus tiempos sin necesidad de rerenderizar todo el componente.
-
-### Identificadores
-
-- **Firebase Key**: ID único generado por Firebase (ej: `-Ohyzb6ZoMJPUCei-x7D`)
-- **Display ID**: ID interno del pedido para mostrar al usuario (ej: `PED-1767362162869`)
-
-Las tarjetas usan `data-order-id` con la Firebase Key para operaciones, y `data-display-id` para mostrar al usuario.
-
-## 📄 Licencia
-
-Proyecto privado - Todos los derechos reservados
-
-## 👤 Autor
-
-Desarrollado para cocina oculta - 2025
 
 ---
 
-**Última actualización**: 2 de enero de 2026
-**Versión**: 1.0.0
-**Estado**: ✅ En producción
+## 🔧 Tecnologías
+
+### Backend
+- **Node.js** - Runtime
+- **Express.js** - Framework web
+- **Firebase Realtime Database** - Base de datos en tiempo real
+- **Twilio WhatsApp API** - Mensajería
+
+### Fuzzy Matching
+- **fuzzball** - Distancia de Levenshtein
+- **Normalización fonética personalizada** - Para español
+
+### Frontend (KDS)
+- HTML5 + CSS3 + JavaScript vanilla
+- Firebase SDK para actualizaciones en tiempo real
+
+---
+
+## 📊 Métricas
+
+| Métrica | Valor |
+|---------|-------|
+| Tasa de reconocimiento | **97.8%** |
+| Tests pasando | **44/45 (97.8%)** |
+| Ahorro de mensajes | **67%** |
+| Mensajes por pedido | **4** (antes: 10+) |
+| Errores ortográficos soportados | **50+ variaciones** |
+
+---
+
+## 📖 Documentación
+
+- **[SISTEMA-COMPLETO-v1.3.md](SISTEMA-COMPLETO-v1.3.md)** - Documentación técnica completa
+- **[GUIA-LENGUAJE-NATURAL.md](GUIA-LENGUAJE-NATURAL.md)** - Guía de uso para usuarios
+- **[GUIA-PRUEBAS-WHATSAPP.md](GUIA-PRUEBAS-WHATSAPP.md)** - Guía de testing
+- **[CHANGELOG.md](CHANGELOG.md)** - Historial de versiones
+
+---
+
+## 🎓 Casos de Uso Soportados
+
+### ✅ Errores Ortográficos Comunes
+- Intercambio s/z: "mossarela" → muzzarella
+- Sin h: "jamburguesa" → hamburguesa  
+- Intercambio c/k: "koka" → coca cola
+- Intercambio v/b: "serveza" → cerveza
+- Múltiples errores: "pitza mosarela" → pizza muzzarella
+
+### ✅ Formatos de Pedido
+- Con cantidades: "2 hamburguesas y 3 cervezas"
+- Sin cantidades: "hamburguesa y cerveza" (asume 1 de cada uno)
+- Números en texto: "dos pizzas y tres cocas"
+- Números pegados: "2hamburguesas 3cervezas"
+- Cantidad implícita: "una hamburguesa" (reconoce 1)
+
+### ✅ Sinónimos
+- hamburguesa → burger, hambur, burguesa
+- coca cola → coca, cocacola, coke
+- cerveza → birra, chela
+- papas fritas → papas, fritas, patatas
+- agua → aguita, botella de agua
+
+---
+
+## 🔐 Seguridad
+
+- ✅ Variables de entorno para credenciales
+- ✅ `.env` excluido en `.gitignore`
+- ✅ Service Account protegido
+- ✅ Validación de webhooks de Twilio
+- ✅ Sanitización de inputs
+
+---
+
+## 🚀 Despliegue
+
+### Desarrollo
+```bash
+node server/index.js
+ngrok http 3000
+```
+
+### Producción
+- **Railway**, **Heroku**, **DigitalOcean**, etc.
+- Configurar variables de entorno en el servicio
+- Webhook permanente (sin ngrok)
+
+---
+
+## 🤝 Contribuciones
+
+Las contribuciones son bienvenidas. Por favor:
+
+1. Fork el proyecto
+2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
+
+---
+
+## 📝 Licencia
+
+Este proyecto está bajo licencia privada.
+
+---
+
+## 👨‍💻 Autor
+
+**osmeldfarak**
+
+---
+
+## 🎉 Versión Actual
+
+**v1.3.0** - Sistema completo con fuzzy matching y normalización fonética
+
+Ver [CHANGELOG.md](CHANGELOG.md) para historial completo de versiones.
+
+---
+
+## 🆘 Soporte
+
+Para reportar bugs o solicitar features, abre un issue en GitHub.
+
+---
+
+**Hecho con ❤️ para restaurantes**

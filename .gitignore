@@ -6,6 +6,8 @@ package-lock.json
 .firebase/
 .firebaserc
 firebase-debug.log
+server/firebase-service-account.json
+*firebase-adminsdk*.json
 
 # Environment
 .env

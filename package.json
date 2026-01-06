@@ -1,16 +1,38 @@
 {
   "name": "kds-webapp",
-  "version": "1.0.0",
-  "description": "Kitchen Display System para cocina oculta",
-  "main": "index.html",
+  "version": "2.0.0",
+  "description": "Sistema de Pedidos por WhatsApp + Kitchen Display System",
+  "main": "server/index.js",
   "scripts": {
-    "start": "npx serve .",
-    "deploy": "firebase deploy"
+    "start": "node server/index.js",
+    "dev": "nodemon server/index.js",
+    "deploy": "firebase deploy",
+    "test": "node --version"
   },
-  "keywords": ["kds", "cocina", "pedidos", "firebase"],
+  "keywords": [
+    "kds",
+    "cocina",
+    "pedidos",
+    "whatsapp",
+    "twilio",
+    "firebase",
+    "bot"
+  ],
   "author": "",
   "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "firebase-admin": "^12.0.0",
+    "fuzzball": "^2.2.3",
+    "string-similarity": "^4.0.4",
+    "twilio": "^4.19.0"
+  },
   "devDependencies": {
-    "firebase-tools": "^13.0.0"
+    "firebase-tools": "^13.0.0",
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

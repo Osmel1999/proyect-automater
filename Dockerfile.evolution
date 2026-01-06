@@ -1,0 +1,14 @@
+FROM atendai/evolution-api:latest
+
+# Variables de entorno requeridas (se configuran en Railway)
+ENV DATABASE_ENABLED=true
+ENV DATABASE_PROVIDER=postgresql
+ENV AUTHENTICATION_TYPE=apikey
+ENV LOG_LEVEL=ERROR
+ENV LOG_COLOR=true
+ENV PORT=8080
+
+# Exponer el puerto
+EXPOSE 8080
+
+# El comando de inicio ya está en la imagen base

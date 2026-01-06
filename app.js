@@ -97,7 +97,8 @@ function renderOrders() {
         const orderData = { 
             ...order, 
             firebaseKey,  // Key de Firebase para operaciones
-            displayId: order.id || firebaseKey  // ID para mostrar al usuario
+            displayId: order.id || firebaseKey,  // ID para mostrar al usuario
+            timestamp: order.timestamp || Date.now()  // Asegurar timestamp válido
         };
         
         switch (order.estado) {
@@ -151,8 +152,9 @@ function createOrderCard(order, status) {
     card.dataset.orderId = order.firebaseKey;  // Guardar la key de Firebase para operaciones
     card.dataset.displayId = order.displayId;  // Guardar el ID de display para búsquedas
     
-    // Calcular tiempo transcurrido
-    const elapsed = Date.now() - order.timestamp;
+    // Calcular tiempo transcurrido - asegurar que timestamp sea un número válido
+    const timestamp = Number(order.timestamp) || Date.now();
+    const elapsed = Date.now() - timestamp;
     const minutes = Math.floor(elapsed / 60000);
     const elapsedClass = minutes > 30 ? 'danger' : minutes > 20 ? 'warning' : '';
     

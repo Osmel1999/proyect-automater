@@ -1,0 +1,172 @@
+{
+  "name": "WhatsApp → Firebase → KDS (Evolution API)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook WhatsApp",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.body.event}}",
+              "operation": "equals",
+              "value2": "messages.upsert"
+            }
+          ]
+        }
+      },
+      "id": "filter-messages",
+      "name": "Filtrar Solo Mensajes",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extraer datos del mensaje de WhatsApp\nconst message = $input.item.json.body.data;\nconst messageText = message.message?.conversation || \n                    message.message?.extendedTextMessage?.text || '';\nconst from = message.key.remoteJid.replace('@s.whatsapp.net', '');\n\n// Detectar si es un pedido\nif (!messageText.toLowerCase().includes('pedido')) {\n  return [];\n}\n\n// Función para parsear el pedido\nfunction parsearPedido(texto) {\n  const lines = texto.split('\\n');\n  let cliente = 'Cliente';\n  let telefono = from;\n  const items = [];\n  \n  lines.forEach(line => {\n    const trimmed = line.trim();\n    \n    // Buscar nombre\n    if (trimmed.toLowerCase().includes('nombre:')) {\n      cliente = trimmed.split(':')[1].trim();\n    }\n    \n    // Buscar items (formato: \"2x Hamburguesa\" o \"1x Papas - Sin sal\")\n    const itemMatch = trimmed.match(/(\\d+)x?\\s+([^-]+)(?:-(.+))?/);\n    if (itemMatch) {\n      items.push({\n        cantidad: parseInt(itemMatch[1]),\n        nombre: itemMatch[2].trim(),\n        notas: itemMatch[3] ? itemMatch[3].trim() : ''\n      });\n    }\n  });\n  \n  return { cliente, telefono, items };\n}\n\nconst pedidoData = parsearPedido(messageText);\n\n// Crear objeto del pedido\nconst pedido = {\n  id: 'PED-' + Date.now(),\n  cliente: pedidoData.cliente,\n  telefono: '+' + pedidoData.telefono,\n  timestamp: Date.now(),\n  estado: 'pendiente',\n  items: pedidoData.items,\n  total: pedidoData.items.length > 0 ? pedidoData.items.reduce((sum, item) => sum + (item.cantidad * 10000), 0) : 0,\n  whatsappMessageId: message.key.id,\n  whatsappFrom: from,\n  origen: 'whatsapp'\n};\n\nreturn [{ json: pedido }];"
+      },
+      "id": "parse-pedido",
+      "name": "Parsear Pedido",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [650, 200]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.FIREBASE_DATABASE_URL}}/pedidos.json?auth={{$env.FIREBASE_DATABASE_SECRET}}",
+        "method": "POST",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={{JSON.stringify($json)}}"
+      },
+      "id": "create-firebase",
+      "name": "Crear en Firebase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.EVOLUTION_API_URL}}/message/sendText/kds-whatsapp",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{$env.EVOLUTION_API_KEY}}"
+            }
+          ]
+        },
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={\n  \"number\": \"{{$node['Parsear Pedido'].json.whatsappFrom}}\",\n  \"text\": \"✅ *Pedido Recibido*\\n\\nNúmero: {{$node['Parsear Pedido'].json.id}}\\nCliente: {{$node['Parsear Pedido'].json.cliente}}\\nItems: {{$node['Parsear Pedido'].json.items.length}}\\nTotal: ${{$node['Parsear Pedido'].json.total.toLocaleString()}}\\n\\n⏱️ Tiempo estimado: 30-40 minutos\\n\\nTe avisaremos cuando esté listo! 🍔\"\n}"
+      },
+      "id": "send-confirmation",
+      "name": "Enviar Confirmación",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1050, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"status\": \"success\", \"pedidoId\": \"{{$node['Parsear Pedido'].json.id}}\"}"
+      },
+      "id": "respond-webhook",
+      "name": "Responder Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1250, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "Mensaje recibido"
+      },
+      "id": "respond-other",
+      "name": "Responder Otros",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [650, 400]
+    }
+  ],
+  "connections": {
+    "Webhook WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Filtrar Solo Mensajes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar Solo Mensajes": {
+      "main": [
+        [
+          {
+            "node": "Parsear Pedido",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder Otros",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parsear Pedido": {
+      "main": [
+        [
+          {
+            "node": "Crear en Firebase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear en Firebase": {
+      "main": [
+        [
+          {
+            "node": "Enviar Confirmación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Confirmación": {
+      "main": [
+        [
+          {
+            "node": "Responder Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {}
+}
