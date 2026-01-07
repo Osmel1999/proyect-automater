@@ -11,15 +11,7 @@
     ],
     "rewrites": [
       {
-        "source": "/",
-        "destination": "/home.html"
-      },
-      {
         "source": "/kds",
-        "destination": "/kds.html"
-      },
-      {
-        "source": "/index.html",
         "destination": "/kds.html"
       },
       {
