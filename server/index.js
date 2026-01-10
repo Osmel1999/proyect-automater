@@ -126,13 +126,15 @@ app.get('/api/whatsapp/callback', async (req, res) => {
     
     console.log('🎉 Onboarding completado exitosamente!');
     
-    // Redirigir a página de éxito con el tenantId y el modo
-    res.redirect(`/onboarding-success.html?tenantId=${tenant.tenantId}&mode=${mode || 'unknown'}`);
+    // Redirigir a página de éxito en Firebase Hosting (frontend)
+    const frontendUrl = process.env.FRONTEND_URL || 'https://kdsapp.site';
+    res.redirect(`${frontendUrl}/onboarding-success.html?tenantId=${tenant.tenantId}&mode=${mode || 'unknown'}`);
 
     
   } catch (error) {
     console.error('❌ Error en callback de OAuth:', error.response?.data || error.message);
-    res.redirect('/onboarding.html?error=oauth_failed');
+    const frontendUrl = process.env.FRONTEND_URL || 'https://kdsapp.site';
+    res.redirect(`${frontendUrl}/onboarding.html?error=oauth_failed`);
   }
 });
 
