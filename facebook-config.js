@@ -70,14 +70,16 @@ const facebookConfig = {
    * URL del callback que maneja el código de autorización
    * Esta URL debe estar configurada en:
    * Facebook Login → Configuración → URI de redireccionamiento OAuth válidos
+   * 
+   * IMPORTANTE: El callback debe apuntar al BACKEND (Railway), no al frontend (Firebase)
    */
-  callbackUrl: '/api/whatsapp/callback',
+  callbackUrl: 'https://api.kdsapp.site/api/whatsapp/callback',
   
   /**
-   * URL base de tu aplicación (para producción)
+   * URL base de tu aplicación frontend (para producción)
    * Ejemplo: 'https://tu-dominio.com'
    */
-  baseUrl: window.location.origin
+  baseUrl: 'https://kdsapp.site'
 };
 
 // Validación de configuración
