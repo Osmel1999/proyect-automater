@@ -1,0 +1,48 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    
+    "tenants": {
+      "$tenantId": {
+        ".read": true,
+        ".write": true,
+        ".indexOn": ["status", "createdAt"]
+      }
+    },
+    
+    "whatsappNumbers": {
+      ".read": true,
+      ".write": true,
+      ".indexOn": ["tenantId"]
+    },
+    
+    "appConfig": {
+      ".read": true,
+      ".write": false
+    },
+    
+    "pedidos": {
+      ".read": true,
+      ".write": true,
+      ".indexOn": ["timestamp", "estado"]
+    },
+    
+    "historial": {
+      ".read": true,
+      ".write": true,
+      ".indexOn": ["timestamp", "estado", "horaEntrega"]
+    },
+    
+    "orders": {
+      ".read": true,
+      ".write": true,
+      ".indexOn": ["timestamp", "status"]
+    },
+    
+    "_backup_pedidos_legacy": {
+      ".read": true,
+      ".write": false
+    }
+  }
+}
