@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - KDS Platform</title>
+  <meta name="description" content="Configuración y gestión de tu restaurante">
+  <link rel="icon" type="image/png" href="assets/images/kds-logo.png">
+  
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+  <script src="config.js"></script>
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #f7fafc;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      background: white;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 16px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 18px;
+    }
+
+    .tenant-name {
+      font-size: 18px;
+      font-weight: 600;
+      color: #2d3748;
+    }
+
+    .header-right {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .btn-secondary {
+      padding: 8px 16px;
+      background: #edf2f7;
+      color: #4a5568;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .btn-secondary:hover {
+      background: #e2e8f0;
+    }
+
+    .btn-primary {
+      padding: 8px 16px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    /* Main Content */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 32px;
+    }
+
+    /* Wizard Card */
+    .wizard-card {
+      background: white;
+      border-radius: 12px;
+      padding: 40px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      margin-bottom: 32px;
+    }
+
+    .wizard-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .wizard-title {
+      font-size: 32px;
+      font-weight: 700;
+      color: #2d3748;
+      margin-bottom: 12px;
+    }
+
+    .wizard-subtitle {
+      font-size: 16px;
+      color: #718096;
+    }
+
+    /* Progress Bar */
+    .progress-container {
+      margin-bottom: 40px;
+    }
+
+    .progress-text {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .progress-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #4a5568;
+    }
+
+    .progress-percentage {
+      font-size: 24px;
+      font-weight: 700;
+      color: #667eea;
+    }
+
+    .progress-bar {
+      height: 8px;
+      background: #e2e8f0;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      transition: width 0.5s ease;
+      border-radius: 4px;
+    }
+
+    /* Steps */
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .step-item {
+      background: #f7fafc;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 24px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      transition: all 0.3s;
+    }
+
+    .step-item.completed {
+      background: #f0fff4;
+      border-color: #48bb78;
+    }
+
+    .step-item.active {
+      background: #ebf8ff;
+      border-color: #4299e1;
+    }
+
+    .step-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      flex-shrink: 0;
+      background: white;
+      border: 2px solid #e2e8f0;
+    }
+
+    .step-item.completed .step-icon {
+      background: #48bb78;
+      border-color: #48bb78;
+      color: white;
+    }
+
+    .step-item.active .step-icon {
+      background: #4299e1;
+      border-color: #4299e1;
+      color: white;
+    }
+
+    .step-content {
+      flex: 1;
+    }
+
+    .step-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #2d3748;
+      margin-bottom: 4px;
+    }
+
+    .step-description {
+      font-size: 14px;
+      color: #718096;
+    }
+
+    .step-action {
+      flex-shrink: 0;
+    }
+
+    .btn-step {
+      padding: 10px 24px;
+      background: white;
+      color: #667eea;
+      border: 2px solid #667eea;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .btn-step:hover {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn-step:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .step-status {
+      padding: 6px 12px;
+      background: #48bb78;
+      color: white;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    /* Skip Button */
+    .wizard-footer {
+      margin-top: 32px;
+      text-align: center;
+    }
+
+    .btn-skip {
+      padding: 12px 32px;
+      background: transparent;
+      color: #718096;
+      border: 2px solid #e2e8f0;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .btn-skip:hover {
+      border-color: #cbd5e0;
+      color: #4a5568;
+    }
+
+    /* Completion Card */
+    .completion-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 12px;
+      padding: 48px;
+      text-align: center;
+    }
+
+    .completion-icon {
+      font-size: 80px;
+      margin-bottom: 24px;
+    }
+
+    .completion-title {
+      font-size: 36px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    .completion-description {
+      font-size: 18px;
+      margin-bottom: 32px;
+      opacity: 0.9;
+    }
+
+    .completion-actions {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-white {
+      padding: 14px 32px;
+      background: white;
+      color: #667eea;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 16px;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .btn-white:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: white;
+      border-radius: 12px;
+      max-width: 700px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      animation: modalSlide 0.3s ease-out;
+    }
+
+    @keyframes modalSlide {
+      from {
+        opacity: 0;
+        transform: translateY(-30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .modal-header {
+      padding: 24px;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: #2d3748;
+    }
+
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #f7fafc;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      color: #718096;
+      transition: all 0.2s;
+    }
+
+    .modal-close:hover {
+      background: #e2e8f0;
+    }
+
+    .modal-body {
+      padding: 24px;
+    }
+
+    .modal-footer {
+      padding: 24px;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    /* Form Elements */
+    .form-group {
+      margin-bottom: 24px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #2d3748;
+      margin-bottom: 8px;
+    }
+
+    .form-input,
+    .form-textarea,
+    .form-select {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+
+    .form-input:focus,
+    .form-textarea:focus,
+    .form-select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .form-textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .form-help {
+      font-size: 13px;
+      color: #718096;
+      margin-top: 4px;
+    }
+
+    /* Menu Items */
+    .menu-items {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .menu-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: #f7fafc;
+      border-radius: 6px;
+    }
+
+    .menu-item-name {
+      flex: 1;
+      font-weight: 600;
+      color: #2d3748;
+    }
+
+    .menu-item-price {
+      color: #48bb78;
+      font-weight: 600;
+    }
+
+    .btn-remove {
+      padding: 6px 12px;
+      background: #fed7d7;
+      color: #c53030;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .btn-add {
+      padding: 10px 20px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      margin-top: 12px;
+    }
+
+    /* Loading */
+    .loading {
+      text-align: center;
+      padding: 60px;
+      color: #718096;
+    }
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid #e2e8f0;
+      border-top-color: #667eea;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .container {
+        padding: 20px 16px;
+      }
+
+      .wizard-card {
+        padding: 24px 16px;
+      }
+
+      .header {
+        padding: 12px 16px;
+      }
+
+      .completion-actions {
+        flex-direction: column;
+      }
+
+      .btn-white {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="logo">KDS</div>
+      <div class="tenant-name" id="tenant-name">Cargando...</div>
+    </div>
+    <div class="header-right">
+      <a href="kds.html" class="btn-secondary">Ver KDS</a>
+      <a href="landing.html" class="btn-secondary">Salir</a>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="container">
+    <div id="loading-container" class="loading">
+      <div class="spinner"></div>
+      <p>Cargando tu configuración...</p>
+    </div>
+
+    <!-- Wizard (hidden initially) -->
+    <div id="wizard-container" style="display: none;">
+      <div class="wizard-card">
+        <div class="wizard-header">
+          <h1 class="wizard-title">🚀 ¡Bienvenido a KDS Platform!</h1>
+          <p class="wizard-subtitle">Completa estos pasos para empezar a recibir pedidos automáticamente</p>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="progress-container">
+          <div class="progress-text">
+            <span class="progress-label">Tu progreso</span>
+            <span class="progress-percentage" id="progress-percentage">25%</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill" style="width: 25%"></div>
+          </div>
+        </div>
+
+        <!-- Steps -->
+        <div class="steps">
+          <!-- Step 1: WhatsApp -->
+          <div class="step-item completed" id="step-1">
+            <div class="step-icon">✅</div>
+            <div class="step-content">
+              <div class="step-title">1. Conectar WhatsApp</div>
+              <div class="step-description">Tu número de WhatsApp Business está conectado y listo</div>
+            </div>
+            <div class="step-action">
+              <span class="step-status">Completado</span>
+            </div>
+          </div>
+
+          <!-- Step 2: Menu -->
+          <div class="step-item" id="step-2">
+            <div class="step-icon">🍽️</div>
+            <div class="step-content">
+              <div class="step-title">2. Configurar tu menú</div>
+              <div class="step-description">Agrega los productos que tus clientes pueden ordenar (5 min)</div>
+            </div>
+            <div class="step-action">
+              <button class="btn-step" onclick="openMenuConfig()">Configurar →</button>
+            </div>
+          </div>
+
+          <!-- Step 3: Messages -->
+          <div class="step-item" id="step-3">
+            <div class="step-icon">💬</div>
+            <div class="step-content">
+              <div class="step-title">3. Personalizar mensajes</div>
+              <div class="step-description">Ajusta los mensajes automáticos que envía el bot (3 min)</div>
+            </div>
+            <div class="step-action">
+              <button class="btn-step" onclick="openMessagesConfig()">Personalizar →</button>
+            </div>
+          </div>
+
+          <!-- Step 4: Test -->
+          <div class="step-item" id="step-4">
+            <div class="step-icon">🧪</div>
+            <div class="step-content">
+              <div class="step-title">4. Probar el bot</div>
+              <div class="step-description">Envía un mensaje de prueba para ver cómo funciona (2 min)</div>
+            </div>
+            <div class="step-action">
+              <button class="btn-step" onclick="openTestBot()">Probar →</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="wizard-footer">
+          <button class="btn-skip" onclick="skipOnboarding()">Saltar por ahora, explorar por mi cuenta</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Completion Card (hidden initially) -->
+    <div id="completion-container" style="display: none;">
+      <div class="completion-card">
+        <div class="completion-icon">🎊</div>
+        <h1 class="completion-title">¡Todo listo!</h1>
+        <p class="completion-description">
+          Tu sistema está completamente configurado y activo.<br>
+          Ahora puedes empezar a recibir pedidos por WhatsApp automáticamente.
+        </p>
+        <div class="completion-actions">
+          <a href="kds.html" class="btn-white">Ver KDS (Pantalla de Cocina)</a>
+          <button class="btn-white" onclick="viewWhatsAppInfo()">Ver mi número WhatsApp</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Menu Config -->
+  <div class="modal-overlay" id="menu-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">🍽️ Configurar Menú</h2>
+        <button class="modal-close" onclick="closeMenuModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 24px; color: #718096;">
+          Agrega los productos de tu menú. Los clientes podrán ordenarlos por WhatsApp.
+        </p>
+
+        <div class="form-group">
+          <label class="form-label">Nombre del producto</label>
+          <input type="text" class="form-input" id="item-name" placeholder="Ej: Hamburguesa Clásica">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Precio (COP)</label>
+          <input type="number" class="form-input" id="item-price" placeholder="25000">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Descripción (opcional)</label>
+          <input type="text" class="form-input" id="item-description" placeholder="Carne, lechuga, tomate...">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Categoría</label>
+          <select class="form-select" id="item-category">
+            <option value="Entradas">Entradas</option>
+            <option value="Platos Principales">Platos Principales</option>
+            <option value="Bebidas">Bebidas</option>
+            <option value="Postres">Postres</option>
+          </select>
+        </div>
+
+        <button class="btn-add" onclick="addMenuItem()">+ Agregar producto</button>
+
+        <div class="menu-items" id="menu-items-list">
+          <!-- Items will be added here -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeMenuModal()">Cancelar</button>
+        <button class="btn-primary" onclick="saveMenu()">Guardar Menú</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Messages Config -->
+  <div class="modal-overlay" id="messages-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">💬 Personalizar Mensajes</h2>
+        <button class="modal-close" onclick="closeMessagesModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 24px; color: #718096;">
+          Personaliza los mensajes automáticos que envía el bot a tus clientes.
+        </p>
+
+        <div class="form-group">
+          <label class="form-label">Mensaje de Bienvenida</label>
+          <textarea class="form-textarea" id="msg-welcome" placeholder="¡Hola! 👋 Bienvenido a [Nombre Restaurante]..."></textarea>
+          <div class="form-help">Se envía cuando un cliente escribe por primera vez</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Mensaje de Confirmación de Pedido</label>
+          <textarea class="form-textarea" id="msg-confirmation" placeholder="✅ ¡Pedido confirmado! Tu orden está siendo preparada..."></textarea>
+          <div class="form-help">Se envía después de que el cliente confirma su pedido</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Mensaje de Despedida</label>
+          <textarea class="form-textarea" id="msg-goodbye" placeholder="¡Gracias por tu pedido! 🙏 Esperamos verte pronto..."></textarea>
+          <div class="form-help">Se envía al finalizar la conversación</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeMessagesModal()">Cancelar</button>
+        <button class="btn-primary" onclick="saveMessages()">Guardar Mensajes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Test Bot -->
+  <div class="modal-overlay" id="test-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">🧪 Probar el Bot</h2>
+        <button class="modal-close" onclick="closeTestModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 16px; color: #2d3748;">
+          📱 Tu número de WhatsApp Business
+        </h3>
+        <div style="background: #f7fafc; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+          <div style="font-size: 24px; font-weight: 700; color: #667eea;" id="test-phone-number">
+            Cargando...
+          </div>
+        </div>
+
+        <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 16px; color: #2d3748;">
+          ✅ Cómo probar el bot
+        </h3>
+        <ol style="padding-left: 20px; color: #4a5568; line-height: 1.8;">
+          <li><strong>Abre WhatsApp</strong> en tu teléfono</li>
+          <li><strong>Envía un mensaje</strong> al número de arriba</li>
+          <li><strong>Escribe:</strong> "Hola" o "Menú"</li>
+          <li><strong>El bot responderá</strong> con el menú automáticamente</li>
+          <li><strong>Haz un pedido de prueba</strong> siguiendo las instrucciones</li>
+          <li><strong>Revisa que aparezca</strong> en el KDS (pantalla de cocina)</li>
+        </ol>
+
+        <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 16px; border-radius: 4px; margin-top: 24px;">
+          <strong style="color: #856404; display: block; margin-bottom: 8px;">⚠️ Nota importante:</strong>
+          <p style="color: #856404; font-size: 14px; line-height: 1.6; margin: 0;">
+            Si tu app aún no está aprobada por Meta, es posible que el bot no responda aún. 
+            Una vez Meta apruebe tu aplicación, el bot empezará a funcionar automáticamente.
+          </p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeTestModal()">Cerrar</button>
+        <button class="btn-primary" onclick="markTestCompleted()">Ya probé el bot ✓</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Global variables
+    let tenantId = null;
+    let tenantData = null;
+    let menuItems = [];
+    let onboardingState = {
+      whatsapp_connected: true,
+      menu_configured: false,
+      messages_customized: false,
+      bot_tested: false
+    };
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+      // Get tenant ID from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      tenantId = urlParams.get('tenant') || urlParams.get('tenantId');
+
+      if (!tenantId) {
+        alert('No se proporcionó ID de tenant');
+        window.location.href = 'landing.html';
+        return;
+      }
+
+      loadTenantData();
+    });
+
+    // Load tenant data
+    async function loadTenantData() {
+      try {
+        const snapshot = await firebase.database().ref(`tenants/${tenantId}`).once('value');
+        tenantData = snapshot.val();
+
+        if (!tenantData) {
+          throw new Error('Tenant no encontrado');
+        }
+
+        // Update UI
+        document.getElementById('tenant-name').textContent = tenantData.restaurant?.name || 'Mi Restaurante';
+
+        // Load onboarding state
+        if (tenantData.onboarding) {
+          onboardingState = tenantData.onboarding.steps || onboardingState;
+        }
+
+        // Check if onboarding is completed
+        const isCompleted = Object.values(onboardingState).every(v => v === true);
+
+        document.getElementById('loading-container').style.display = 'none';
+
+        if (isCompleted) {
+          showCompletionScreen();
+        } else {
+          showWizard();
+        }
+
+      } catch (error) {
+        console.error('Error loading tenant:', error);
+        alert('Error al cargar datos del restaurante');
+      }
+    }
+
+    // Show wizard
+    function showWizard() {
+      document.getElementById('wizard-container').style.display = 'block';
+      updateProgress();
+      updateStepsUI();
+    }
+
+    // Show completion screen
+    function showCompletionScreen() {
+      document.getElementById('completion-container').style.display = 'block';
+    }
+
+    // Update progress
+    function updateProgress() {
+      const completed = Object.values(onboardingState).filter(v => v === true).length;
+      const total = Object.keys(onboardingState).length;
+      const percentage = Math.round((completed / total) * 100);
+
+      document.getElementById('progress-percentage').textContent = percentage + '%';
+      document.getElementById('progress-fill').style.width = percentage + '%';
+
+      return percentage === 100;
+    }
+
+    // Update steps UI
+    function updateStepsUI() {
+      // Step 2: Menu
+      const step2 = document.getElementById('step-2');
+      if (onboardingState.menu_configured) {
+        step2.classList.add('completed');
+        step2.querySelector('.step-action').innerHTML = '<span class="step-status">Completado</span>';
+      }
+
+      // Step 3: Messages
+      const step3 = document.getElementById('step-3');
+      if (onboardingState.messages_customized) {
+        step3.classList.add('completed');
+        step3.querySelector('.step-action').innerHTML = '<span class="step-status">Completado</span>';
+      }
+
+      // Step 4: Test
+      const step4 = document.getElementById('step-4');
+      if (onboardingState.bot_tested) {
+        step4.classList.add('completed');
+        step4.querySelector('.step-action').innerHTML = '<span class="step-status">Completado</span>';
+      }
+    }
+
+    // Save onboarding state
+    async function saveOnboardingState() {
+      try {
+        await firebase.database().ref(`tenants/${tenantId}/onboarding`).set({
+          completed: Object.values(onboardingState).every(v => v === true),
+          steps: onboardingState,
+          lastUpdated: new Date().toISOString()
+        });
+
+        const isCompleted = updateProgress();
+        updateStepsUI();
+
+        if (isCompleted) {
+          // Show completion
+          setTimeout(() => {
+            document.getElementById('wizard-container').style.display = 'none';
+            showCompletionScreen();
+          }, 500);
+        }
+      } catch (error) {
+        console.error('Error saving onboarding state:', error);
+      }
+    }
+
+    // Menu Config
+    function openMenuConfig() {
+      document.getElementById('menu-modal').classList.add('active');
+      loadCurrentMenu();
+    }
+
+    function closeMenuModal() {
+      document.getElementById('menu-modal').classList.remove('active');
+    }
+
+    async function loadCurrentMenu() {
+      try {
+        const snapshot = await firebase.database().ref(`tenants/${tenantId}/menu/items`).once('value');
+        const items = snapshot.val() || {};
+        menuItems = Object.values(items);
+        renderMenuItems();
+      } catch (error) {
+        console.error('Error loading menu:', error);
+      }
+    }
+
+    function addMenuItem() {
+      const name = document.getElementById('item-name').value.trim();
+      const price = parseInt(document.getElementById('item-price').value);
+      const description = document.getElementById('item-description').value.trim();
+      const category = document.getElementById('item-category').value;
+
+      if (!name || !price) {
+        alert('Por favor completa el nombre y precio del producto');
+        return;
+      }
+
+      menuItems.push({
+        id: `item_${Date.now()}`,
+        name,
+        price,
+        description,
+        category,
+        available: true
+      });
+
+      // Clear inputs
+      document.getElementById('item-name').value = '';
+      document.getElementById('item-price').value = '';
+      document.getElementById('item-description').value = '';
+
+      renderMenuItems();
+    }
+
+    function renderMenuItems() {
+      const container = document.getElementById('menu-items-list');
+      
+      if (menuItems.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #718096; padding: 20px;">No hay productos agregados aún</p>';
+        return;
+      }
+
+      container.innerHTML = menuItems.map((item, index) => `
+        <div class="menu-item">
+          <div class="menu-item-name">${item.name}</div>
+          <div class="menu-item-price">$${item.price.toLocaleString()}</div>
+          <button class="btn-remove" onclick="removeMenuItem(${index})">Eliminar</button>
+        </div>
+      `).join('');
+    }
+
+    function removeMenuItem(index) {
+      menuItems.splice(index, 1);
+      renderMenuItems();
+    }
+
+    async function saveMenu() {
+      if (menuItems.length === 0) {
+        alert('Agrega al menos un producto al menú');
+        return;
+      }
+
+      try {
+        const itemsObj = {};
+        menuItems.forEach(item => {
+          itemsObj[item.id] = item;
+        });
+
+        await firebase.database().ref(`tenants/${tenantId}/menu/items`).set(itemsObj);
+
+        onboardingState.menu_configured = true;
+        await saveOnboardingState();
+
+        closeMenuModal();
+        alert('✅ Menú guardado exitosamente');
+      } catch (error) {
+        console.error('Error saving menu:', error);
+        alert('Error al guardar el menú');
+      }
+    }
+
+    // Messages Config
+    function openMessagesConfig() {
+      document.getElementById('messages-modal').classList.add('active');
+      loadCurrentMessages();
+    }
+
+    function closeMessagesModal() {
+      document.getElementById('messages-modal').classList.remove('active');
+    }
+
+    async function loadCurrentMessages() {
+      try {
+        const snapshot = await firebase.database().ref(`tenants/${tenantId}/messages`).once('value');
+        const messages = snapshot.val() || {};
+
+        document.getElementById('msg-welcome').value = messages.welcome || '¡Hola! 👋 Bienvenido a nuestro restaurante.\n\nEscribe "menú" para ver nuestros productos disponibles.';
+        document.getElementById('msg-confirmation').value = messages.confirmation || '✅ ¡Pedido confirmado!\n\nTu orden está siendo preparada. Te notificaremos cuando esté lista.';
+        document.getElementById('msg-goodbye').value = messages.goodbye || '¡Gracias por tu pedido! 🙏\n\nEsperamos verte pronto.';
+      } catch (error) {
+        console.error('Error loading messages:', error);
+      }
+    }
+
+    async function saveMessages() {
+      try {
+        const messages = {
+          welcome: document.getElementById('msg-welcome').value.trim(),
+          confirmation: document.getElementById('msg-confirmation').value.trim(),
+          goodbye: document.getElementById('msg-goodbye').value.trim()
+        };
+
+        await firebase.database().ref(`tenants/${tenantId}/messages`).set(messages);
+
+        onboardingState.messages_customized = true;
+        await saveOnboardingState();
+
+        closeMessagesModal();
+        alert('✅ Mensajes guardados exitosamente');
+      } catch (error) {
+        console.error('Error saving messages:', error);
+        alert('Error al guardar los mensajes');
+      }
+    }
+
+    // Test Bot
+    function openTestBot() {
+      document.getElementById('test-modal').classList.add('active');
+      document.getElementById('test-phone-number').textContent = tenantData.whatsapp?.phoneNumber || 'No disponible';
+    }
+
+    function closeTestModal() {
+      document.getElementById('test-modal').classList.remove('active');
+    }
+
+    async function markTestCompleted() {
+      onboardingState.bot_tested = true;
+      await saveOnboardingState();
+      closeTestModal();
+      alert('✅ ¡Excelente! Has completado todos los pasos');
+    }
+
+    // Skip onboarding
+    async function skipOnboarding() {
+      if (confirm('¿Estás seguro? Puedes completar estos pasos después desde el dashboard.')) {
+        // Mark as completed to hide wizard
+        onboardingState = {
+          whatsapp_connected: true,
+          menu_configured: true,
+          messages_customized: true,
+          bot_tested: true
+        };
+        await saveOnboardingState();
+      }
+    }
+
+    // View WhatsApp info
+    function viewWhatsAppInfo() {
+      const phone = tenantData.whatsapp?.phoneNumber || 'No disponible';
+      alert(`📱 Tu número de WhatsApp Business:\n\n${phone}\n\nComparte este número con tus clientes para que puedan hacer pedidos.`);
+    }
+  </script>
+</body>
+</html>
