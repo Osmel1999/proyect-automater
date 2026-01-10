@@ -148,6 +148,7 @@ async function eliminarPedido(pedidoId) {
 }
 
 module.exports = {
+  database: db, // ✨ Exportar instancia de database para tenant-service y whatsapp-handler
   guardarPedido,
   actualizarEstadoPedido,
   obtenerPedidos,

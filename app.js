@@ -18,6 +18,9 @@ const notificationSound = document.getElementById('notificationSound');
 let orders = {};
 let previousOrderCount = 0;
 
+// Tenant ID (por ahora usamos el tenant demo, luego se obtendría del login)
+let currentTenantId = null;
+
 // Inicializar la aplicación
 function init() {
     // Crear sonido de notificación si no existe
@@ -31,7 +34,53 @@ function init() {
     // Actualizar tiempos transcurridos cada 10 segundos
     setInterval(updateElapsedTimes, 10000);
     
-    listenToOrders();
+    // Obtener el tenant ID y luego escuchar pedidos
+    loadTenantAndListenToOrders();
+}
+
+// Cargar tenant y escuchar pedidos
+async function loadTenantAndListenToOrders() {
+    try {
+        // Por ahora, obtener el primer tenant activo (tenant demo)
+        // En producción, esto vendría del login del usuario
+        const tenantsSnapshot = await window.db.ref('tenants').orderByChild('status').equalTo('active').limitToFirst(1).once('value');
+        
+        if (!tenantsSnapshot.exists()) {
+            console.error('❌ No se encontró ningún tenant activo');
+            showError('No hay restaurantes configurados. Por favor, completa el proceso de onboarding.');
+            return;
+        }
+        
+        // Obtener el primer tenant
+        const tenantData = Object.values(tenantsSnapshot.val())[0];
+        currentTenantId = tenantData.tenantId;
+        
+        console.log('✅ Tenant cargado:', currentTenantId);
+        console.log('🏪 Restaurante:', tenantData.restaurant?.name || 'Sin nombre');
+        
+        // Actualizar título con nombre del restaurante
+        const restaurantNameElement = document.querySelector('.restaurant-name');
+        if (restaurantNameElement) {
+            restaurantNameElement.textContent = tenantData.restaurant?.name || 'KDS';
+        }
+        
+        // Escuchar pedidos del tenant
+        listenToOrders();
+        
+    } catch (error) {
+        console.error('❌ Error cargando tenant:', error);
+        showError('Error al cargar la configuración del restaurante.');
+    }
+}
+
+// Mostrar error en la UI
+function showError(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.style.cssText = 'position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #f44336; color: white; padding: 1rem 2rem; border-radius: 8px; z-index: 10000; box-shadow: 0 4px 12px rgba(0,0,0,0.3);';
+    errorDiv.textContent = message;
+    document.body.appendChild(errorDiv);
+    
+    setTimeout(() => errorDiv.remove(), 5000);
 }
 
 // Crear sonido de notificación con Web Audio API
@@ -55,10 +104,24 @@ function updateClock() {
 
 // Escuchar cambios en Firebase
 function listenToOrders() {
-    const ordersRef = window.db.ref('pedidos');
+    if (!currentTenantId) {
+        console.error('❌ No hay tenant ID configurado');
+        return;
+    }
+    
+    // Escuchar pedidos del tenant actual
+    const ordersRef = window.db.ref(`tenants/${currentTenantId}/pedidos`);
+    
+    console.log(`📡 Escuchando pedidos del tenant: ${currentTenantId}`);
     
     ordersRef.on('value', (snapshot) => {
         const data = snapshot.val();
+        
+        // Filtrar placeholder si existe
+        if (data && data._placeholder) {
+            delete data._placeholder;
+        }
+        
         orders = data || {};
         
         // Detectar nuevos pedidos para reproducir sonido
@@ -226,14 +289,19 @@ function getActionButtons(estado, orderId) {
 
 // Cambiar estado de un pedido
 function changeStatus(orderId, newStatus) {
+    if (!currentTenantId) {
+        console.error('❌ No hay tenant configurado');
+        return;
+    }
+    
     const updates = {};
-    updates[`pedidos/${orderId}/estado`] = newStatus;
+    updates[`tenants/${currentTenantId}/pedidos/${orderId}/estado`] = newStatus;
     
     // Agregar timestamp de cambio de estado
     if (newStatus === 'cocinando') {
-        updates[`pedidos/${orderId}/inicioCocinado`] = Date.now();
+        updates[`tenants/${currentTenantId}/pedidos/${orderId}/inicioCocinado`] = Date.now();
     } else if (newStatus === 'listo') {
-        updates[`pedidos/${orderId}/horaListo`] = Date.now();
+        updates[`tenants/${currentTenantId}/pedidos/${orderId}/horaListo`] = Date.now();
     }
     
     window.db.ref().update(updates);
@@ -241,19 +309,34 @@ function changeStatus(orderId, newStatus) {
 
 // Completar pedido (moverlo a historial)
 function completeOrder(orderId) {
+    if (!currentTenantId) {
+        console.error('❌ No hay tenant configurado');
+        return;
+    }
+    
     const order = orders[orderId];
     
     if (confirm(`¿Confirmar que el pedido #${orderId} fue entregado?`)) {
-        // Mover a historial
-        const historyRef = window.db.ref(`historial/${orderId}`);
+        // Mover a historial del tenant
+        const historyRef = window.db.ref(`tenants/${currentTenantId}/historial/${orderId}`);
         historyRef.set({
             ...order,
             estado: 'entregado',
             horaEntrega: Date.now()
         });
         
-        // Eliminar de pedidos activos
-        window.db.ref(`pedidos/${orderId}`).remove();
+        // Eliminar de pedidos activos del tenant
+        window.db.ref(`tenants/${currentTenantId}/pedidos/${orderId}`).remove();
+        
+        // Actualizar estadísticas del tenant
+        const statsRef = window.db.ref(`tenants/${currentTenantId}/stats`);
+        statsRef.once('value').then((snapshot) => {
+            const stats = snapshot.val() || {};
+            statsRef.update({
+                totalOrders: (stats.totalOrders || 0) + 1,
+                lastOrderAt: new Date().toISOString()
+            });
+        });
     }
 }
 

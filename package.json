@@ -1,7 +1,7 @@
 {
   "name": "kds-webapp",
-  "version": "2.0.0",
-  "description": "Sistema de Pedidos por WhatsApp + Kitchen Display System",
+  "version": "3.0.0",
+  "description": "Sistema de Pedidos por WhatsApp + Kitchen Display System (Multi-tenant SaaS)",
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
@@ -14,13 +14,16 @@
     "cocina",
     "pedidos",
     "whatsapp",
-    "twilio",
+    "whatsapp-business-api",
     "firebase",
-    "bot"
+    "bot",
+    "saas",
+    "multi-tenant"
   ],
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "axios": "^1.6.2",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "firebase-admin": "^12.0.0",

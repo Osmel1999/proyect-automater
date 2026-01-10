@@ -7,20 +7,34 @@
       "**/node_modules/**",
       "**/*.md",
       "CHECKLIST-*.md",
-      "GUIA-*.md"
+      "GUIA-*.md",
+      "server/**",
+      "*.sh"
     ],
     "rewrites": [
+      {
+        "source": "/",
+        "destination": "/landing.html"
+      },
+      {
+        "source": "/onboarding",
+        "destination": "/onboarding.html"
+      },
+      {
+        "source": "/onboarding-success",
+        "destination": "/onboarding-success.html"
+      },
       {
         "source": "/kds",
         "destination": "/kds.html"
       },
       {
-        "source": "/login",
-        "destination": "/login.html"
+        "source": "/home",
+        "destination": "/home.html"
       },
       {
-        "source": "/demo",
-        "destination": "/demo.html"
+        "source": "/login",
+        "destination": "/login.html"
       }
     ],
     "headers": [

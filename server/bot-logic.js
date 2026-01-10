@@ -1,30 +1,43 @@
 /**
- * Lógica del Bot de WhatsApp para Pedidos Automáticos
+ * Lógica del Bot de WhatsApp para Pedidos Automáticos (Multi-tenant)
  * Maneja conversaciones, carritos y confirmación de pedidos
+ * Soporta múltiples restaurantes (tenants) con datos aislados
  */
 
 const menu = require('./menu');
 const firebaseService = require('./firebase-service');
+const tenantService = require('./tenant-service');
 const { parsearPedido, generarMensajeConfirmacion } = require('./pedido-parser');
 
-// Almacenamiento en memoria de sesiones de usuario (carrito temporal)
-// En producción, considera usar Redis o base de datos
+// Almacenamiento en memoria de sesiones de usuario por tenant
+// Formato: Map<tenantId_telefono, sesion>
 const sesionesUsuarios = new Map();
 
 /**
- * Obtiene o crea una sesión de usuario
+ * Genera clave única para sesión de usuario en un tenant
  */
-function obtenerSesion(telefono) {
-  if (!sesionesUsuarios.has(telefono)) {
-    sesionesUsuarios.set(telefono, {
+function generarClaveSesion(tenantId, telefono) {
+  return `${tenantId}_${telefono}`;
+}
+
+/**
+ * Obtiene o crea una sesión de usuario para un tenant específico
+ */
+function obtenerSesion(tenantId, telefono) {
+  const clave = generarClaveSesion(tenantId, telefono);
+  
+  if (!sesionesUsuarios.has(clave)) {
+    sesionesUsuarios.set(clave, {
+      tenantId,
+      telefono,
       carrito: [],
       ultimaActividad: Date.now(),
-      esperandoConfirmacion: false, // Para pedidos en lenguaje natural
-      pedidoPendiente: null // Items parseados esperando confirmación
+      esperandoConfirmacion: false,
+      pedidoPendiente: null
     });
   }
   
-  const sesion = sesionesUsuarios.get(telefono);
+  const sesion = sesionesUsuarios.get(clave);
   sesion.ultimaActividad = Date.now();
   
   return sesion;
@@ -37,10 +50,10 @@ function limpiarSesionesInactivas() {
   const ahora = Date.now();
   const TIMEOUT = 30 * 60 * 1000; // 30 minutos
   
-  for (const [telefono, sesion] of sesionesUsuarios.entries()) {
+  for (const [clave, sesion] of sesionesUsuarios.entries()) {
     if (ahora - sesion.ultimaActividad > TIMEOUT) {
-      sesionesUsuarios.delete(telefono);
-      console.log(`🧹 Sesión limpiada: ${telefono}`);
+      sesionesUsuarios.delete(clave);
+      console.log(`🧹 Sesión limpiada: ${clave}`);
     }
   }
 }
@@ -50,15 +63,23 @@ setInterval(limpiarSesionesInactivas, 10 * 60 * 1000);
 
 /**
  * Procesa un mensaje entrante y retorna la respuesta
+ * @param {string} tenantId - ID del tenant (restaurante)
+ * @param {string} from - Número de teléfono del cliente
+ * @param {string} texto - Mensaje recibido
+ * @returns {Promise<string>} Respuesta a enviar
  */
-async function procesarMensaje(from, texto) {
-  // Limpiar el prefijo whatsapp: del número
-  const telefono = from.replace('whatsapp:', '');
-  const sesion = obtenerSesion(telefono);
+async function processMessage(tenantId, from, texto) {
+  // Limpiar el prefijo whatsapp: del número si existe
+  const telefono = from.replace('whatsapp:', '').replace(/\D/g, '');
+  const sesion = obtenerSesion(tenantId, telefono);
   
   // Normalizar texto
   const textoOriginal = texto.trim();
   texto = textoOriginal.toLowerCase();
+  
+  console.log(`📩 Procesando mensaje en tenant ${tenantId}`);
+  console.log(`   Cliente: ${telefono}`);
+  console.log(`   Mensaje: "${textoOriginal}"`);
   
   // ====================================
   // COMANDOS PRINCIPALES
@@ -66,7 +87,6 @@ async function procesarMensaje(from, texto) {
   
   // Saludo inicial o ayuda
   if (texto === 'hola' || texto === 'menu' || texto === 'empezar' || texto === 'start') {
-    // Limpiar estado de confirmación pendiente
     sesion.esperandoConfirmacion = false;
     sesion.pedidoPendiente = null;
     return mostrarMenu();
@@ -91,11 +111,10 @@ async function procesarMensaje(from, texto) {
            'Escribe *menu* para empezar de nuevo.';
   }
   
-  // Confirmar pedido - puede ser confirmación final o de parsing
+  // Confirmar pedido
   if (texto === 'confirmar' || texto === 'si' || texto === 'ok' || texto === 'listo') {
-    // Si hay pedido pendiente de confirmación de parsing, enviarlo DIRECTAMENTE a cocina
+    // Si hay pedido pendiente de confirmación, agregarlo al carrito
     if (sesion.esperandoConfirmacion && sesion.pedidoPendiente) {
-      // Agregar items al carrito
       sesion.pedidoPendiente.forEach(item => {
         for (let i = 0; i < item.cantidad; i++) {
           sesion.carrito.push({
@@ -110,12 +129,12 @@ async function procesarMensaje(from, texto) {
       sesion.esperandoConfirmacion = false;
       sesion.pedidoPendiente = null;
       
-      // Enviar DIRECTAMENTE a cocina sin pedir segunda confirmación
-      return await confirmarPedido(sesion, telefono);
+      // Enviar directamente a cocina
+      return await confirmarPedido(sesion);
     }
     
-    // Confirmación final del pedido (para método antiguo con números)
-    return await confirmarPedido(sesion, telefono);
+    // Confirmación final del pedido
+    return await confirmarPedido(sesion);
   }
   
   // Eliminar último item
@@ -335,15 +354,19 @@ function verCarrito(sesion) {
 }
 
 /**
- * Confirma y envía el pedido a Firebase
+ * Confirma y envía el pedido a Firebase (aislado por tenant)
  */
-async function confirmarPedido(sesion, telefono) {
+async function confirmarPedido(sesion) {
   if (sesion.carrito.length === 0) {
     return '❌ *Tu carrito está vacío*\n\n' +
            'Escribe *menu* para ver el menú y empezar a ordenar.';
   }
   
   try {
+    // Obtener información del tenant
+    const tenant = await tenantService.getTenantById(sesion.tenantId);
+    const restaurantName = tenant.restaurant?.name || 'Restaurante';
+    
     // Calcular total
     const total = sesion.carrito.reduce((sum, item) => sum + item.precio, 0);
     
@@ -360,32 +383,39 @@ async function confirmarPedido(sesion, telefono) {
     // Generar número de pedido hexadecimal (ej: A3F5B2)
     const numeroHex = Date.now().toString(16).slice(-6).toUpperCase();
     
-    // Crear pedido
+    // Crear pedido con aislamiento por tenant
     const pedido = {
-      id: numeroHex, // ID hexadecimal corto para mostrar
-      cliente: telefono,
-      telefono: telefono,
+      id: numeroHex,
+      tenantId: sesion.tenantId, // ✨ Aislamiento multi-tenant
+      cliente: sesion.telefono,
+      telefono: sesion.telefono,
       items: Object.values(itemsAgrupados),
       total: total,
       estado: 'pendiente',
-      timestamp: Date.now(), // Timestamp en milisegundos para el KDS
-      fecha: new Date().toISOString(), // Fecha legible para logs
-      fuente: 'whatsapp'
+      timestamp: Date.now(),
+      fecha: new Date().toISOString(),
+      fuente: 'whatsapp',
+      restaurante: restaurantName
     };
     
-    // Guardar en Firebase
-    const pedidoId = await firebaseService.guardarPedido(pedido);
+    // Guardar en Firebase bajo el path del tenant
+    const pedidoRef = firebaseService.database.ref(`tenants/${sesion.tenantId}/pedidos`);
+    await pedidoRef.push(pedido);
     
-    console.log(`✅ Pedido guardado en Firebase: ${pedidoId} (Display ID: ${numeroHex})`);
+    console.log(`✅ Pedido guardado para tenant ${sesion.tenantId}: #${numeroHex}`);
+    
+    // Incrementar estadísticas del tenant
+    await tenantService.incrementOrderStats(sesion.tenantId);
     
     // Limpiar carrito
     sesion.carrito = [];
     
     // Respuesta de confirmación
     let mensaje = '🎉 *¡PEDIDO CONFIRMADO!*\n\n';
+    mensaje += `🏪 ${restaurantName}\n`;
     mensaje += `📋 Número de pedido: #${numeroHex}\n`;
     mensaje += `💰 Total: $${total}\n`;
-    mensaje += `📱 Cliente: ${telefono}\n\n`;
+    mensaje += `📱 Cliente: ${sesion.telefono}\n\n`;
     mensaje += '━'.repeat(30) + '\n\n';
     mensaje += '✅ Tu pedido fue enviado a la cocina\n';
     mensaje += 'Te notificaremos cuando esté listo.\n\n';
@@ -431,5 +461,6 @@ function eliminarUltimoItem(sesion) {
 }
 
 module.exports = {
-  procesarMensaje
+  processMessage, // Nuevo nombre para multi-tenant
+  procesarMensaje: processMessage // Alias para compatibilidad
 };
