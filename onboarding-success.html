@@ -405,8 +405,10 @@
       // Actualizar link del dashboard con el tenant ID
       btnDashboard.href = `home.html?tenant=${tenantId}`;
 
-      // Cargar información del tenant desde el backend
-      fetch(`/api/tenant/${tenantId}`)
+      // Cargar información del tenant desde el backend (Railway)
+      const backendUrl = 'https://api.kdsapp.site';
+      
+      fetch(`${backendUrl}/api/tenant/${tenantId}`)
         .then(response => {
           if (!response.ok) {
             throw new Error('No se pudo cargar la información del tenant');
@@ -416,21 +418,27 @@
         .then(data => {
           console.log('✅ Datos del tenant cargados:', data);
 
+          // Verificar si la estructura es de tenant service
+          const tenant = data.tenant || data;
+
           // Actualizar nombre
-          if (data.info && data.info.nombre) {
-            tenantNameElement.textContent = data.info.nombre;
+          if (tenant.restaurant && tenant.restaurant.name) {
+            tenantNameElement.textContent = tenant.restaurant.name;
             tenantNameElement.classList.remove('loading');
           }
 
-          // Actualizar email
-          if (data.info && data.info.email) {
-            tenantEmailElement.textContent = data.info.email;
+          // Actualizar email (puede no existir)
+          if (tenant.restaurant && tenant.restaurant.ownerEmail) {
+            tenantEmailElement.textContent = tenant.restaurant.ownerEmail;
+            tenantEmailElement.classList.remove('loading');
+          } else {
+            tenantEmailElement.textContent = 'No configurado';
             tenantEmailElement.classList.remove('loading');
           }
 
           // Actualizar fecha de registro
-          if (data.info && data.info.fechaRegistro) {
-            const fecha = new Date(data.info.fechaRegistro);
+          if (tenant.createdAt) {
+            const fecha = new Date(tenant.createdAt);
             const fechaFormateada = fecha.toLocaleDateString('es-ES', {
               year: 'numeric',
               month: 'long',
@@ -446,10 +454,10 @@
           console.error('❌ Error cargando información del tenant:', error);
           
           // Mostrar valores por defecto en caso de error
-          tenantNameElement.textContent = 'No disponible';
+          tenantNameElement.textContent = 'Mi Restaurante';
           tenantNameElement.classList.remove('loading');
           
-          tenantEmailElement.textContent = 'No disponible';
+          tenantEmailElement.textContent = 'No configurado';
           tenantEmailElement.classList.remove('loading');
           
           tenantDateElement.textContent = new Date().toLocaleDateString('es-ES');
