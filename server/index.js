@@ -222,6 +222,107 @@ app.get('/api/tenants', async (req, res) => {
   }
 });
 
+/**
+ * Enviar mensaje de prueba (para video de revisión de Meta)
+ */
+app.post('/api/send-test-message', async (req, res) => {
+  try {
+    const { tenantId, to, message } = req.body;
+    
+    console.log('📤 Enviando mensaje de prueba...');
+    console.log(`   Tenant: ${tenantId}`);
+    console.log(`   To: ${to}`);
+    console.log(`   Message: ${message}`);
+    
+    // Validar campos requeridos
+    if (!tenantId || !to || !message) {
+      return res.status(400).json({
+        success: false,
+        error: 'Faltan campos requeridos: tenantId, to, message'
+      });
+    }
+    
+    // Obtener tenant y access token
+    const tenant = await tenantService.getTenantById(tenantId);
+    
+    if (!tenant) {
+      return res.status(404).json({
+        success: false,
+        error: 'Tenant no encontrado'
+      });
+    }
+    
+    if (!tenant.whatsapp || !tenant.whatsapp.phoneNumberId) {
+      return res.status(400).json({
+        success: false,
+        error: 'WhatsApp no configurado para este tenant'
+      });
+    }
+    
+    // Obtener access token desencriptado
+    const accessToken = await tenantService.getTenantAccessToken(tenantId);
+    
+    if (!accessToken) {
+      return res.status(500).json({
+        success: false,
+        error: 'No se pudo obtener el access token'
+      });
+    }
+    
+    // Limpiar número de teléfono (remover + y espacios)
+    const cleanPhoneNumber = to.replace(/[^0-9]/g, '');
+    
+    // Enviar mensaje usando WhatsApp Business API
+    const whatsappApiUrl = `https://graph.facebook.com/v21.0/${tenant.whatsapp.phoneNumberId}/messages`;
+    
+    const response = await axios.post(
+      whatsappApiUrl,
+      {
+        messaging_product: 'whatsapp',
+        to: cleanPhoneNumber,
+        type: 'text',
+        text: {
+          body: message
+        }
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    
+    console.log('✅ Mensaje enviado exitosamente');
+    console.log('   Message ID:', response.data.messages[0].id);
+    
+    res.json({
+      success: true,
+      messageId: response.data.messages[0].id,
+      message: 'Mensaje enviado exitosamente'
+    });
+    
+  } catch (error) {
+    console.error('❌ Error enviando mensaje de prueba:', error.message);
+    
+    if (error.response) {
+      console.error('   Status:', error.response.status);
+      console.error('   Data:', JSON.stringify(error.response.data, null, 2));
+      
+      return res.status(error.response.status).json({
+        success: false,
+        error: error.response.data.error?.message || 'Error al enviar mensaje',
+        details: error.response.data
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // ====================================
 // RUTAS LEGACY (Twilio - REMOVIDO)
 // ====================================
