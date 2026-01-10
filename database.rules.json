@@ -3,6 +3,14 @@
     ".read": false,
     ".write": false,
     
+    "users": {
+      "$userId": {
+        ".read": true,
+        ".write": true,
+        ".indexOn": ["email", "tenantId", "firebaseUid"]
+      }
+    },
+    
     "tenants": {
       "$tenantId": {
         ".read": true,

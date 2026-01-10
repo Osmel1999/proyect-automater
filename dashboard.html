@@ -581,8 +581,8 @@
       <div class="tenant-name" id="tenant-name">Cargando...</div>
     </div>
     <div class="header-right">
-      <a href="kds.html" class="btn-secondary">Ver KDS</a>
-      <a href="landing.html" class="btn-secondary">Salir</a>
+      <a href="/kds.html" class="btn-secondary" id="kdsBtn">📺 Ver KDS</a>
+      <a href="/select.html" class="btn-secondary">🏠 Inicio</a>
     </div>
   </div>
 
@@ -819,6 +819,16 @@
   </div>
 
   <script>
+    // Check authentication and PIN
+    const currentUserId = localStorage.getItem('currentUserId');
+    const currentTenantId = localStorage.getItem('currentTenantId');
+    
+    // Verify user is authenticated
+    if (!currentUserId || !currentTenantId) {
+      alert('Debes iniciar sesión primero');
+      window.location.href = '/auth.html';
+    }
+
     // Initialize Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyAChWEnXztMe5YWJTPevIY5afgHMYxZBzQ",
@@ -849,14 +859,19 @@
 
     // Initialize
     document.addEventListener('DOMContentLoaded', function() {
-      // Get tenant ID from URL
+      // Get tenant ID from URL or localStorage
       const urlParams = new URLSearchParams(window.location.search);
-      tenantId = urlParams.get('tenant') || urlParams.get('tenantId');
+      tenantId = urlParams.get('tenant') || urlParams.get('tenantId') || currentTenantId;
 
       if (!tenantId) {
         alert('No se proporcionó ID de tenant');
-        window.location.href = 'landing.html';
+        window.location.href = '/auth.html';
         return;
+      }
+
+      // Update tenant ID in URL if not present
+      if (!urlParams.has('tenant')) {
+        window.history.replaceState({}, '', `?tenant=${tenantId}`);
       }
 
       loadTenantData();

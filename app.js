@@ -18,11 +18,23 @@ const notificationSound = document.getElementById('notificationSound');
 let orders = {};
 let previousOrderCount = 0;
 
-// Tenant ID (por ahora usamos el tenant demo, luego se obtendría del login)
+// Tenant ID - obtener del usuario autenticado
 let currentTenantId = null;
 
 // Inicializar la aplicación
 function init() {
+    // Verificar autenticación
+    currentTenantId = localStorage.getItem('currentTenantId');
+    
+    if (!currentTenantId) {
+        // Si no hay tenant en localStorage, redirigir a auth
+        console.warn('⚠️ No hay tenant ID. Redirigiendo a autenticación...');
+        window.location.href = '/auth.html';
+        return;
+    }
+
+    console.log('✅ Tenant ID cargado desde localStorage:', currentTenantId);
+    
     // Crear sonido de notificación si no existe
     if (!notificationSound.src) {
         createNotificationSound();
@@ -34,26 +46,23 @@ function init() {
     // Actualizar tiempos transcurridos cada 10 segundos
     setInterval(updateElapsedTimes, 10000);
     
-    // Obtener el tenant ID y luego escuchar pedidos
+    // Cargar datos del tenant y escuchar pedidos
     loadTenantAndListenToOrders();
 }
 
 // Cargar tenant y escuchar pedidos
 async function loadTenantAndListenToOrders() {
     try {
-        // Por ahora, obtener el primer tenant activo (tenant demo)
-        // En producción, esto vendría del login del usuario
-        const tenantsSnapshot = await window.db.ref('tenants').orderByChild('status').equalTo('active').limitToFirst(1).once('value');
+        // Cargar datos del tenant desde Firebase
+        const tenantSnapshot = await window.db.ref(`tenants/${currentTenantId}`).once('value');
         
-        if (!tenantsSnapshot.exists()) {
-            console.error('❌ No se encontró ningún tenant activo');
-            showError('No hay restaurantes configurados. Por favor, completa el proceso de onboarding.');
+        if (!tenantSnapshot.exists()) {
+            console.error('❌ Tenant no encontrado:', currentTenantId);
+            showError('No se encontró el restaurante. Por favor, verifica tu configuración.');
             return;
         }
         
-        // Obtener el primer tenant
-        const tenantData = Object.values(tenantsSnapshot.val())[0];
-        currentTenantId = tenantData.tenantId;
+        const tenantData = tenantSnapshot.val();
         
         console.log('✅ Tenant cargado:', currentTenantId);
         console.log('🏪 Restaurante:', tenantData.restaurant?.name || 'Sin nombre');
@@ -61,7 +70,7 @@ async function loadTenantAndListenToOrders() {
         // Actualizar título con nombre del restaurante
         const restaurantNameElement = document.querySelector('.restaurant-name');
         if (restaurantNameElement) {
-            restaurantNameElement.textContent = tenantData.restaurant?.name || 'KDS';
+            restaurantNameElement.textContent = '🏪 ' + (tenantData.restaurant?.name || 'KDS');
         }
         
         // Escuchar pedidos del tenant

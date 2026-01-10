@@ -477,6 +477,51 @@
 
     // Analytics: registrar evento de onboarding exitoso
     console.log('✅ Onboarding completado para tenant:', tenantId);
+
+    // Actualizar usuario en Firebase con el tenantId y marcar onboarding completado
+    const currentUserId = localStorage.getItem('currentUserId');
+    if (currentUserId && tenantId) {
+      // Necesitamos cargar Firebase primero
+      const updateUserScript = document.createElement('script');
+      updateUserScript.src = 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js';
+      updateUserScript.onload = function() {
+        const dbScript = document.createElement('script');
+        dbScript.src = 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js';
+        dbScript.onload = function() {
+          const configScript = document.createElement('script');
+          configScript.src = 'config.js';
+          configScript.onload = function() {
+            // Ahora actualizar el usuario
+            firebase.database().ref('users/' + currentUserId).update({
+              tenantId: tenantId,
+              onboardingCompleted: true,
+              whatsappConnected: true
+            }).then(() => {
+              console.log('✅ Usuario actualizado con tenantId:', tenantId);
+              localStorage.setItem('currentTenantId', tenantId);
+            }).catch(error => {
+              console.error('❌ Error actualizando usuario:', error);
+            });
+          };
+          document.head.appendChild(configScript);
+        };
+        document.head.appendChild(dbScript);
+      };
+      document.head.appendChild(updateUserScript);
+    }
+  </script>
+  
+  <script>
+    // Cambiar el href del dashboard para redirigir a la página de selección
+    document.addEventListener('DOMContentLoaded', function() {
+      const btnDashboard = document.getElementById('btn-dashboard');
+      if (btnDashboard) {
+        btnDashboard.addEventListener('click', function(e) {
+          e.preventDefault();
+          window.location.href = '/select.html';
+        });
+      }
+    });
   </script>
 </body>
 </html>

@@ -37,6 +37,34 @@
             font-weight: 300;
         }
 
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .btn-dashboard {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 0.5rem 1.2rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-dashboard:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-2px);
+        }
+
         .container {
             max-width: 1800px;
             margin: 2rem auto;
@@ -285,7 +313,13 @@
 <body>
     <div class="header">
         <div class="restaurant-name">🏪 KDS</div>
-        <div class="clock" id="clock">00:00:00</div>
+        <div class="header-actions">
+            <a href="#" class="btn-dashboard" id="dashboardBtn">
+                <span>⚙️</span>
+                <span>Dashboard</span>
+            </a>
+            <div class="clock" id="clock">00:00:00</div>
+        </div>
     </div>
 
     <div class="container">
@@ -354,6 +388,19 @@
     <script src="app.js"></script>
     
     <script>
+        // Configurar botón de dashboard
+        document.getElementById('dashboardBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            // Obtener el tenantId actual del localStorage
+            const currentTenantId = localStorage.getItem('currentTenantId');
+            if (currentTenantId) {
+                window.location.href = `/select.html`;
+            } else {
+                alert('Debes iniciar sesión primero');
+                window.location.href = '/auth.html';
+            }
+        });
+
         // Iniciar la aplicación cuando el DOM esté listo
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', init);
