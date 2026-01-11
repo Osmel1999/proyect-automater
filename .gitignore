@@ -42,3 +42,6 @@ build/
 # Temporary
 *.tmp
 .cache/
+
+test-backend.js
+test-token.js
