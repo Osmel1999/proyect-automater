@@ -1,47 +1,44 @@
-# Dependencies
+# Dependencias
 node_modules/
-package-lock.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# Firebase
-.firebase/
-.firebaserc
-firebase-debug.log
-server/firebase-service-account.json
-*firebase-adminsdk*.json
-
-# Environment
+# Archivos de entorno
 .env
 .env.local
-.env.production
-.env.whatsapp
-.env.n8n
-credentials.json
-*credentials*
+.env.*.local
+
+# Logs
+logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
 
-# OS
-.DS_Store
-Thumbs.db
+# Firebase
+.firebase/
+firebase-debug.log
+firebaserc
 
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+# Backups
+backup_*/
 
-# Build
-dist/
-build/
+# Service Account (seguridad)
+*service-account*.json
 
-# Temporary
+# Temporales
 *.tmp
+*.temp
 .cache/
 
+# Testing files
 test-backend.js
 test-token.js

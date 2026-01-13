@@ -127,6 +127,43 @@ app.get('/api/whatsapp/callback', async (req, res) => {
     console.log(`   Número: ${phoneNumber}`);
     console.log(`   Modo de onboarding: ${mode || 'no especificado'}`);
     
+    // ===================================================================
+    // 🔑 ACTIVAR NÚMERO AUTOMÁTICAMENTE (Resolver estado "Pending")
+    // ===================================================================
+    console.log('🔐 Registrando número en WhatsApp Business API...');
+    
+    try {
+      // Generar PIN único de 6 dígitos para este tenant
+      const pin = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      await axios.post(
+        `https://graph.facebook.com/v21.0/${phoneNumberId}/register`,
+        {
+          messaging_product: 'whatsapp',
+          pin: pin
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      console.log('✅ Número registrado exitosamente!');
+      console.log(`   PIN de seguridad: ${pin}`);
+      console.log(`   Estado del número: CONNECTED`);
+      
+      // Guardar el PIN en Firebase para referencia futura (opcional)
+      // Este PIN puede ser útil si el cliente necesita migrar el número después
+      
+    } catch (registerError) {
+      // Si el registro falla, no bloqueamos el onboarding
+      // El número puede estar ya registrado o en proceso
+      console.warn('⚠️ Advertencia al registrar número:', registerError.response?.data || registerError.message);
+      console.log('   Continuando con el onboarding...');
+    }
+    
     // Crear tenant en Firebase
     const tenant = await tenantService.createTenant({
       whatsappBusinessAccountId: wabId,

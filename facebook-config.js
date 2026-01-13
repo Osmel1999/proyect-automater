@@ -18,7 +18,7 @@ const facebookConfig = {
    * Ubicación: Configuración → Básica → Identificador de la app
    * Ejemplo: "123456789012345"
    */
-  appId: '1860852208127086',
+  appId: '849706941272247',
   
   /**
    * Versión de la API de Facebook
@@ -35,7 +35,7 @@ const facebookConfig = {
    * IMPORTANTE: Este ID se obtiene después de crear una "Configuration"
    * en la sección de Embedded Signup de tu app de WhatsApp
    */
-  embeddedSignupConfigId: '1609237700430950',
+  embeddedSignupConfigId: '849873494548110',
   
   /**
    * Idioma del SDK

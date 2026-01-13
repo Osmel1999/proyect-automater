@@ -90,6 +90,288 @@
       border: 2px solid #e2e8f0;
     }
 
+    /* ====================================
+       SECCIÓN CRÍTICA: Business Portfolio
+       ==================================== */
+    .critical-notice {
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+      border: 3px solid #f59e0b;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 30px;
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.2);
+      animation: pulseWarning 2s ease-in-out infinite;
+    }
+
+    @keyframes pulseWarning {
+      0%, 100% {
+        box-shadow: 0 10px 30px rgba(245, 158, 11, 0.2);
+      }
+      50% {
+        box-shadow: 0 15px 40px rgba(245, 158, 11, 0.4);
+      }
+    }
+
+    .notice-icon {
+      font-size: 48px;
+      flex-shrink: 0;
+      animation: shake 1s ease-in-out infinite;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(-5deg); }
+      75% { transform: rotate(5deg); }
+    }
+
+    .notice-content {
+      flex: 1;
+    }
+
+    .notice-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #92400e;
+      margin-bottom: 12px;
+      line-height: 1.3;
+    }
+
+    .notice-text {
+      font-size: 15px;
+      color: #78350f;
+      margin-bottom: 16px;
+      line-height: 1.6;
+    }
+
+    .notice-highlight {
+      background: white;
+      padding: 16px;
+      border-radius: 8px;
+      border-left: 4px solid #10b981;
+      margin: 16px 0;
+      font-size: 14px;
+      line-height: 1.8;
+    }
+
+    .notice-highlight strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .notice-explanation {
+      font-size: 14px;
+      color: #92400e;
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+
+    .btn-understand {
+      background: #10b981;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-understand:hover {
+      background: #059669;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+    }
+
+    /* ====================================
+       MODAL: Guía de Portfolio
+       ==================================== */
+    .portfolio-guide-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 10000;
+      padding: 20px;
+      overflow-y: auto;
+      backdrop-filter: blur(8px);
+    }
+
+    .portfolio-guide-modal.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    .portfolio-guide-content {
+      background: white;
+      border-radius: 20px;
+      max-width: 900px;
+      width: 100%;
+      padding: 40px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+      animation: slideUpModal 0.4s ease-out;
+      position: relative;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    @keyframes slideUpModal {
+      from {
+        opacity: 0;
+        transform: translateY(40px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .portfolio-guide-header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 3px solid #10b981;
+    }
+
+    .portfolio-guide-title {
+      font-size: 28px;
+      font-weight: 700;
+      color: #1a202c;
+      margin-bottom: 12px;
+    }
+
+    .portfolio-guide-subtitle {
+      font-size: 16px;
+      color: #718096;
+      line-height: 1.5;
+    }
+
+    .guide-step-card {
+      background: #f7fafc;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+      border: 2px solid #e2e8f0;
+    }
+
+    .guide-step-card.highlight {
+      background: #fef3c7;
+      border-color: #f59e0b;
+    }
+
+    .guide-step-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .guide-step-number {
+      background: #10b981;
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .guide-step-card.highlight .guide-step-number {
+      background: #f59e0b;
+    }
+
+    .guide-step-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1a202c;
+    }
+
+    .guide-step-text {
+      font-size: 15px;
+      color: #4a5568;
+      line-height: 1.6;
+      margin-bottom: 12px;
+    }
+
+    .guide-screenshot-placeholder {
+      background: #e2e8f0;
+      border-radius: 8px;
+      padding: 40px;
+      text-align: center;
+      color: #718096;
+      font-style: italic;
+      margin-top: 12px;
+    }
+
+    .guide-do-dont {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .guide-do, .guide-dont {
+      padding: 16px;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    .guide-do {
+      background: #d1fae5;
+      border: 2px solid #10b981;
+    }
+
+    .guide-dont {
+      background: #fee2e2;
+      border: 2px solid #ef4444;
+    }
+
+    .guide-do strong, .guide-dont strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 16px;
+    }
+
+    .btn-close-guide {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 16px 32px;
+      border-radius: 50px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 24px;
+      transition: all 0.3s ease;
+    }
+
+    .btn-close-guide:hover {
+      background: #5a67d8;
+      transform: translateY(-2px);
+    }
+
+    .options-container {
+      margin-bottom: 40px;
+      padding: 30px;
+      background: #f7fafc;
+      border-radius: 12px;
+      border: 2px solid #e2e8f0;
+    }
+
     .options-title {
       font-size: 20px;
       font-weight: 600;
@@ -523,6 +805,29 @@
       Elige cómo quieres configurar tu cuenta
     </p>
 
+    <!-- ADVERTENCIA CRÍTICA: Business Portfolio -->
+    <div class="critical-notice">
+      <div class="notice-icon">🚨</div>
+      <div class="notice-content">
+        <h3 class="notice-title">¡MUY IMPORTANTE! Lee esto antes de continuar</h3>
+        <p class="notice-text">
+          Durante el proceso de conexión, Facebook te preguntará <strong>qué Business Portfolio usar</strong>.
+        </p>
+        <div class="notice-highlight">
+          <strong>✅ DEBES SELECCIONAR:</strong> "KDS Platform" o el portfolio de la empresa tecnológica<br>
+          <strong>❌ NO SELECCIONAR:</strong> Tu propio portfolio o el de tu restaurante
+        </div>
+        <p class="notice-explanation">
+          Si seleccionas tu propio portfolio (no verificado), tu número quedará en estado "Pendiente" 
+          por 24-48 horas hasta que Meta lo apruebe. Con el portfolio de KDS (ya verificado), 
+          <strong>tu número se activa INSTANTÁNEAMENTE</strong> y puedes empezar a recibir pedidos de inmediato.
+        </p>
+        <button class="btn-understand" onclick="showPortfolioGuideModal()">
+          📖 Ver guía visual paso a paso
+        </button>
+      </div>
+    </div>
+
     <div class="options-container">
       <h3 class="options-title">¿Tienes un número de WhatsApp Business?</h3>
 
@@ -688,6 +993,103 @@
     </div>
   </div>
 
+  <!-- Modal: Guía de selección de Business Portfolio -->
+  <div class="portfolio-guide-modal" id="portfolio-guide-modal">
+    <div class="portfolio-guide-content">
+      <div class="portfolio-guide-header">
+        <h2 class="portfolio-guide-title">📖 Guía: Cómo Seleccionar el Portfolio Correcto</h2>
+        <p class="portfolio-guide-subtitle">
+          Sigue estos pasos para que tu número quede activo INSTANTÁNEAMENTE
+        </p>
+      </div>
+
+      <div class="guide-step-card">
+        <div class="guide-step-header">
+          <div class="guide-step-number">1</div>
+          <div class="guide-step-title">Haz clic en "Conectar WhatsApp Ahora"</div>
+        </div>
+        <p class="guide-step-text">
+          Se abrirá una ventana emergente de Facebook para autorizar la conexión.
+        </p>
+      </div>
+
+      <div class="guide-step-card">
+        <div class="guide-step-header">
+          <div class="guide-step-number">2</div>
+          <div class="guide-step-title">Inicia sesión con tu cuenta de Facebook</div>
+        </div>
+        <p class="guide-step-text">
+          Usa la cuenta de Facebook que quieres vincular con el sistema.
+        </p>
+      </div>
+
+      <div class="guide-step-card highlight">
+        <div class="guide-step-header">
+          <div class="guide-step-number">3</div>
+          <div class="guide-step-title">🚨 PASO CRÍTICO: Selecciona el Business Portfolio</div>
+        </div>
+        <p class="guide-step-text">
+          Facebook te preguntará: <strong>"¿Qué Business Portfolio quieres usar?"</strong>
+        </p>
+        
+        <div class="guide-do-dont">
+          <div class="guide-do">
+            <strong>✅ DEBES HACER:</strong>
+            Selecciona <strong>"KDS Platform"</strong> o el portfolio de la empresa tecnológica.<br><br>
+            Este portfolio YA está verificado por Meta, por lo que tu número se activará INMEDIATAMENTE.
+          </div>
+          <div class="guide-dont">
+            <strong>❌ NO HACER:</strong>
+            NO selecciones tu propio portfolio o el de tu restaurante.<br><br>
+            Si lo haces, tu número quedará en "Pendiente" por 24-48 horas hasta que Meta apruebe el portfolio.
+          </div>
+        </div>
+
+        <div class="guide-screenshot-placeholder">
+          📸 Captura de pantalla: En esta ventana verás una lista de portfolios disponibles.<br>
+          Busca "KDS Platform" o pregunta cuál es el portfolio verificado a usar.
+        </div>
+      </div>
+
+      <div class="guide-step-card">
+        <div class="guide-step-header">
+          <div class="guide-step-number">4</div>
+          <div class="guide-step-title">Ingresa tu número de WhatsApp</div>
+        </div>
+        <p class="guide-step-text">
+          • Si vas a <strong>migrar</strong> un número existente: ingresa ese número<br>
+          • Si vas a <strong>registrar</strong> un número nuevo: ingresa el nuevo número<br>
+          • Asegúrate de tener acceso al teléfono para recibir el código de verificación
+        </p>
+      </div>
+
+      <div class="guide-step-card">
+        <div class="guide-step-header">
+          <div class="guide-step-number">5</div>
+          <div class="guide-step-title">Verifica el número con el código SMS</div>
+        </div>
+        <p class="guide-step-text">
+          Recibirás un código de 6 dígitos por SMS. Ingrésalo para completar la verificación.
+        </p>
+      </div>
+
+      <div class="guide-step-card">
+        <div class="guide-step-header">
+          <div class="guide-step-number">6</div>
+          <div class="guide-step-title">✅ ¡Listo! Tu número está activo</div>
+        </div>
+        <p class="guide-step-text">
+          Si seguiste el paso 3 correctamente (seleccionando el portfolio de KDS), 
+          tu número estará activo de inmediato y podrás comenzar a recibir pedidos.
+        </p>
+      </div>
+
+      <button class="btn-close-guide" onclick="closePortfolioGuideModal()">
+        Entendido, continuar con la conexión
+      </button>
+    </div>
+  </div>
+
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -749,10 +1151,15 @@
     const optionCards = document.querySelectorAll('.option-card');
     const migrationWarning = document.getElementById('migration-warning');
     const helpModal = document.getElementById('help-modal');
+    const portfolioGuideModal = document.getElementById('portfolio-guide-modal');
     
     let selectedOption = null; // 'migrate' o 'new'
 
-    // Funciones para el modal de ayuda
+    // ====================================
+    // FUNCIONES PARA MODALES
+    // ====================================
+    
+    // Modal de ayuda (número registrado)
     function showHelpModal() {
       helpModal.classList.add('active');
     }
@@ -761,15 +1168,32 @@
       helpModal.classList.remove('active');
     }
 
-    // Cerrar modal al hacer clic fuera
+    // Modal de guía de portfolio
+    function showPortfolioGuideModal() {
+      portfolioGuideModal.classList.add('active');
+    }
+
+    function closePortfolioGuideModal() {
+      portfolioGuideModal.classList.remove('active');
+    }
+
+    // Cerrar modales al hacer clic fuera
     helpModal.addEventListener('click', function(e) {
       if (e.target === helpModal) {
         closeHelpModal();
       }
     });
 
-    // Hacer la función accesible globalmente
+    portfolioGuideModal.addEventListener('click', function(e) {
+      if (e.target === portfolioGuideModal) {
+        closePortfolioGuideModal();
+      }
+    });
+
+    // Hacer las funciones accesibles globalmente
     window.closeHelpModal = closeHelpModal;
+    window.showPortfolioGuideModal = showPortfolioGuideModal;
+    window.closePortfolioGuideModal = closePortfolioGuideModal;
 
     // Manejo de selección de opciones
     optionCards.forEach(card => {
@@ -871,9 +1295,16 @@
         scope: 'whatsapp_business_management,whatsapp_business_messaging',
         auth_type: 'rerequest',
         extras: {
-          setup: {},
+          setup: {
+            // Pre-seleccionar el Business Portfolio verificado de KDS
+            // Esto evita que el cliente tenga que seleccionar manualmente
+            // y asegura activación instantánea
+            business: {
+              id: '880566844730976'
+            }
+          },
           featureType: '',
-          sessionInfoVersion: 2
+          sessionInfoVersion: 3  // Actualizado a v3 según documentación
         }
       });
     });
