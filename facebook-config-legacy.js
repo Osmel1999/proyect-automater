@@ -33,7 +33,7 @@ const facebookConfigLegacy = {
    */
   callbackUrl: window.location.origin.includes('localhost') 
     ? 'http://localhost:3000/api/whatsapp/callback-legacy'
-    : 'https://kds-webapp-production.up.railway.app/api/whatsapp/callback-legacy',
+    : 'https://api.kdsapp.site/api/whatsapp/callback-legacy',
   
   /**
    * URL de éxito después del onboarding
