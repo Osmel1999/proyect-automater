@@ -69,6 +69,16 @@ app.use(express.static(path.join(__dirname, '..')));
  * Este es un endpoint de backup para pruebas con la configuración anterior
  */
 app.get('/api/whatsapp/callback-legacy', async (req, res) => {
+  const timestamp = new Date().toISOString();
+  console.log(`\n🕐 [${timestamp}] CALLBACK LEGACY REQUEST`);
+  console.log(`   Full URL: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
+  console.log(`   Query params:`, req.query);
+  console.log(`   Headers:`, {
+    'user-agent': req.get('user-agent'),
+    'referer': req.get('referer'),
+    'x-forwarded-for': req.get('x-forwarded-for')
+  });
+  
   try {
     const { code, mode } = req.query;
     
@@ -185,7 +195,12 @@ app.get('/api/whatsapp/callback-legacy', async (req, res) => {
     res.redirect(`${frontendUrl}/onboarding-success.html?tenantId=${tenant.tenantId}&mode=${mode || 'unknown'}&config=legacy`);
     
   } catch (error) {
-    console.error('❌ Error en callback LEGACY de OAuth:', error.response?.data || error.message);
+    console.error('❌ Error en callback LEGACY de OAuth:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      code: code?.substring(0, 30) + '...'
+    });
     const frontendUrl = process.env.FRONTEND_URL || 'https://kdsapp.site';
     res.redirect(`${frontendUrl}/onboarding-2.html?error=oauth_failed`);
   }
