@@ -1285,7 +1285,28 @@
         console.log('📩 Respuesta de FB.login:', response);
 
         if (response.authResponse) {
-          const code = response.authResponse.code;
+          let code = response.authResponse.code;
+          
+          // Si no está en authResponse.code, intentar decodificar signedRequest
+          if (!code && response.authResponse.signedRequest) {
+            console.log('⚠️ Código no encontrado en authResponse.code, extrayendo del signedRequest...');
+            
+            try {
+              const signedRequest = response.authResponse.signedRequest;
+              const payload = signedRequest.split('.')[1];
+              const decodedPayload = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+              
+              console.log('📦 signedRequest decodificado:', decodedPayload);
+              
+              code = decodedPayload.code;
+              
+              if (code) {
+                console.log('✅ Código extraído del signedRequest!');
+              }
+            } catch (e) {
+              console.error('❌ ERROR al decodificar signedRequest:', e);
+            }
+          }
           
           if (!code) {
             showError('No se recibió el código de autorización. Intenta nuevamente.');

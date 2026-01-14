@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debug - Onboarding Legacy</title>
+  <style>
+    body {
+      font-family: monospace;
+      padding: 20px;
+      background: #1e1e1e;
+      color: #00ff00;
+    }
+    .log {
+      margin: 10px 0;
+      padding: 10px;
+      background: #2a2a2a;
+      border-left: 3px solid #00ff00;
+    }
+    .error {
+      border-left-color: #ff0000;
+      color: #ff0000;
+    }
+    .warning {
+      border-left-color: #ffaa00;
+      color: #ffaa00;
+    }
+    button {
+      padding: 15px 30px;
+      font-size: 16px;
+      margin: 10px 5px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔍 DEBUG - Onboarding Legacy</h1>
+  <p>Esta página muestra todos los detalles técnicos del proceso</p>
+  
+  <div id="logs"></div>
+  
+  <button onclick="testConfig()">1. Test Configuración</button>
+  <button onclick="testFBSDK()">2. Test Facebook SDK</button>
+  <button onclick="startOnboarding()">3. Iniciar Onboarding</button>
+  <button onclick="clearLogs()">Limpiar Logs</button>
+
+  <script src="facebook-config-legacy.js"></script>
+  <script>
+    function log(message, type = 'info') {
+      const logsDiv = document.getElementById('logs');
+      const logEntry = document.createElement('div');
+      logEntry.className = 'log ' + (type === 'error' ? 'error' : type === 'warning' ? 'warning' : '');
+      logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logsDiv.appendChild(logEntry);
+      logsDiv.scrollTop = logsDiv.scrollHeight;
+      console.log(message);
+    }
+
+    function clearLogs() {
+      document.getElementById('logs').innerHTML = '';
+    }
+
+    function testConfig() {
+      log('=== CONFIGURACIÓN LEGACY ===');
+      log(`App ID: ${facebookConfigLegacy.appId}`);
+      log(`Config ID: ${facebookConfigLegacy.embeddedSignupConfigId}`);
+      log(`Callback URL: ${facebookConfigLegacy.callbackUrl}`);
+      log(`Portfolio ID: ${facebookConfigLegacy.portfolioId}`);
+      log(`API Version: ${facebookConfigLegacy.apiVersion}`);
+    }
+
+    function testFBSDK() {
+      log('=== FACEBOOK SDK ===');
+      if (typeof FB === 'undefined') {
+        log('❌ ERROR: Facebook SDK no está cargado', 'error');
+        return;
+      }
+      log('✅ Facebook SDK cargado correctamente');
+      
+      FB.getLoginStatus(function(response) {
+        log('Estado de login: ' + response.status);
+        if (response.status === 'connected') {
+          log('✅ Usuario ya conectado');
+          log('User ID: ' + response.authResponse.userID);
+        } else {
+          log('⚠️ Usuario no conectado', 'warning');
+        }
+      });
+    }
+
+    function startOnboarding() {
+      log('=== INICIANDO ONBOARDING ===');
+      
+      if (typeof FB === 'undefined') {
+        log('❌ ERROR: Facebook SDK no disponible', 'error');
+        return;
+      }
+
+      log('Llamando a FB.login...');
+      log(`Config ID que se usará: ${facebookConfigLegacy.embeddedSignupConfigId}`);
+      log(`Portfolio ID pre-seleccionado: ${facebookConfigLegacy.portfolioId}`);
+
+      const loginOptions = {
+        config_id: facebookConfigLegacy.embeddedSignupConfigId,
+        response_type: 'code',
+        override_default_response_type: true,
+        scope: 'whatsapp_business_management,whatsapp_business_messaging',
+        auth_type: 'rerequest',
+        extras: {
+          setup: {
+            business: {
+              id: facebookConfigLegacy.portfolioId
+            }
+          },
+          featureType: '',
+          sessionInfoVersion: 3
+        }
+      };
+
+      log('Opciones de login: ' + JSON.stringify(loginOptions, null, 2));
+
+      FB.login(function(response) {
+        log('=== RESPUESTA DE FB.login ===');
+        log(JSON.stringify(response, null, 2));
+
+        if (response.authResponse) {
+          log('✅ Autorización exitosa');
+          
+          // Intentar obtener el código de diferentes lugares
+          let code = response.authResponse.code;
+          
+          // Si no está en authResponse.code, intentar decodificar signedRequest
+          if (!code && response.authResponse.signedRequest) {
+            log('⚠️ Código no encontrado en authResponse.code', 'warning');
+            log('🔍 Intentando extraer del signedRequest...');
+            
+            try {
+              const signedRequest = response.authResponse.signedRequest;
+              const payload = signedRequest.split('.')[1];
+              const decodedPayload = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+              
+              log('📦 signedRequest decodificado:');
+              log(JSON.stringify(decodedPayload, null, 2));
+              
+              code = decodedPayload.code;
+              
+              if (code) {
+                log('✅ Código extraído del signedRequest!');
+              }
+            } catch (e) {
+              log('❌ ERROR al decodificar signedRequest: ' + e.message, 'error');
+            }
+          }
+          
+          if (code) {
+            log(`✅ Código recibido: ${code.substring(0, 20)}...`);
+            log(`Redirigiendo a: ${facebookConfigLegacy.callbackUrl}`);
+            
+            const redirectUrl = `${facebookConfigLegacy.callbackUrl}?code=${code}&mode=new`;
+            log(`URL completa: ${redirectUrl}`);
+            
+            // Esperar 2 segundos para que veas el log
+            setTimeout(() => {
+              window.location.href = redirectUrl;
+            }, 2000);
+          } else {
+            log('❌ ERROR: No se recibió código de autorización', 'error');
+            log('⚠️ Intenta usar accessToken en su lugar', 'warning');
+          }
+        } else {
+          log('❌ ERROR: No se recibió authResponse', 'error');
+          log('Usuario canceló o hubo un error');
+        }
+      }, loginOptions);
+    }
+
+    // Cargar Facebook SDK
+    log('Cargando Facebook SDK...');
+    window.fbAsyncInit = function() {
+      FB.init({
+        appId: facebookConfigLegacy.appId,
+        cookie: true,
+        xfbml: true,
+        version: facebookConfigLegacy.apiVersion
+      });
+      log('✅ Facebook SDK inicializado');
+      testFBSDK();
+    };
+
+    (function(d, s, id){
+      var js, fjs = d.getElementsByTagName(s)[0];
+      if (d.getElementById(id)) {return;}
+      js = d.createElement(s); js.id = id;
+      js.src = `https://connect.facebook.net/${facebookConfigLegacy.locale}/sdk.js`;
+      fjs.parentNode.insertBefore(js, fjs);
+    }(document, 'script', 'facebook-jssdk'));
+
+    // Log inicial
+    log('🚀 Página de debug cargada');
+    log('Dominio actual: ' + window.location.origin);
+    testConfig();
+  </script>
+</body>
+</html>
