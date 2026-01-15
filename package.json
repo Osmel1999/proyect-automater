@@ -9,7 +9,9 @@
     "deploy": "firebase deploy",
     "test": "node --version",
     "test:baileys:fase1": "node test-fase1-baileys.js",
-    "test:baileys:cleanup": "node test-fase1-cleanup.js"
+    "test:baileys:cleanup": "node test-fase1-cleanup.js",
+    "test:fase2": "node test-fase2-baileys.js",
+    "test:fase2:unit": "node test-fase2-unit.cjs"
   },
   "keywords": [
     "kds",
