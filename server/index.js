@@ -565,119 +565,169 @@ app.post('/api/send-test-message', async (req, res) => {
   }
 });
 
-// ====================================
-// RUTAS LEGACY (Twilio - REMOVIDO)
-// ====================================
-
-// Ya no usamos Twilio, ahora usamos WhatsApp Business API
-// app.post('/webhook/twilio', twilioHandler.handleIncoming);
-
-// ====================================
-// RUTAS GENERALES
-// ====================================
-
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    service: 'KDS WhatsApp SaaS Backend',
-    mode: 'multi-tenant'
-  });
-});
-
-// Endpoint para obtener estadísticas (opcional)
-app.get('/api/stats', async (req, res) => {
+/**
+ * POST Callback para LEGACY - Validación de Portfolio
+ * Permite validar que el usuario seleccionó el portfolio correcto
+ */
+app.post('/api/auth/legacy/callback', async (req, res) => {
+  const timestamp = new Date().toISOString();
+  console.log(`\n🕐 [${timestamp}] POST LEGACY CALLBACK - Portfolio Validation`);
+  
   try {
-    const tenants = await tenantService.listTenants();
-    const totalOrders = tenants.reduce((sum, t) => sum + (t.stats?.totalOrders || 0), 0);
+    const { code } = req.body;
+    
+    if (!code) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Código de autorización no proporcionado' 
+      });
+    }
+    
+    console.log('🔄 Validando portfolio seleccionado...');
+    console.log(`   Authorization Code: ${code.substring(0, 20)}...`);
+    
+    // Usar credenciales legacy
+    const legacyConfig = dualConfig.getConfig('legacy');
+    const appId = legacyConfig.facebook.appId;
+    const appSecret = process.env.WHATSAPP_APP_SECRET_LEGACY || process.env.WHATSAPP_APP_SECRET;
+    const expectedPortfolioId = legacyConfig.portfolio.id;
+    
+    // Intercambiar código por access token
+    const tokenResponse = await axios.get('https://graph.facebook.com/v21.0/oauth/access_token', {
+      params: {
+        client_id: appId,
+        client_secret: appSecret,
+        code: code
+      }
+    });
+    
+    const accessToken = tokenResponse.data.access_token;
+    console.log('✅ Access token obtenido');
+    
+    // Obtener información del negocio para detectar portfolio
+    const debugResponse = await axios.get('https://graph.facebook.com/v21.0/debug_token', {
+      params: {
+        input_token: accessToken,
+        access_token: `${appId}|${appSecret}`
+      }
+    });
+    
+    const debugData = debugResponse.data.data;
+    console.log('📊 Debug token data:', JSON.stringify(debugData, null, 2));
+    
+    // Buscar business_management scope para obtener portfolio ID
+    const businessScope = debugData.granular_scopes?.find(s => 
+      s.scope === 'business_management' || 
+      s.scope === 'whatsapp_business_management'
+    );
+    
+    const selectedPortfolioId = businessScope?.target_ids?.[0];
+    
+    console.log('🎯 Portfolio detectado:');
+    console.log(`   Seleccionado: ${selectedPortfolioId}`);
+    console.log(`   Esperado: ${expectedPortfolioId} (${legacyConfig.portfolio.name})`);
+    
+    // VALIDAR PORTFOLIO
+    if (selectedPortfolioId !== expectedPortfolioId) {
+      console.warn('❌ Portfolio incorrecto seleccionado');
+      
+      return res.json({
+        success: false,
+        wrongPortfolio: true,
+        selectedPortfolio: selectedPortfolioId,
+        expectedPortfolio: expectedPortfolioId,
+        expectedPortfolioName: legacyConfig.portfolio.name,
+        message: `Por favor, selecciona el portfolio "${legacyConfig.portfolio.name}" en la ventana de Facebook`
+      });
+    }
+    
+    console.log('✅ Portfolio correcto seleccionado!');
+    
+    // Obtener información de la cuenta de WhatsApp Business
+    const wabId = debugData.granular_scopes?.find(s => s.scope === 'whatsapp_business_management')?.target_ids?.[0];
+    
+    if (!wabId) {
+      throw new Error('No se pudo obtener WABA ID del token');
+    }
+    
+    // Obtener el Phone Number ID
+    const accountResponse = await axios.get(`https://graph.facebook.com/v21.0/${wabId}/phone_numbers`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    });
+    
+    const phoneData = accountResponse.data.data[0];
+    const phoneNumberId = phoneData.id;
+    const phoneNumber = phoneData.display_phone_number;
+    
+    console.log('📱 Información de WhatsApp obtenida:');
+    console.log(`   WABA ID: ${wabId}`);
+    console.log(`   Phone Number ID: ${phoneNumberId}`);
+    console.log(`   Número: ${phoneNumber}`);
+    
+    // Registrar número
+    console.log('🔐 Registrando número en WhatsApp Business API...');
+    
+    try {
+      const pin = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      await axios.post(
+        `https://graph.facebook.com/v21.0/${phoneNumberId}/register`,
+        {
+          messaging_product: 'whatsapp',
+          pin: pin
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      console.log('✅ Número registrado exitosamente!');
+      console.log(`   PIN de seguridad: ${pin}`);
+      
+    } catch (registerError) {
+      console.warn('⚠️ Advertencia al registrar número:', registerError.response?.data || registerError.message);
+      console.log('   Continuando con el onboarding...');
+    }
+    
+    // Crear tenant en Firebase
+    const tenant = await tenantService.createTenant({
+      whatsappBusinessAccountId: wabId,
+      whatsappPhoneNumberId: phoneNumberId,
+      whatsappPhoneNumber: phoneNumber,
+      accessToken: accessToken,
+      restaurantName: 'Mi Restaurante (Legacy)', 
+      ownerEmail: null,
+      onboardingMode: 'legacy',
+      configType: 'legacy',
+      portfolioId: expectedPortfolioId
+    });
+    
+    console.log('🎉 Onboarding LEGACY completado exitosamente!');
     
     res.json({
-      message: 'Estadísticas del sistema',
-      timestamp: new Date().toISOString(),
-      totalTenants: tenants.length,
-      totalOrders: totalOrders
+      success: true,
+      tenantId: tenant.tenantId,
+      businessId: selectedPortfolioId,
+      phoneNumber: phoneNumber,
+      message: 'Onboarding completado exitosamente'
     });
+    
   } catch (error) {
-    console.error('Error obteniendo estadísticas:', error);
-    res.status(500).json({ error: 'Error interno' });
+    console.error('❌ Error en POST callback legacy:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    });
+    
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      details: error.response?.data
+    });
   }
-});
-
-// Manejo de rutas no encontradas
-app.use((req, res) => {
-  res.status(404).json({ error: 'Ruta no encontrada' });
-});
-
-// Manejo de errores
-app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  res.status(500).json({ error: 'Error interno del servidor' });
-});
-
-// ====================================
-// INICIO DEL SERVIDOR
-// ====================================
-
-app.listen(PORT, () => {
-  console.log('━'.repeat(50));
-  console.log('🚀 SERVIDOR BACKEND KDS + WHATSAPP SAAS');
-  console.log('━'.repeat(50));
-  console.log(`📡 Servidor corriendo en puerto: ${PORT}`);
-  console.log(`🌐 URL local: http://localhost:${PORT}`);
-  console.log(`🏢 Modo: Multi-tenant SaaS`);
-  console.log('');
-  console.log('🔧 Servicios configurados:');
-  console.log(`   🔥 Firebase: ${process.env.FIREBASE_PROJECT_ID ? '✅ ' + process.env.FIREBASE_PROJECT_ID : '❌ No configurado'}`);
-  console.log(`   📱 WhatsApp API: ${process.env.WHATSAPP_APP_ID ? '✅ App ID ' + process.env.WHATSAPP_APP_ID : '❌ No configurado'}`);
-  console.log(`   � Cifrado: ${process.env.ENCRYPTION_KEY ? '✅ Configurado' : '❌ No configurado'}`);
-  console.log('');
-  console.log('━'.repeat(50));
-  console.log('📝 Endpoints - WhatsApp Business API:');
-  console.log('   GET  /api/whatsapp/callback    - OAuth callback (Embedded Signup)');
-  console.log('   POST /webhook/whatsapp         - Webhook de mensajes');
-  console.log('   GET  /webhook/whatsapp         - Verificación de webhook');
-  console.log('');
-  console.log('📝 Endpoints - Tenants:');
-  console.log('   GET  /api/tenant/:tenantId     - Información de tenant');
-  console.log('   GET  /api/tenants              - Listar todos los tenants');
-  console.log('');
-  console.log('📝 Endpoints - Sistema:');
-  console.log('   GET  /health                   - Health check');
-  console.log('   GET  /api/stats                - Estadísticas globales');
-  console.log('');
-  console.log('━'.repeat(50));
-  console.log('� URLs Importantes:');
-  console.log(`   🎯 Onboarding: http://localhost:${PORT}/onboarding.html`);
-  console.log(`   📊 KDS Dashboard: http://localhost:${PORT}/kds.html`);
-  console.log(`   🏠 Landing Page: http://localhost:${PORT}/landing.html`);
-  console.log('');
-  console.log('📱 Configuración de Webhook en Meta:');
-  console.log(`   Callback URL: ${process.env.BASE_URL || 'https://tu-dominio.com'}/webhook/whatsapp`);
-  console.log(`   Verify Token: ${process.env.WHATSAPP_VERIFY_TOKEN || '[CONFIGURAR EN .env]'}`);
-  console.log('━'.repeat(50));
-});
-
-// Manejo de cierre graceful
-process.on('SIGTERM', () => {
-  console.log('🛑 Recibida señal SIGTERM, cerrando servidor...');
-  process.exit(0);
-});
-
-process.on('SIGINT', () => {
-  console.log('🛑 Recibida señal SIGINT, cerrando servidor...');
-  process.exit(0);
-});
-
-// Manejo de errores no capturados
-process.on('uncaughtException', (error) => {
-  console.error('❌ Error no capturado:', error);
-  console.error('Stack:', error.stack);
-  process.exit(1);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Promise rechazada no manejada:', reason);
-  console.error('Promise:', promise);
-  process.exit(1);
 });
