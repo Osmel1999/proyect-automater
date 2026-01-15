@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Sistemático - Pre-selección Portfolio</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Courier New', monospace;
+      background: #0d1117;
+      color: #c9d1d9;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: #58a6ff;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: #8b949e;
+      margin-bottom: 30px;
+    }
+
+    .test-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+
+    .test-card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 15px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .test-card:hover {
+      border-color: #58a6ff;
+      transform: translateY(-2px);
+    }
+
+    .test-card h3 {
+      color: #58a6ff;
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+
+    .test-card p {
+      color: #8b949e;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .test-card code {
+      background: #0d1117;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 11px;
+      color: #79c0ff;
+    }
+
+    .logs {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 20px;
+      max-height: 500px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+    }
+
+    .log-entry {
+      margin: 5px 0;
+      padding: 8px;
+      border-left: 3px solid #58a6ff;
+      background: #161b22;
+    }
+
+    .log-entry.success {
+      border-left-color: #3fb950;
+      color: #3fb950;
+    }
+
+    .log-entry.error {
+      border-left-color: #f85149;
+      color: #f85149;
+    }
+
+    .log-entry.warning {
+      border-left-color: #d29922;
+      color: #d29922;
+    }
+
+    .controls {
+      margin-bottom: 20px;
+      display: flex;
+      gap: 10px;
+    }
+
+    button {
+      background: #238636;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    button:hover {
+      background: #2ea043;
+    }
+
+    button.clear {
+      background: #21262d;
+    }
+
+    button.clear:hover {
+      background: #30363d;
+    }
+
+    .config-display {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 15px;
+      margin-top: 20px;
+      overflow-x: auto;
+    }
+
+    .config-display pre {
+      color: #79c0ff;
+      font-size: 11px;
+    }
+
+    .results-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      font-size: 12px;
+    }
+
+    .results-table th,
+    .results-table td {
+      border: 1px solid #30363d;
+      padding: 10px;
+      text-align: left;
+    }
+
+    .results-table th {
+      background: #161b22;
+      color: #58a6ff;
+    }
+
+    .results-table td.success {
+      color: #3fb950;
+    }
+
+    .results-table td.error {
+      color: #f85149;
+    }
+
+    .results-table td.pending {
+      color: #d29922;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔬 Test Sistemático - Pre-selección Portfolio</h1>
+    <p class="subtitle">Probando 10 variantes para resolver authResponse: null</p>
+
+    <div class="controls">
+      <button onclick="clearLogs()">Limpiar Logs</button>
+      <button onclick="exportResults()">Exportar Resultados</button>
+    </div>
+
+    <h2>🧪 Variantes a Probar</h2>
+    <div class="test-grid">
+      <div class="test-card" onclick="testVariant1()">
+        <h3>Test 1: sessionInfoVersion 2</h3>
+        <p>Pre-selección con <code>sessionInfoVersion: 2</code></p>
+      </div>
+
+      <div class="test-card" onclick="testVariant2()">
+        <h3>Test 2: Sin sessionInfoVersion</h3>
+        <p>Pre-selección sin especificar <code>sessionInfoVersion</code></p>
+      </div>
+
+      <div class="test-card" onclick="testVariant3()">
+        <h3>Test 3: business_id (guión bajo)</h3>
+        <p>Usar <code>business_id</code> en lugar de <code>business.id</code></p>
+      </div>
+
+      <div class="test-card" onclick="testVariant4()">
+        <h3>Test 4: business con name</h3>
+        <p>Objeto business completo con <code>id</code> y <code>name</code></p>
+      </div>
+
+      <div class="test-card" onclick="testVariant5()">
+        <h3>Test 5: external_business_id</h3>
+        <p>Usar <code>external_business_id</code></p>
+      </div>
+
+      <div class="test-card" onclick="testVariant6()">
+        <h3>Test 6: business_management scope</h3>
+        <p>Agregar scope <code>business_management</code></p>
+      </div>
+
+      <div class="test-card" onclick="testVariant7()">
+        <h3>Test 7: API v20.0</h3>
+        <p>Probar con versión anterior de API</p>
+      </div>
+
+      <div class="test-card" onclick="testVariant8()">
+        <h3>Test 8: featureType business</h3>
+        <p>Especificar <code>featureType: 'business'</code></p>
+      </div>
+
+      <div class="test-card" onclick="testVariant9()">
+        <h3>Test 9: Redirect URI params</h3>
+        <p>Pre-llenar business_id en redirect_uri</p>
+      </div>
+
+      <div class="test-card" onclick="testVariant10()">
+        <h3>Test 10: Combinación óptima</h3>
+        <p>Mejores prácticas combinadas</p>
+      </div>
+    </div>
+
+    <h2>📊 Resultados</h2>
+    <table class="results-table">
+      <thead>
+        <tr>
+          <th>Test</th>
+          <th>Config</th>
+          <th>authResponse</th>
+          <th>Status</th>
+          <th>Code</th>
+        </tr>
+      </thead>
+      <tbody id="results-table">
+        <!-- Se llenará dinámicamente -->
+      </tbody>
+    </table>
+
+    <h2>📋 Logs en Tiempo Real</h2>
+    <div class="logs" id="logs"></div>
+
+    <div class="config-display" id="current-config" style="display: none;">
+      <h3>Configuración Actual:</h3>
+      <pre id="config-content"></pre>
+    </div>
+  </div>
+
+  <script src="facebook-config-legacy.js"></script>
+  <script>
+    const results = [];
+
+    function log(message, type = 'info') {
+      const logsDiv = document.getElementById('logs');
+      const logEntry = document.createElement('div');
+      logEntry.className = `log-entry ${type}`;
+      logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logsDiv.appendChild(logEntry);
+      logsDiv.scrollTop = logsDiv.scrollHeight;
+      console.log(message);
+    }
+
+    function clearLogs() {
+      document.getElementById('logs').innerHTML = '';
+    }
+
+    function showConfig(config) {
+      const configDiv = document.getElementById('current-config');
+      const configContent = document.getElementById('config-content');
+      configContent.textContent = JSON.stringify(config, null, 2);
+      configDiv.style.display = 'block';
+    }
+
+    function addResult(testName, config, authResponse, status, code) {
+      results.push({
+        test: testName,
+        config: config,
+        authResponse: authResponse !== null,
+        status: status,
+        code: code !== null,
+        timestamp: new Date().toISOString()
+      });
+
+      updateResultsTable();
+    }
+
+    function updateResultsTable() {
+      const tbody = document.getElementById('results-table');
+      tbody.innerHTML = results.map(r => `
+        <tr>
+          <td>${r.test}</td>
+          <td><code>${Object.keys(r.config.extras.setup).join(', ')}</code></td>
+          <td class="${r.authResponse ? 'success' : 'error'}">${r.authResponse ? '✅ Sí' : '❌ No'}</td>
+          <td>${r.status}</td>
+          <td class="${r.code ? 'success' : 'error'}">${r.code ? '✅ Sí' : '❌ No'}</td>
+        </tr>
+      `).join('');
+    }
+
+    function exportResults() {
+      const data = JSON.stringify(results, null, 2);
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `preselection-test-results-${Date.now()}.json`;
+      a.click();
+      log('✅ Resultados exportados', 'success');
+    }
+
+    function runTest(testName, loginOptions) {
+      log(`\n====== ${testName} ======`);
+      log('Configuración: ' + JSON.stringify(loginOptions, null, 2));
+      showConfig(loginOptions);
+
+      if (typeof FB === 'undefined') {
+        log('❌ Facebook SDK no disponible', 'error');
+        return;
+      }
+
+      FB.login(function(response) {
+        log(`\nRespuesta de Facebook:`);
+        log(JSON.stringify(response, null, 2));
+
+        const hasAuthResponse = response.authResponse !== null && response.authResponse !== undefined;
+        const code = response.authResponse?.code;
+
+        if (hasAuthResponse) {
+          log('✅ authResponse recibido!', 'success');
+          if (code) {
+            log(`✅ Código: ${code.substring(0, 20)}...`, 'success');
+          } else {
+            log('⚠️ authResponse presente pero sin código', 'warning');
+          }
+        } else {
+          log('❌ authResponse: null', 'error');
+        }
+
+        addResult(testName, loginOptions, response.authResponse, response.status, code);
+
+      }, loginOptions);
+    }
+
+    // ========== VARIANTES DE PRUEBA ==========
+
+    function testVariant1() {
+      runTest('Test 1: sessionInfoVersion 2', {
+        config_id: facebookConfigLegacy.embeddedSignupConfigId,
+        response_type: 'code',
+        override_default_response_type: true,
+        extras: {
+          setup: {
+            business: {
+              id: facebookConfigLegacy.portfolioId
+            }
+          },
+          sessionInfoVersion: 2  // ← Versión 2
+        }
+      });
+    }
+
+    function testVariant2() {
+      runTest('Test 2: Sin sessionInfoVersion', {
+        config_id: facebookConfigLegacy.embeddedSignupConfigId,
+        response_type: 'code',
+        override_default_response_type: true,
+        extras: {
+          setup: {
+            business: {
+              id: facebookConfigLegacy.portfolioId
+            }
+          }
+          // ← Sin sessionInfoVersion
+        }
+      });
+    }
+
+    function testVariant3() {
+      runTest('Test 3: business_id (guión bajo)', {
+        config_id: facebookConfigLegacy.embeddedSignupConfigId,
+        response_type: 'code',
+        override_default_response_type: true,
+        extras: {
+          setup: {
+            business_id: facebookConfigLegacy.portfolioId  // ← Con guión bajo
+          },
+          sessionInfoVersion: 2
+        }
+      });
+    }
+
+    function testVariant4() {
+      runTest('Test 4: business con name', {
+        config_id: facebookConfigLegacy.embeddedSignupConfigId,
+        response_type: 'code',
+        override_default_response_type: true,
+        extras: {
+          setup: {
+            business: {
+              id: facebookConfigLegacy.portfolioId,
+              name: "Kingdom design"  // ← Con nombre
+            }
+          },
+          sessionInfoVersion: 2
+        }
+      });
+    }
+
+    function testVariant5() {
+      runTest('Test 5: external_business_id', {
+        config_id: facebookConfigLegacy.embeddedSignupConfigId,
+        response_type: 'code',
+        override_default_response_type: true,
+        extras: {
+          setup: {
+            external_business_id: facebookConfigLegacy.portfolioId
+          },
+          sessionInfoVersion: 2
+        }
+      });
+    }
+
+    function testVariant6() {
+      runTest('Test 6: business_management scope', {
+        config_id: facebookConfigLegacy.embeddedSignupConfigId,
+        response_type: 'code',
+        override_default_response_type: true,
+        scope: 'business_management,whatsapp_business_management,whatsapp_business_messaging',  // ← Scope adicional
+        extras: {
+          setup: {
+            business: {
+              id: facebookConfigLegacy.portfolioId
+            }
+          },
+          sessionInfoVersion: 2
+        }
+      });
+    }
+
+    function testVariant7() {
+      // Nota: Requiere cambiar FB.init a v20.0
+      log('⚠️ Este test requiere reiniciar con API v20.0', 'warning');
+      log('Recargar página con ?api_version=v20.0', 'warning');
+    }
+
+    function testVariant8() {
+      runTest('Test 8: featureType business', {
+        config_id: facebookConfigLegacy.embeddedSignupConfigId,
+        response_type: 'code',
+        override_default_response_type: true,
+        extras: {
+          setup: {
+            business: {
+              id: facebookConfigLegacy.portfolioId
+            }
+          },
+          featureType: 'business',  // ← Feature type
+          sessionInfoVersion: 2
+        }
+      });
+    }
+
+    function testVariant9() {
+      log('⚠️ Este test requiere modificar callback URL', 'warning');
+      log('Redirect URI: ' + facebookConfigLegacy.callbackUrl + '?business_id=' + facebookConfigLegacy.portfolioId, 'warning');
+    }
+
+    function testVariant10() {
+      runTest('Test 10: Combinación óptima', {
+        config_id: facebookConfigLegacy.embeddedSignupConfigId,
+        response_type: 'code',
+        override_default_response_type: true,
+        scope: 'business_management,whatsapp_business_management,whatsapp_business_messaging',
+        auth_type: 'rerequest',
+        extras: {
+          setup: {
+            business: {
+              id: facebookConfigLegacy.portfolioId,
+              name: "Kingdom design"
+            }
+          },
+          featureType: 'business',
+          sessionInfoVersion: 2
+        }
+      });
+    }
+
+    // Inicialización
+    window.fbAsyncInit = function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const apiVersion = urlParams.get('api_version') || facebookConfigLegacy.apiVersion;
+
+      FB.init({
+        appId: facebookConfigLegacy.appId,
+        cookie: true,
+        xfbml: true,
+        version: apiVersion
+      });
+
+      log(`✅ Facebook SDK inicializado (${apiVersion})`, 'success');
+      log(`📋 Config ID: ${facebookConfigLegacy.embeddedSignupConfigId}`);
+      log(`🏰 Portfolio ID: ${facebookConfigLegacy.portfolioId}`);
+      log(`\n👆 Haz click en cualquier test para comenzar`);
+    };
+
+    (function(d, s, id){
+      var js, fjs = d.getElementsByTagName(s)[0];
+      if (d.getElementById(id)) {return;}
+      js = d.createElement(s); js.id = id;
+      js.src = `https://connect.facebook.net/${facebookConfigLegacy.locale}/sdk.js`;
+      fjs.parentNode.insertBefore(js, fjs);
+    }(document, 'script', 'facebook-jssdk'));
+  </script>
+</body>
+</html>
