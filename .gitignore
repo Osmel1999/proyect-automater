@@ -33,6 +33,10 @@ backup_*/
 archive_*/
 *.tar.gz
 
+# Baileys Sessions (contiene credenciales sensibles)
+sessions/
+!sessions/.gitkeep
+
 # Service Account (seguridad)
 *service-account*.json
 
