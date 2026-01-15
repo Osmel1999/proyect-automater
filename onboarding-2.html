@@ -1329,15 +1329,9 @@
         scope: 'whatsapp_business_management,whatsapp_business_messaging',
         auth_type: 'rerequest',
         extras: {
-          setup: {
-            // Pre-seleccionar el Business Portfolio LEGACY
-            // Portfolio antiguo para pruebas y backup
-            business: {
-              id: '1473689432774278' // Portfolio ID LEGACY
-            }
-          },
+          setup: {},  // Dejar que el usuario elija el portfolio manualmente
           featureType: '',
-          sessionInfoVersion: 3  // Actualizado a v3 según documentación
+          sessionInfoVersion: 2
         }
       });
     });

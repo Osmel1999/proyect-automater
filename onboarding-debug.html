@@ -107,13 +107,9 @@
         scope: 'whatsapp_business_management,whatsapp_business_messaging',
         auth_type: 'rerequest',
         extras: {
-          setup: {
-            business: {
-              id: facebookConfigLegacy.portfolioId
-            }
-          },
+          setup: {},  // Sin pre-selección de portfolio
           featureType: '',
-          sessionInfoVersion: 3
+          sessionInfoVersion: 2  // Versión 2 como en el original
         }
       };
 
