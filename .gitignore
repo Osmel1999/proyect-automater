@@ -30,6 +30,8 @@ firebaserc
 
 # Backups
 backup_*/
+archive_*/
+*.tar.gz
 
 # Service Account (seguridad)
 *service-account*.json
