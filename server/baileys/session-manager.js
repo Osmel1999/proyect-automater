@@ -3,7 +3,6 @@
  * Maneja la inicialización, conexión y gestión de sesiones de WhatsApp usando Baileys
  */
 
-const { default: makeWASocket, DisconnectReason, useMultiFileAuthState } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const pino = require('pino');
 const path = require('node:path');
@@ -11,6 +10,21 @@ const fs = require('node:fs').promises;
 const EventEmitter = require('node:events');
 
 const logger = pino({ level: 'info' });
+
+// Baileys es ESM, se carga dinámicamente
+let baileys = null;
+let baileysPromise = null;
+
+async function loadBaileys() {
+  if (baileys) return baileys;
+  if (!baileysPromise) {
+    baileysPromise = import('@whiskeysockets/baileys').then((module) => {
+      baileys = module;
+      return module;
+    });
+  }
+  return baileysPromise;
+}
 
 class SessionManager extends EventEmitter {
   constructor() {
@@ -55,6 +69,9 @@ class SessionManager extends EventEmitter {
   async initSession(tenantId, options = {}) {
     try {
       logger.info(`[${tenantId}] Inicializando sesión...`);
+
+      // Cargar Baileys si no está cargado
+      const { default: makeWASocket, useMultiFileAuthState } = await loadBaileys();
 
       // Si ya existe una sesión, cerrarla primero
       if (this.sessions.has(tenantId)) {
@@ -143,6 +160,9 @@ class SessionManager extends EventEmitter {
 
     // Manejar cambios de conexión
     if (connection === 'close') {
+      // Cargar Baileys para obtener DisconnectReason
+      const { DisconnectReason } = await loadBaileys();
+      
       const shouldReconnect = (lastDisconnect?.error instanceof Boom)
         ? lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut
         : true;
