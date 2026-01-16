@@ -237,6 +237,14 @@ class BaileysService {
       sessions
     };
   }
+
+  /**
+   * Obtiene el sessionManager (para suscribirse a eventos)
+   * @returns {SessionManager}
+   */
+  getSessionManager() {
+    return sessionManager;
+  }
 }
 
 // Singleton instance

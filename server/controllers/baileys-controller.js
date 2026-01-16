@@ -12,6 +12,40 @@ const qrStore = new Map();
 // Store para estado de conexión
 const connectionStore = new Map();
 
+// Suscribirse a eventos de QR del SessionManager
+const sessionManager = baileys.getSessionManager();
+
+// Escuchar eventos de QR
+sessionManager.on('qr', (tenantId, qr) => {
+  logger.info(`[${tenantId}] QR recibido en controller, almacenando...`);
+  qrStore.set(tenantId, {
+    qr,
+    timestamp: Date.now()
+  });
+});
+
+// Escuchar eventos de conexión
+sessionManager.on('connected', (tenantId, phoneNumber) => {
+  logger.info(`[${tenantId}] Conexión establecida en controller`);
+  connectionStore.set(tenantId, {
+    phoneNumber,
+    timestamp: Date.now(),
+    reason: 'connected'
+  });
+  // Limpiar QR al conectar
+  qrStore.delete(tenantId);
+});
+
+// Escuchar eventos de desconexión
+sessionManager.on('disconnected', (tenantId) => {
+  logger.info(`[${tenantId}] Desconexión en controller`);
+  connectionStore.set(tenantId, {
+    phoneNumber: null,
+    timestamp: Date.now(),
+    reason: 'disconnected'
+  });
+});
+
 class BaileysController {
   /**
    * POST /api/baileys/connect
@@ -39,21 +73,15 @@ class BaileysController {
         });
       }
 
-      // Iniciar sesión
+      // Iniciar sesión (el QR se enviará por eventos)
       const result = await baileys.initializeSession(tenantId);
 
       if (!result.success) {
         throw new Error(result.error || 'Error al inicializar sesión');
       }
 
-      // Si se generó QR, guardarlo en el store
-      if (result.method === 'qr' && result.qrCode) {
-        qrStore.set(tenantId, {
-          qr: result.qrCode,
-          timestamp: Date.now()
-        });
-        logger.info(`[${tenantId}] QR generado y almacenado`);
-      }
+      // Nota: El QR se capturará por eventos, no aquí
+      logger.info(`[${tenantId}] Sesión iniciada, esperando QR por eventos...`);
 
       res.json({ 
         success: true,
@@ -212,7 +240,7 @@ class BaileysController {
         });
       }
 
-      const stats = await baileys.getAntiBanStats(tenantId);
+      const stats = baileys.getAntiBanStats(tenantId);
 
       res.json(stats);
 

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test QR Simple</title>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+</head>
+<body>
+  <h1>Test QR Simple</h1>
+  <div id="status"></div>
+  <div id="qr-container"></div>
+  
+  <script>
+    const tenantId = 'test_demo';
+    const statusDiv = document.getElementById('status');
+    const qrContainer = document.getElementById('qr-container');
+    
+    async function testFlow() {
+      try {
+        // 1. Conectar
+        statusDiv.innerHTML = '1. Conectando...';
+        const connectRes = await fetch('/api/baileys/connect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tenantId })
+        });
+        const connectData = await connectRes.json();
+        console.log('Conectar:', connectData);
+        statusDiv.innerHTML += '<br>✅ Conectado: ' + JSON.stringify(connectData);
+        
+        // 2. Esperar un poco
+        await new Promise(r => setTimeout(r, 2000));
+        
+        // 3. Obtener QR
+        statusDiv.innerHTML += '<br>2. Obteniendo QR...';
+        const qrRes = await fetch(`/api/baileys/qr?tenantId=${tenantId}`);
+        const qrData = await qrRes.json();
+        console.log('QR:', qrData);
+        statusDiv.innerHTML += '<br>📱 QR: ' + JSON.stringify(qrData);
+        
+        // 4. Mostrar QR si existe
+        if (qrData.qr) {
+          statusDiv.innerHTML += '<br>✅ Generando imagen QR...';
+          const canvas = document.createElement('canvas');
+          qrContainer.appendChild(canvas);
+          
+          QRCode.toCanvas(canvas, qrData.qr, { width: 300 }, (error) => {
+            if (error) {
+              statusDiv.innerHTML += '<br>❌ Error QR: ' + error;
+            } else {
+              statusDiv.innerHTML += '<br>✅ QR mostrado!';
+            }
+          });
+        } else {
+          statusDiv.innerHTML += '<br>❌ No hay QR disponible';
+        }
+        
+      } catch (error) {
+        console.error('Error:', error);
+        statusDiv.innerHTML += '<br>❌ Error: ' + error.message;
+      }
+    }
+    
+    testFlow();
+  </script>
+</body>
+</html>

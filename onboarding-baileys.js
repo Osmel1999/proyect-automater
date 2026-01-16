@@ -136,8 +136,11 @@ class BaileysOnboarding {
 
     const poll = async () => {
       try {
+        console.log(`📡 Polling QR para tenant: ${this.tenantId}`);
         const response = await fetch(`/api/baileys/qr?tenantId=${this.tenantId}`);
         const data = await response.json();
+        
+        console.log('📥 Respuesta de QR:', data);
 
         if (data.connected) {
           console.log('✅ Conectado!');
@@ -150,7 +153,7 @@ class BaileysOnboarding {
         }
 
         if (data.qr) {
-          console.log('📱 QR recibido');
+          console.log('📱 QR recibido, mostrando...');
           this.displayQR(data.qr);
           
           // Continuar polling si no está conectado
@@ -165,9 +168,16 @@ class BaileysOnboarding {
           if (!this.isConnected && this.isPolling) {
             setTimeout(poll, 3000);
           }
+        } else {
+          console.log('⏳ QR aún no disponible, esperando...');
+          
+          // Continuar polling
+          if (!this.isConnected && this.isPolling) {
+            setTimeout(poll, 2000); // Poll más frecuente cuando no hay QR
+          }
         }
       } catch (error) {
-        console.error('Error en polling de QR:', error);
+        console.error('❌ Error en polling de QR:', error);
         
         if (this.isPolling) {
           setTimeout(poll, 5000); // Retry en 5 segundos

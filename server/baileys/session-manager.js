@@ -160,10 +160,12 @@ class SessionManager extends EventEmitter {
         this.emit('logged-out', tenantId);
       }
 
-      // Actualizar estado
+      // Actualizar estado solo si aún existe
       const state = this.sessionStates.get(tenantId);
-      state.connected = false;
-      this.sessionStates.set(tenantId, state);
+      if (state) {
+        state.connected = false;
+        this.sessionStates.set(tenantId, state);
+      }
       this.emit('disconnected', tenantId);
 
     } else if (connection === 'open') {
@@ -173,13 +175,15 @@ class SessionManager extends EventEmitter {
       const socket = this.sessions.get(tenantId);
       const phoneNumber = socket.user?.id?.split(':')[0] || null;
 
-      // Actualizar estado
+      // Actualizar estado solo si existe
       const state = this.sessionStates.get(tenantId);
-      state.connected = true;
-      state.qr = null;
-      state.lastSeen = new Date();
-      state.phoneNumber = phoneNumber;
-      this.sessionStates.set(tenantId, state);
+      if (state) {
+        state.connected = true;
+        state.qr = null;
+        state.lastSeen = new Date();
+        state.phoneNumber = phoneNumber;
+        this.sessionStates.set(tenantId, state);
+      }
 
       this.emit('connected', tenantId, phoneNumber);
     }
