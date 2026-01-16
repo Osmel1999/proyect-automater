@@ -3,11 +3,25 @@
  * Convierte mensajes entre formato Baileys y formato interno del sistema
  */
 
-const { downloadMediaMessage } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const sessionManager = require('./session-manager');
 
 const logger = pino({ level: 'info' });
+
+// Baileys es ESM, se carga dinámicamente
+let baileys = null;
+let baileysPromise = null;
+
+async function loadBaileys() {
+  if (baileys) return baileys;
+  if (!baileysPromise) {
+    baileysPromise = import('@whiskeysockets/baileys').then((module) => {
+      baileys = module;
+      return module;
+    });
+  }
+  return baileysPromise;
+}
 
 class MessageAdapter {
   /**
@@ -305,6 +319,9 @@ class MessageAdapter {
    */
   async downloadMedia(baileysMessage) {
     try {
+      // Cargar Baileys si no está cargado
+      const { downloadMediaMessage } = await loadBaileys();
+      
       const buffer = await downloadMediaMessage(
         baileysMessage,
         'buffer',
