@@ -74,7 +74,7 @@ class SessionManager extends EventEmitter {
         auth: state,
         printQRInTerminal: options.printQR || false,
         logger: pino({ level: 'silent' }), // Silenciar logs internos de Baileys
-        browser: ['KDS Bot', 'Chrome', '1.0.0'],
+        browser: ['KDS', 'Chrome', '1.0.0'],
         connectTimeoutMs: 60000,
         defaultQueryTimeoutMs: 0,
         keepAliveIntervalMs: 30000,
