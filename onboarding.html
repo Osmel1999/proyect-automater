@@ -4,8 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Conecta tu WhatsApp - KDS Platform</title>
-  <meta name="description" content="Conecta tu WhatsApp Business en 1 clic y comienza a recibir pedidos automáticamente">
+  <meta name="description" content="Conecta tu WhatsApp Business escaneando un QR y comienza a recibir pedidos automáticamente">
   <link rel="icon" type="image/png" href="assets/images/kds-logo.png">
+  
+  <!-- QRCode.js Library -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  
   <style>
     * {
       margin: 0;
@@ -82,1243 +86,636 @@
       line-height: 1.6;
     }
 
-    .options-container {
-      margin-bottom: 40px;
-      padding: 30px;
+    /* QR Section */
+    .qr-section {
+      margin: 40px 0;
+    }
+
+    .qr-container {
       background: #f7fafc;
-      border-radius: 12px;
-      border: 2px solid #e2e8f0;
-    }
-
-    /* ====================================
-       SECCIÓN CRÍTICA: Business Portfolio
-       ==================================== */
-    .critical-notice {
-      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-      border: 3px solid #f59e0b;
+      padding: 30px;
       border-radius: 16px;
-      padding: 24px;
+      border: 2px dashed #cbd5e0;
       margin-bottom: 30px;
+    }
+
+    .qr-loading {
       display: flex;
+      flex-direction: column;
+      align-items: center;
       gap: 20px;
-      align-items: flex-start;
-      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.2);
-      animation: pulseWarning 2s ease-in-out infinite;
     }
 
-    @keyframes pulseWarning {
-      0%, 100% {
-        box-shadow: 0 10px 30px rgba(245, 158, 11, 0.2);
-      }
-      50% {
-        box-shadow: 0 15px 40px rgba(245, 158, 11, 0.4);
-      }
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid #e2e8f0;
+      border-top: 4px solid #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
     }
 
-    .notice-icon {
-      font-size: 48px;
-      flex-shrink: 0;
-      animation: shake 1s ease-in-out infinite;
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
 
-    @keyframes shake {
-      0%, 100% { transform: rotate(0deg); }
-      25% { transform: rotate(-5deg); }
-      75% { transform: rotate(5deg); }
+    .qr-loading-text {
+      font-size: 16px;
+      color: #4a5568;
+      font-weight: 500;
     }
 
-    .notice-content {
-      flex: 1;
+    #qr-code {
+      display: none;
+      margin: 0 auto;
     }
 
-    .notice-title {
-      font-size: 20px;
-      font-weight: 700;
-      color: #92400e;
-      margin-bottom: 12px;
-      line-height: 1.3;
+    #qr-code canvas {
+      max-width: 100%;
+      height: auto;
+      border-radius: 12px;
     }
 
-    .notice-text {
-      font-size: 15px;
-      color: #78350f;
-      margin-bottom: 16px;
-      line-height: 1.6;
-    }
-
-    .notice-highlight {
-      background: white;
-      padding: 16px;
-      border-radius: 8px;
-      border-left: 4px solid #10b981;
-      margin: 16px 0;
-      font-size: 14px;
-      line-height: 1.8;
-    }
-
-    .notice-highlight strong {
-      display: block;
-      margin-bottom: 4px;
-    }
-
-    .notice-explanation {
-      font-size: 14px;
-      color: #92400e;
-      line-height: 1.6;
-      margin-bottom: 16px;
-    }
-
-    .btn-understand {
-      background: #10b981;
-      color: white;
-      border: none;
+    .qr-status {
+      margin-top: 20px;
       padding: 12px 24px;
       border-radius: 8px;
       font-size: 14px;
       font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+      display: inline-block;
     }
 
-    .btn-understand:hover {
-      background: #059669;
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
-    }
-
-    /* ====================================
-       MODAL: Guía de Portfolio
-       ==================================== */
-    .portfolio-guide-modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.8);
-      z-index: 10000;
-      padding: 20px;
-      overflow-y: auto;
-      backdrop-filter: blur(8px);
-    }
-
-    .portfolio-guide-modal.active {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      animation: fadeIn 0.3s ease-out;
-    }
-
-    .portfolio-guide-content {
-      background: white;
-      border-radius: 20px;
-      max-width: 900px;
-      width: 100%;
-      padding: 40px;
-      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
-      animation: slideUpModal 0.4s ease-out;
-      position: relative;
-      max-height: 90vh;
-      overflow-y: auto;
-    }
-
-    @keyframes slideUpModal {
-      from {
-        opacity: 0;
-        transform: translateY(40px) scale(0.95);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-      }
-    }
-
-    .portfolio-guide-header {
-      text-align: center;
-      margin-bottom: 30px;
-      padding-bottom: 20px;
-      border-bottom: 3px solid #10b981;
-    }
-
-    .portfolio-guide-title {
-      font-size: 28px;
-      font-weight: 700;
-      color: #1a202c;
-      margin-bottom: 12px;
-    }
-
-    .portfolio-guide-subtitle {
-      font-size: 16px;
-      color: #718096;
-      line-height: 1.5;
-    }
-
-    .guide-step-card {
-      background: #f7fafc;
-      border-radius: 12px;
-      padding: 24px;
-      margin-bottom: 20px;
-      border: 2px solid #e2e8f0;
-    }
-
-    .guide-step-card.highlight {
+    .status-waiting {
       background: #fef3c7;
-      border-color: #f59e0b;
+      color: #92400e;
+      border: 2px solid #f59e0b;
     }
 
-    .guide-step-header {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      margin-bottom: 16px;
-    }
-
-    .guide-step-number {
-      background: #10b981;
-      color: white;
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-      font-weight: 700;
-      flex-shrink: 0;
-    }
-
-    .guide-step-card.highlight .guide-step-number {
-      background: #f59e0b;
-    }
-
-    .guide-step-title {
-      font-size: 18px;
-      font-weight: 600;
-      color: #1a202c;
-    }
-
-    .guide-step-text {
-      font-size: 15px;
-      color: #4a5568;
-      line-height: 1.6;
-      margin-bottom: 12px;
-    }
-
-    .guide-screenshot-placeholder {
-      background: #e2e8f0;
-      border-radius: 8px;
-      padding: 40px;
-      text-align: center;
-      color: #718096;
-      font-style: italic;
-      margin-top: 12px;
-    }
-
-    .guide-do-dont {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      margin-top: 16px;
-    }
-
-    .guide-do, .guide-dont {
-      padding: 16px;
-      border-radius: 8px;
-      font-size: 14px;
-    }
-
-    .guide-do {
+    .status-ready {
       background: #d1fae5;
+      color: #065f46;
       border: 2px solid #10b981;
     }
 
-    .guide-dont {
-      background: #fee2e2;
-      border: 2px solid #ef4444;
+    .status-success {
+      background: #d1fae5;
+      color: #065f46;
     }
 
-    .guide-do strong, .guide-dont strong {
-      display: block;
-      margin-bottom: 8px;
-      font-size: 16px;
-    }
-
-    .btn-close-guide {
-      background: #667eea;
-      color: white;
-      border: none;
-      padding: 16px 32px;
-      border-radius: 50px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      width: 100%;
-      margin-top: 24px;
-      transition: all 0.3s ease;
-    }
-
-    .btn-close-guide:hover {
-      background: #5a67d8;
-      transform: translateY(-2px);
-    }
-
-    .options-container {
-      margin-bottom: 40px;
-      padding: 30px;
+    /* Instructions */
+    .instructions-container {
       background: #f7fafc;
+      padding: 24px;
       border-radius: 12px;
-      border: 2px solid #e2e8f0;
-    }
-
-    .options-title {
-      font-size: 20px;
-      font-weight: 600;
-      color: #2d3748;
-      margin-bottom: 20px;
-    }
-
-    .option-card {
-      background: white;
-      padding: 20px;
-      border-radius: 8px;
-      margin-bottom: 15px;
-      border: 2px solid #e2e8f0;
+      margin-bottom: 30px;
       text-align: left;
-      transition: all 0.3s ease;
-      cursor: pointer;
     }
 
-    .option-card:hover {
-      border-color: #25D366;
-      box-shadow: 0 4px 12px rgba(37, 211, 102, 0.1);
-    }
-
-    .option-card.selected {
-      border-color: #25D366;
-      background: #f0fdf4;
-    }
-
-    .option-title {
+    .instructions-title {
       font-size: 18px;
-      font-weight: 600;
+      font-weight: 700;
       color: #1a202c;
-      margin-bottom: 8px;
+      margin-bottom: 16px;
       display: flex;
       align-items: center;
       gap: 10px;
     }
 
-    .option-badge {
-      font-size: 12px;
-      padding: 4px 10px;
-      border-radius: 12px;
-      font-weight: 600;
+    .instructions-list {
+      list-style: none;
+      padding: 0;
     }
 
-    .badge-recommended {
-      background: #25D366;
-      color: white;
+    .instructions-list li {
+      padding: 12px 0;
+      padding-left: 32px;
+      position: relative;
+      color: #4a5568;
+      font-size: 15px;
+      line-height: 1.6;
     }
 
-    .badge-new {
+    .instructions-list li:before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      top: 12px;
+      width: 24px;
+      height: 24px;
       background: #667eea;
       color: white;
-    }
-
-    .option-description {
-      font-size: 14px;
-      color: #718096;
-      line-height: 1.5;
-    }
-
-    .option-icon {
-      font-size: 24px;
-    }
-
-    .warning-box {
-      background: #fff3cd;
-      border: 2px solid #ffc107;
-      border-radius: 8px;
-      padding: 16px;
-      margin-top: 20px;
-      text-align: left;
-    }
-
-    .warning-box strong {
-      color: #856404;
-      display: block;
-      margin-bottom: 8px;
-    }
-
-    .warning-box p {
-      color: #856404;
-      font-size: 14px;
-      margin: 0;
-    }
-
-    .btn-connect-whatsapp {
-      display: inline-flex;
+      border-radius: 50%;
+      display: flex;
       align-items: center;
       justify-content: center;
-      gap: 12px;
-      background: #25D366;
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    /* Connected View */
+    .connected-view {
+      display: none;
+    }
+
+    .success-icon {
+      width: 80px;
+      height: 80px;
+      background: #10b981;
+      border-radius: 50%;
+      margin: 0 auto 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
       color: white;
-      padding: 18px 36px;
-      border-radius: 50px;
-      font-size: 18px;
-      font-weight: 600;
-      text-decoration: none;
-      transition: all 0.3s ease;
-      cursor: pointer;
-      border: none;
-      box-shadow: 0 4px 15px rgba(37, 211, 102, 0.3);
-      position: relative;
-      overflow: hidden;
+      animation: scaleIn 0.5s ease-out;
     }
 
-    .btn-connect-whatsapp:hover {
-      background: #20BA5A;
-      transform: translateY(-2px);
-      box-shadow: 0 6px 25px rgba(37, 211, 102, 0.5);
-    }
-
-    .btn-connect-whatsapp:active {
-      transform: translateY(0);
-    }
-
-    .btn-connect-whatsapp:disabled {
-      background: #cbd5e0;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    .whatsapp-icon {
-      font-size: 28px;
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% {
+    @keyframes scaleIn {
+      from {
+        transform: scale(0);
+      }
+      to {
         transform: scale(1);
       }
-      50% {
-        transform: scale(1.1);
-      }
     }
 
-    .features-list {
-      text-align: left;
-      margin-top: 50px;
-      padding-top: 40px;
-      border-top: 2px solid #e2e8f0;
-    }
-
-    .features-title {
-      font-size: 20px;
-      font-weight: 600;
-      color: #2d3748;
-      margin-bottom: 24px;
-      text-align: center;
-    }
-
-    .feature-item {
-      display: flex;
-      align-items: flex-start;
-      gap: 16px;
-      margin-bottom: 20px;
-      padding: 16px;
-      background: #f7fafc;
-      border-radius: 12px;
-      transition: all 0.3s ease;
-    }
-
-    .feature-item:hover {
-      background: #edf2f7;
-      transform: translateX(4px);
-    }
-
-    .feature-icon {
+    .connected-title {
       font-size: 28px;
-      flex-shrink: 0;
-      line-height: 1;
+      font-weight: 700;
+      color: #065f46;
+      margin-bottom: 16px;
     }
 
-    .feature-text {
-      flex: 1;
-    }
-
-    .feature-text strong {
-      display: block;
-      color: #2d3748;
-      font-size: 16px;
-      margin-bottom: 4px;
+    .connected-phone {
+      font-size: 20px;
+      color: #4a5568;
+      margin-bottom: 30px;
       font-weight: 600;
     }
 
-    .feature-text span {
-      color: #718096;
-      font-size: 14px;
-      line-height: 1.5;
-    }
-
-    .loading-state {
-      display: none;
-      align-items: center;
-      gap: 12px;
-      color: #718096;
-      font-size: 14px;
-      margin-top: 20px;
-    }
-
-    .loading-state.active {
-      display: flex;
-      justify-content: center;
-    }
-
-    .spinner {
-      width: 20px;
-      height: 20px;
-      border: 3px solid #e2e8f0;
-      border-top-color: #667eea;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    .error-message {
-      display: none;
-      background: #fed7d7;
-      color: #c53030;
-      padding: 16px;
-      border-radius: 12px;
-      margin-top: 20px;
-      font-size: 14px;
-      text-align: left;
-    }
-
-    .error-message.active {
-      display: block;
-    }
-
-    .back-link {
-      display: inline-block;
-      margin-top: 30px;
-      color: #667eea;
-      text-decoration: none;
-      font-size: 14px;
-      font-weight: 500;
-      transition: color 0.3s ease;
-    }
-
-    .back-link:hover {
-      color: #764ba2;
-      text-decoration: underline;
-    }
-
-    /* Modal de ayuda para número registrado */
-    .help-modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.7);
-      z-index: 9999;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
-
-    .help-modal.active {
-      display: flex;
-    }
-
-    .help-modal-content {
-      background: white;
-      border-radius: 16px;
-      padding: 40px;
-      max-width: 600px;
-      width: 100%;
-      max-height: 90vh;
-      overflow-y: auto;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-      animation: slideUp 0.3s ease-out;
-    }
-
-    .help-modal-header {
-      display: flex;
-      align-items: flex-start;
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
       gap: 16px;
-      margin-bottom: 24px;
+      margin-bottom: 30px;
     }
 
-    .help-modal-icon {
-      font-size: 48px;
-      flex-shrink: 0;
-    }
-
-    .help-modal-title {
-      font-size: 24px;
-      font-weight: 700;
-      color: #1a202c;
-      margin-bottom: 8px;
-    }
-
-    .help-modal-subtitle {
-      font-size: 16px;
-      color: #718096;
-      line-height: 1.5;
-    }
-
-    .help-steps {
+    .stat-card {
       background: #f7fafc;
+      padding: 20px;
       border-radius: 12px;
-      padding: 24px;
-      margin: 24px 0;
+      border: 1px solid #e2e8f0;
     }
 
-    .help-step {
-      display: flex;
-      gap: 16px;
-      margin-bottom: 16px;
-      padding-bottom: 16px;
-      border-bottom: 1px solid #e2e8f0;
-    }
-
-    .help-step:last-child {
-      border-bottom: none;
-      margin-bottom: 0;
-      padding-bottom: 0;
-    }
-
-    .step-number {
-      width: 32px;
-      height: 32px;
-      background: #667eea;
-      color: white;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    .stat-value {
+      font-size: 32px;
       font-weight: 700;
-      flex-shrink: 0;
-    }
-
-    .step-text {
-      flex: 1;
-      color: #2d3748;
-      line-height: 1.6;
-    }
-
-    .help-tip {
-      background: #fff3cd;
-      border-left: 4px solid #ffc107;
-      padding: 16px;
-      margin: 20px 0;
-      border-radius: 4px;
-    }
-
-    .help-tip strong {
-      color: #856404;
-      display: block;
+      color: #667eea;
       margin-bottom: 8px;
     }
 
-    .help-tip p {
-      color: #856404;
-      margin: 0;
+    .stat-label {
       font-size: 14px;
-      line-height: 1.6;
+      color: #718096;
     }
 
-    .help-modal-actions {
-      display: flex;
-      gap: 12px;
-      margin-top: 24px;
-    }
-
-    .btn-modal {
-      flex: 1;
-      padding: 14px 24px;
+    /* Buttons */
+    .btn {
+      padding: 14px 32px;
+      border: none;
       border-radius: 8px;
       font-size: 16px;
       font-weight: 600;
       cursor: pointer;
-      border: none;
       transition: all 0.3s ease;
+      margin: 8px;
     }
 
     .btn-primary {
       background: #667eea;
       color: white;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
     }
 
     .btn-primary:hover {
       background: #5568d3;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
     }
 
     .btn-secondary {
       background: #e2e8f0;
-      color: #2d3748;
+      color: #4a5568;
     }
 
     .btn-secondary:hover {
       background: #cbd5e0;
+      transform: translateY(-2px);
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+
+    /* Security Notice */
+    .security-notice {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 30px;
+      font-size: 14px;
+      color: #166534;
+      line-height: 1.6;
+    }
+
+    .security-notice strong {
+      color: #14532d;
     }
 
     /* Responsive */
     @media (max-width: 640px) {
       .onboarding-container {
-        padding: 30px 20px;
+        padding: 24px;
       }
 
       .onboarding-title {
-        font-size: 26px;
+        font-size: 24px;
       }
 
-      .onboarding-subtitle {
-        font-size: 16px;
-      }
-
-      .btn-connect-whatsapp {
-        padding: 16px 28px;
-        font-size: 16px;
+      .stats-grid {
+        grid-template-columns: 1fr;
       }
     }
   </style>
 </head>
 <body>
   <div class="onboarding-container">
+    <!-- Logo -->
     <div class="onboarding-logo">
-      <img src="assets/images/kds-logo.webp" alt="KDS Logo" onerror="this.src='assets/images/kds-logo.png'">
+      <img src="assets/images/kds-logo.png" alt="KDS Logo" onerror="this.style.display='none'">
     </div>
 
-    <h1 class="onboarding-title">🚀 Conecta tu WhatsApp Business</h1>
-    
-    <p class="onboarding-subtitle">
-      Elige cómo quieres configurar tu cuenta
-    </p>
+    <!-- QR View (Default) -->
+    <div id="qr-view">
+      <h1 class="onboarding-title">🚀 Conecta tu WhatsApp</h1>
+      <p class="onboarding-subtitle">
+        Vincula tu WhatsApp en segundos y comienza a recibir pedidos automáticamente
+      </p>
 
-    <!-- ADVERTENCIA CRÍTICA: Business Portfolio -->
-    <div class="critical-notice">
-      <div class="notice-icon">🚨</div>
-      <div class="notice-content">
-        <h3 class="notice-title">¡MUY IMPORTANTE! Lee esto antes de continuar</h3>
-        <p class="notice-text">
-          Durante el proceso de conexión, Facebook te preguntará <strong>qué Business Portfolio usar</strong>.
-        </p>
-        <div class="notice-highlight">
-          <strong>✅ DEBES SELECCIONAR:</strong> "KDS Platform" o el portfolio de la empresa tecnológica<br>
-          <strong>❌ NO SELECCIONAR:</strong> Tu propio portfolio o el de tu restaurante
+      <!-- QR Container -->
+      <div class="qr-section">
+        <div class="qr-container">
+          <!-- Loading State -->
+          <div id="qr-loading" class="qr-loading">
+            <div class="spinner"></div>
+            <div class="qr-loading-text">Generando código QR...</div>
+          </div>
+
+          <!-- QR Code -->
+          <div id="qr-code"></div>
+
+          <!-- Status Badge -->
+          <div id="qr-status" class="qr-status status-waiting">
+            <span>⏳ Esperando conexión...</span>
+          </div>
         </div>
-        <p class="notice-explanation">
-          Si seleccionas tu propio portfolio (no verificado), tu número quedará en estado "Pendiente" 
-          por 24-48 horas hasta que Meta lo apruebe. Con el portfolio de KDS (ya verificado), 
-          <strong>tu número se activa INSTANTÁNEAMENTE</strong> y puedes empezar a recibir pedidos de inmediato.
-        </p>
-        <button class="btn-understand" onclick="showPortfolioGuideModal()">
-          📖 Ver guía visual paso a paso
+
+        <!-- Instructions -->
+        <div class="instructions-container">
+          <div class="instructions-title">
+            📱 ¿Cómo conectar?
+          </div>
+          <ol class="instructions-list">
+            <li>Abre <strong>WhatsApp</strong> en tu teléfono</li>
+            <li>Toca <strong>Menú</strong> o <strong>Configuración</strong></li>
+            <li>Selecciona <strong>Dispositivos vinculados</strong></li>
+            <li>Toca <strong>Vincular un dispositivo</strong></li>
+            <li><strong>Escanea este código QR</strong> con tu cámara</li>
+          </ol>
+        </div>
+      </div>
+
+      <!-- Security Notice -->
+      <div class="security-notice">
+        <strong>🔒 Seguro y privado</strong><br>
+        Tu conexión está cifrada de extremo a extremo. Nunca almacenamos tus mensajes ni tenemos acceso a tu cuenta de WhatsApp.
+      </div>
+    </div>
+
+    <!-- Connected View (Hidden by default) -->
+    <div id="connected-view" class="connected-view">
+      <div class="success-icon">✓</div>
+      <h2 class="connected-title">¡Conectado exitosamente!</h2>
+      <p class="connected-phone" id="connected-phone">📱 <span id="phone-number">Cargando...</span></p>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="stat-sent">0</div>
+          <div class="stat-label">Mensajes enviados hoy</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-limit">1000</div>
+          <div class="stat-label">Límite diario</div>
+        </div>
+      </div>
+
+      <div>
+        <button class="btn btn-primary" id="btn-dashboard">
+          📊 Ir al Dashboard
+        </button>
+        <button class="btn btn-danger" id="btn-disconnect">
+          🔌 Desconectar
         </button>
       </div>
-    </div>
 
-    <div class="options-container">
-      <h3 class="options-title">¿Tienes un número de WhatsApp Business?</h3>
-
-      <div class="option-card" data-option="migrate">
-        <div class="option-title">
-          <span class="option-icon">🔄</span>
-          <span>Ya tengo WhatsApp Business</span>
-          <span class="option-badge badge-recommended">RECOMENDADO</span>
-        </div>
-        <p class="option-description">
-          Conecta tu número actual de WhatsApp Business. Tus clientes seguirán usando el mismo número que conocen. 
-          Solo cambiarás la forma de gestionar los pedidos.
-        </p>
-      </div>
-
-      <div class="option-card" data-option="new">
-        <div class="option-title">
-          <span class="option-icon">✨</span>
-          <span>Quiero registrar un número nuevo</span>
-          <span class="option-badge badge-new">NUEVO</span>
-        </div>
-        <p class="option-description">
-          Registra un nuevo número de teléfono para WhatsApp Business. 
-          Ideal si estás empezando o quieres separar tu línea personal.
-        </p>
-      </div>
-
-      <div class="warning-box" id="migration-warning" style="display: none;">
-        <strong>⚠️ Importante: Si eliges migrar tu número existente</strong>
-        <p>
-          • Tu app de WhatsApp Business en el teléfono dejará de funcionar<br>
-          • Tus clientes NO necesitan hacer nada<br>
-          • Tu número sigue siendo el mismo<br>
-          • Todas tus conversaciones se preservan<br>
-          • Necesitarás tener acceso al teléfono para verificar<br>
-          <br>
-          <strong>⚠️ Si ves error "This number is registered...":</strong><br>
-          Debes <a href="COMO-DESCONECTAR-WHATSAPP.md" target="_blank" style="color: #856404; text-decoration: underline; font-weight: 600;">desconectar tu número primero</a> 
-          desde la app de WhatsApp Business en tu teléfono (Configuración → Cuenta → Eliminar cuenta). 
-          <a href="COMO-DESCONECTAR-WHATSAPP.md" target="_blank" style="color: #856404; text-decoration: underline;">Ver guía completa →</a>
-        </p>
-      </div>
-    </div>
-
-    <button id="btn-connect" class="btn-connect-whatsapp" disabled>
-      <span class="whatsapp-icon">📱</span>
-      Conectar WhatsApp Ahora
-    </button>
-
-    <div class="loading-state" id="loading-state">
-      <div class="spinner"></div>
-      <span>Conectando con Facebook...</span>
-    </div>
-
-    <div class="error-message" id="error-message">
-      <strong>⚠️ Error de conexión</strong>
-      <p id="error-text"></p>
-    </div>
-
-    <div class="features-list">
-      <h3 class="features-title">✨ Lo que obtienes</h3>
-
-      <div class="feature-item">
-        <div class="feature-icon">⚡</div>
-        <div class="feature-text">
-          <strong>Configuración instantánea</strong>
-          <span>Sin complicaciones técnicas. Solo autoriza tu cuenta de WhatsApp Business y estarás listo para recibir pedidos en segundos.</span>
-        </div>
-      </div>
-
-      <div class="feature-item">
-        <div class="feature-icon">🤖</div>
-        <div class="feature-text">
-          <strong>Bot inteligente incluido</strong>
-          <span>Toma pedidos automáticamente 24/7. Entiende lenguaje natural y confirma cada orden antes de enviarla a cocina.</span>
-        </div>
-      </div>
-
-      <div class="feature-item">
-        <div class="feature-icon">📊</div>
-        <div class="feature-text">
-          <strong>Dashboard en tiempo real</strong>
-          <span>Visualiza y gestiona todos tus pedidos en una pantalla de cocina moderna y fácil de usar.</span>
-        </div>
-      </div>
-
-      <div class="feature-item">
-        <div class="feature-icon">🔒</div>
-        <div class="feature-text">
-          <strong>100% seguro y privado</strong>
-          <span>Tus credenciales están cifradas. Cumplimos con todas las políticas de seguridad de Meta y protegemos tus datos.</span>
-        </div>
-      </div>
-    </div>
-
-    <a href="index.html" class="back-link">← Volver al inicio</a>
-  </div>
-
-  <!-- Modal de ayuda para número registrado -->
-  <div class="help-modal" id="help-modal">
-    <div class="help-modal-content">
-      <div class="help-modal-header">
-        <div class="help-modal-icon">⚠️</div>
-        <div>
-          <h2 class="help-modal-title">Número ya registrado</h2>
-          <p class="help-modal-subtitle">
-            Este número ya está conectado a WhatsApp Business App en un teléfono. 
-            Necesitas desconectarlo primero.
-          </p>
-        </div>
-      </div>
-
-      <div class="help-steps">
-        <div class="help-step">
-          <div class="step-number">1</div>
-          <div class="step-text">
-            Abre <strong>WhatsApp Business</strong> en tu teléfono
-          </div>
-        </div>
-        <div class="help-step">
-          <div class="step-number">2</div>
-          <div class="step-text">
-            Toca los <strong>3 puntos (⋮)</strong> → <strong>Configuración</strong> → <strong>Cuenta</strong>
-          </div>
-        </div>
-        <div class="help-step">
-          <div class="step-number">3</div>
-          <div class="step-text">
-            Toca <strong>"Eliminar cuenta"</strong> y confirma
-          </div>
-        </div>
-        <div class="help-step">
-          <div class="step-number">4</div>
-          <div class="step-text">
-            <strong>Espera 10-15 minutos</strong> para que el número se libere
-          </div>
-        </div>
-        <div class="help-step">
-          <div class="step-number">5</div>
-          <div class="step-text">
-            Regresa aquí e intenta nuevamente
-          </div>
-        </div>
-      </div>
-
-      <div class="help-tip">
-        <strong>💡 Consejo:</strong>
-        <p>
-          Si no quieres perder acceso a tu app del teléfono, considera usar un 
-          <strong>número diferente</strong> para la automatización. Así mantienes 
-          tu número actual en el teléfono y usas uno nuevo para pedidos automáticos.
-        </p>
-      </div>
-
-      <div class="help-modal-actions">
-        <button class="btn-modal btn-secondary" onclick="closeHelpModal()">
-          Cerrar
-        </button>
-        <a href="COMO-DESCONECTAR-WHATSAPP.md" target="_blank" class="btn-modal btn-primary" style="text-decoration: none; text-align: center; display: flex; align-items: center; justify-content: center;">
-          Ver guía completa
-        </a>
+      <div class="security-notice">
+        Tu WhatsApp está conectado y listo para recibir pedidos. Puedes cerrar esta ventana y administrar todo desde el dashboard.
       </div>
     </div>
   </div>
 
-  <!-- Modal: Guía de selección de Business Portfolio -->
-  <div class="portfolio-guide-modal" id="portfolio-guide-modal">
-    <div class="portfolio-guide-content">
-      <div class="portfolio-guide-header">
-        <h2 class="portfolio-guide-title">📖 Guía: Cómo Seleccionar el Portfolio Correcto</h2>
-        <p class="portfolio-guide-subtitle">
-          Sigue estos pasos para que tu número quede activo INSTANTÁNEAMENTE
-        </p>
-      </div>
-
-      <div class="guide-step-card">
-        <div class="guide-step-header">
-          <div class="guide-step-number">1</div>
-          <div class="guide-step-title">Haz clic en "Conectar WhatsApp Ahora"</div>
-        </div>
-        <p class="guide-step-text">
-          Se abrirá una ventana emergente de Facebook para autorizar la conexión.
-        </p>
-      </div>
-
-      <div class="guide-step-card">
-        <div class="guide-step-header">
-          <div class="guide-step-number">2</div>
-          <div class="guide-step-title">Inicia sesión con tu cuenta de Facebook</div>
-        </div>
-        <p class="guide-step-text">
-          Usa la cuenta de Facebook que quieres vincular con el sistema.
-        </p>
-      </div>
-
-      <div class="guide-step-card highlight">
-        <div class="guide-step-header">
-          <div class="guide-step-number">3</div>
-          <div class="guide-step-title">🚨 PASO CRÍTICO: Selecciona el Business Portfolio</div>
-        </div>
-        <p class="guide-step-text">
-          Facebook te preguntará: <strong>"¿Qué Business Portfolio quieres usar?"</strong>
-        </p>
-        
-        <div class="guide-do-dont">
-          <div class="guide-do">
-            <strong>✅ DEBES HACER:</strong>
-            Selecciona <strong>"KDS Platform"</strong> o el portfolio de la empresa tecnológica.<br><br>
-            Este portfolio YA está verificado por Meta, por lo que tu número se activará INMEDIATAMENTE.
-          </div>
-          <div class="guide-dont">
-            <strong>❌ NO HACER:</strong>
-            NO selecciones tu propio portfolio o el de tu restaurante.<br><br>
-            Si lo haces, tu número quedará en "Pendiente" por 24-48 horas hasta que Meta apruebe el portfolio.
-          </div>
-        </div>
-
-        <div class="guide-screenshot-placeholder">
-          📸 Captura de pantalla: En esta ventana verás una lista de portfolios disponibles.<br>
-          Busca "KDS Platform" o pregunta cuál es el portfolio verificado a usar.
-        </div>
-      </div>
-
-      <div class="guide-step-card">
-        <div class="guide-step-header">
-          <div class="guide-step-number">4</div>
-          <div class="guide-step-title">Ingresa tu número de WhatsApp</div>
-        </div>
-        <p class="guide-step-text">
-          • Si vas a <strong>migrar</strong> un número existente: ingresa ese número<br>
-          • Si vas a <strong>registrar</strong> un número nuevo: ingresa el nuevo número<br>
-          • Asegúrate de tener acceso al teléfono para recibir el código de verificación
-        </p>
-      </div>
-
-      <div class="guide-step-card">
-        <div class="guide-step-header">
-          <div class="guide-step-number">5</div>
-          <div class="guide-step-title">Verifica el número con el código SMS</div>
-        </div>
-        <p class="guide-step-text">
-          Recibirás un código de 6 dígitos por SMS. Ingrésalo para completar la verificación.
-        </p>
-      </div>
-
-      <div class="guide-step-card">
-        <div class="guide-step-header">
-          <div class="guide-step-number">6</div>
-          <div class="guide-step-title">✅ ¡Listo! Tu número está activo</div>
-        </div>
-        <p class="guide-step-text">
-          Si seguiste el paso 3 correctamente (seleccionando el portfolio de KDS), 
-          tu número estará activo de inmediato y podrás comenzar a recibir pedidos.
-        </p>
-      </div>
-
-      <button class="btn-close-guide" onclick="closePortfolioGuideModal()">
-        Entendido, continuar con la conexión
-      </button>
-    </div>
-  </div>
-
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-  
-  <!-- Configuración de Firebase -->
-  <script src="config.js"></script>
-
-  <!-- Auth Check -->
   <script>
-    // Verificar que el usuario esté autenticado
-    const currentUserId = localStorage.getItem('currentUserId');
-    if (!currentUserId) {
-      // Redirigir a login si no está autenticado
-      window.location.href = '/auth.html';
-    }
-  </script>
-
-  <!-- Configuración de Facebook -->
-  <script src="facebook-config.js"></script>
-
-  <!-- Facebook SDK for JavaScript -->
-  <script>
-    // Configuración global antes de cargar el SDK
-    window.fbAsyncInit = function() {
-      FB.init({
-        appId      : facebookConfig.appId,
-        cookie     : facebookConfig.cookie,
-        xfbml      : facebookConfig.xfbml,
-        version    : facebookConfig.apiVersion
-      });
-      
-      // Log de página vista (opcional, para analytics)
-      if (facebookConfig.enableAnalytics) {
-        FB.AppEvents.logPageView();
-      }
-      
-      console.log('✅ Facebook SDK inicializado correctamente');
-      console.log('📱 App ID:', facebookConfig.appId);
-      console.log('🔧 API Version:', facebookConfig.apiVersion);
-    };
-
-    // Cargar el SDK de forma asíncrona
-    (function(d, s, id){
-      var js, fjs = d.getElementsByTagName(s)[0];
-      if (d.getElementById(id)) {return;}
-      js = d.createElement(s); js.id = id;
-      js.src = `https://connect.facebook.net/${facebookConfig.locale}/sdk.js`;
-      fjs.parentNode.insertBefore(js, fjs);
-    }(document, 'script', 'facebook-jssdk'));
-  </script>
-
-  <!-- Lógica de Embedded Signup -->
-  <script>
-    const btnConnect = document.getElementById('btn-connect');
-    const loadingState = document.getElementById('loading-state');
-    const errorMessage = document.getElementById('error-message');
-    const errorText = document.getElementById('error-text');
-    const optionCards = document.querySelectorAll('.option-card');
-    const migrationWarning = document.getElementById('migration-warning');
-    const helpModal = document.getElementById('help-modal');
-    const portfolioGuideModal = document.getElementById('portfolio-guide-modal');
-    
-    let selectedOption = null; // 'migrate' o 'new'
-
-    // ====================================
-    // FUNCIONES PARA MODALES
-    // ====================================
-    
-    // Modal de ayuda (número registrado)
-    function showHelpModal() {
-      helpModal.classList.add('active');
-    }
-
-    function closeHelpModal() {
-      helpModal.classList.remove('active');
-    }
-
-    // Modal de guía de portfolio
-    function showPortfolioGuideModal() {
-      portfolioGuideModal.classList.add('active');
-    }
-
-    function closePortfolioGuideModal() {
-      portfolioGuideModal.classList.remove('active');
-    }
-
-    // Cerrar modales al hacer clic fuera
-    helpModal.addEventListener('click', function(e) {
-      if (e.target === helpModal) {
-        closeHelpModal();
-      }
-    });
-
-    portfolioGuideModal.addEventListener('click', function(e) {
-      if (e.target === portfolioGuideModal) {
-        closePortfolioGuideModal();
-      }
-    });
-
-    // Hacer las funciones accesibles globalmente
-    window.closeHelpModal = closeHelpModal;
-    window.showPortfolioGuideModal = showPortfolioGuideModal;
-    window.closePortfolioGuideModal = closePortfolioGuideModal;
-
-    // Manejo de selección de opciones
-    optionCards.forEach(card => {
-      card.addEventListener('click', function() {
-        // Remover selección anterior
-        optionCards.forEach(c => c.classList.remove('selected'));
+    /**
+     * Onboarding con Baileys - Versión simplificada
+     */
+    class BaileysOnboarding {
+      constructor() {
+        this.tenantId = this.getTenantId();
+        this.qrCodeElement = document.getElementById('qr-code');
+        this.qrLoadingElement = document.getElementById('qr-loading');
+        this.qrStatusElement = document.getElementById('qr-status');
+        this.qrViewElement = document.getElementById('qr-view');
+        this.connectedViewElement = document.getElementById('connected-view');
         
-        // Marcar como seleccionada
-        this.classList.add('selected');
+        this.isPolling = false;
+        this.isConnected = false;
         
-        // Guardar opción seleccionada
-        selectedOption = this.getAttribute('data-option');
+        this.init();
+      }
+
+      getTenantId() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const tenantId = urlParams.get('tenantId') || localStorage.getItem('tenantId');
         
-        // Mostrar/ocultar advertencia
-        if (selectedOption === 'migrate') {
-          migrationWarning.style.display = 'block';
-        } else {
-          migrationWarning.style.display = 'none';
+        if (!tenantId) {
+          alert('Error: No se encontró el tenant ID. Redirigiendo al login...');
+          window.location.href = '/login.html';
+          return null;
         }
         
-        // Habilitar botón
-        btnConnect.disabled = false;
+        return tenantId;
+      }
+
+      async init() {
+        console.log('🚀 Iniciando onboarding Baileys');
+        console.log('Tenant ID:', this.tenantId);
+
+        // Verificar si ya está conectado
+        const status = await this.checkStatus();
         
-        console.log('📌 Opción seleccionada:', selectedOption);
-      });
-    });
+        if (status && status.connected) {
+          console.log('✅ Ya está conectado');
+          this.showConnectedView(status);
+          return;
+        }
 
-    // Función para mostrar error
-    function showError(message) {
-      errorText.textContent = message;
-      errorMessage.classList.add('active');
-      loadingState.classList.remove('active');
-      btnConnect.disabled = false;
-      const icon = btnConnect.querySelector('.whatsapp-icon');
-      btnConnect.innerHTML = '';
-      btnConnect.appendChild(icon);
-      btnConnect.appendChild(document.createTextNode('Reintentar conexión'));
-      
-      // Si el error es de número registrado, mostrar modal de ayuda automáticamente
-      if (message.toLowerCase().includes('registered') || 
-          message.toLowerCase().includes('registrado') ||
-          message.toLowerCase().includes('existing account')) {
-        setTimeout(() => {
-          showHelpModal();
-        }, 1500);
-      }
-    }
+        // Iniciar conexión
+        await this.startConnection();
 
-    // Función para ocultar error
-    function hideError() {
-      errorMessage.classList.remove('active');
-    }
-
-    // Evento del botón de conexión
-    btnConnect.addEventListener('click', function() {
-      if (!selectedOption) {
-        showError('Por favor, selecciona una opción antes de continuar.');
-        return;
+        // Event listeners
+        this.setupEventListeners();
       }
 
-      hideError();
-      btnConnect.disabled = true;
-      loadingState.classList.add('active');
+      setupEventListeners() {
+        document.getElementById('btn-dashboard')?.addEventListener('click', () => {
+          window.location.href = '/dashboard.html?tab=whatsapp';
+        });
 
-      // Verificar que FB esté disponible
-      if (typeof FB === 'undefined') {
-        showError('Error cargando Facebook SDK. Por favor, recarga la página.');
-        return;
+        document.getElementById('btn-disconnect')?.addEventListener('click', () => {
+          this.disconnect();
+        });
       }
 
-      console.log('🔄 Iniciando flujo de Embedded Signup...');
-      console.log('📌 Modo seleccionado:', selectedOption);
+      async checkStatus() {
+        try {
+          const response = await fetch(`/api/baileys/status?tenantId=${this.tenantId}`);
+          return await response.json();
+        } catch (error) {
+          console.error('Error verificando estado:', error);
+          return null;
+        }
+      }
 
-      // Lanzar el flujo de Facebook Login con Embedded Signup
-      FB.login(function(response) {
-        console.log('📩 Respuesta de FB.login:', response);
+      async startConnection() {
+        try {
+          console.log('📡 Iniciando conexión...');
 
-        if (response.authResponse) {
-          const code = response.authResponse.code;
-          
-          if (!code) {
-            showError('No se recibió el código de autorización. Intenta nuevamente.');
-            return;
+          const response = await fetch('/api/baileys/connect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tenantId: this.tenantId })
+          });
+
+          const result = await response.json();
+
+          if (!result.success) {
+            throw new Error(result.error || 'Error al conectar');
           }
 
-          console.log('✅ Código de autorización recibido:', code);
-          
-          // Redirigir al backend con el código y la opción seleccionada
-          window.location.href = `${facebookConfig.callbackUrl}?code=${code}&mode=${selectedOption}`;
-          
-        } else {
-          console.log('❌ Usuario canceló o hubo un error en la autorización');
-          showError('Autorización cancelada. Por favor, acepta los permisos para continuar.');
+          console.log('✅ Conexión iniciada');
+
+          // Iniciar polling
+          this.startQRPolling();
+          this.startStatusPolling();
+
+        } catch (error) {
+          console.error('Error al iniciar conexión:', error);
+          alert('Error al conectar: ' + error.message);
         }
-      }, {
-        config_id: facebookConfig.embeddedSignupConfigId,
-        response_type: 'code',
-        override_default_response_type: true,
-        scope: 'whatsapp_business_management,whatsapp_business_messaging',
-        auth_type: 'rerequest',
-        extras: {
-          setup: {
-            // Pre-seleccionar el Business Portfolio verificado de KDS
-            // Esto evita que el cliente tenga que seleccionar manualmente
-            // y asegura activación instantánea
-            business: {
-              id: '880566844730976'
+      }
+
+      startQRPolling() {
+        if (this.isPolling) return;
+        
+        this.isPolling = true;
+        console.log('🔄 Iniciando polling de QR...');
+
+        const poll = async () => {
+          try {
+            const response = await fetch(`/api/baileys/qr?tenantId=${this.tenantId}`);
+            const data = await response.json();
+
+            if (data.connected) {
+              console.log('✅ Conectado!');
+              this.isConnected = true;
+              this.isPolling = false;
+              
+              const status = await this.checkStatus();
+              this.showConnectedView(status);
+              return;
             }
-          },
-          featureType: '',
-          sessionInfoVersion: 3  // Actualizado a v3 según documentación
+
+            if (data.qr) {
+              console.log('📱 QR recibido');
+              this.displayQR(data.qr);
+              
+              if (!this.isConnected && this.isPolling) {
+                setTimeout(poll, 3000);
+              }
+            } else if (data.expired) {
+              console.log('⏰ QR expirado');
+              this.hideQR();
+              
+              if (!this.isConnected && this.isPolling) {
+                setTimeout(poll, 3000);
+              }
+            } else {
+              console.log('⏳ QR no disponible aún');
+              this.qrLoadingElement.style.display = 'flex';
+              this.qrCodeElement.style.display = 'none';
+              this.qrStatusElement.innerHTML = '<span>⏳ Generando código QR...</span>';
+              
+              if (!this.isConnected && this.isPolling) {
+                setTimeout(poll, 2000);
+              }
+            }
+          } catch (error) {
+            console.error('Error en polling:', error);
+            
+            if (this.isPolling) {
+              setTimeout(poll, 5000);
+            }
+          }
+        };
+
+        poll();
+      }
+
+      startStatusPolling() {
+        const poll = async () => {
+          if (this.isConnected) return;
+
+          try {
+            const status = await this.checkStatus();
+            
+            if (status && status.connected) {
+              console.log('✅ Conectado confirmado');
+              this.isConnected = true;
+              this.isPolling = false;
+              this.showConnectedView(status);
+              return;
+            }
+
+            if (!this.isConnected) {
+              setTimeout(poll, 5000);
+            }
+          } catch (error) {
+            console.error('Error en status polling:', error);
+            if (!this.isConnected) {
+              setTimeout(poll, 5000);
+            }
+          }
+        };
+
+        setTimeout(poll, 5000);
+      }
+
+      displayQR(qrData) {
+        this.qrLoadingElement.style.display = 'none';
+        
+        this.qrCodeElement.innerHTML = '';
+        this.qrCodeElement.style.display = 'block';
+
+        new QRCode(this.qrCodeElement, {
+          text: qrData,
+          width: 256,
+          height: 256,
+          colorDark: '#000000',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.H
+        });
+
+        this.qrStatusElement.innerHTML = `
+          <span style="background-color: #10b981; color: white; padding: 12px 24px; border-radius: 8px;">
+            📱 Escanea el código QR
+          </span>
+        `;
+        this.qrStatusElement.style.display = 'block';
+      }
+
+      hideQR() {
+        this.qrCodeElement.style.display = 'none';
+        this.qrLoadingElement.style.display = 'flex';
+        
+        this.qrStatusElement.innerHTML = `
+          <span class="status-waiting">
+            ⏳ Esperando nuevo código QR...
+          </span>
+        `;
+      }
+
+      async showConnectedView(status) {
+        console.log('🎉 Mostrando vista de conectado');
+
+        this.qrViewElement.style.display = 'none';
+        this.connectedViewElement.style.display = 'block';
+
+        if (status.phoneNumber) {
+          document.getElementById('phone-number').textContent = status.phoneNumber;
         }
-      });
-    });
 
-    // Manejo de errores globales
-    window.addEventListener('error', function(e) {
-      console.error('❌ Error global:', e.message);
-    });
-  </script>
+        try {
+          const statsResponse = await fetch(`/api/baileys/stats?tenantId=${this.tenantId}`);
+          const stats = await statsResponse.json();
 
-  <!-- Google Analytics (opcional) -->
-  <script>
-    // Si tienes Google Analytics, puedes agregar tracking aquí
-    console.log('📊 Página de onboarding cargada');
+          if (!stats.error) {
+            document.getElementById('stat-sent').textContent = stats.daily?.count || 0;
+            document.getElementById('stat-limit').textContent = stats.daily?.limit || 1000;
+          }
+        } catch (error) {
+          console.error('Error obteniendo stats:', error);
+        }
+      }
+
+      async disconnect() {
+        if (!confirm('¿Estás seguro de desconectar WhatsApp?')) {
+          return;
+        }
+
+        try {
+          const response = await fetch('/api/baileys/disconnect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tenantId: this.tenantId })
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            alert('WhatsApp desconectado exitosamente');
+            window.location.reload();
+          } else {
+            throw new Error(result.error || 'Error al desconectar');
+          }
+        } catch (error) {
+          console.error('Error al desconectar:', error);
+          alert('Error al desconectar: ' + error.message);
+        }
+      }
+    }
+
+    // Inicializar cuando la página carga
+    document.addEventListener('DOMContentLoaded', () => {
+      const app = new BaileysOnboarding();
+    });
   </script>
 </body>
 </html>
