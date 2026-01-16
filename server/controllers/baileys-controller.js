@@ -497,6 +497,32 @@ class BaileysController {
       });
     }
   }
+
+  /**
+   * GET /api/baileys/health
+   * Health check para verificar que la API de Baileys está funcionando
+   */
+  async healthCheck(req, res) {
+    try {
+      const sessionManager = baileys.getSessionManager();
+      const activeSessions = sessionManager.getAllSessions().length;
+
+      res.json({
+        status: 'ok',
+        service: 'baileys-api',
+        timestamp: new Date().toISOString(),
+        activeSessions,
+        version: '1.0.0'
+      });
+
+    } catch (error) {
+      logger.error('Error en healthCheck:', error);
+      res.status(500).json({ 
+        status: 'error',
+        error: error.message || 'Error en health check' 
+      });
+    }
+  }
 }
 
 // Exportar instancia única
