@@ -171,6 +171,17 @@ class BaileysOnboarding {
         } else {
           console.log('⏳ QR aún no disponible, esperando...');
           
+          // Mantener estado de carga inicial
+          this.qrLoadingElement.style.display = 'block';
+          this.qrCodeElement.style.display = 'none';
+          this.qrStatusElement.innerHTML = `
+            <span class="status-badge status-waiting">
+              <i class="fas fa-hourglass-half"></i>
+              Generando código QR...
+            </span>
+          `;
+          this.qrStatusElement.style.display = 'block';
+          
           // Continuar polling
           if (!this.isConnected && this.isPolling) {
             setTimeout(poll, 2000); // Poll más frecuente cuando no hay QR
@@ -226,7 +237,7 @@ class BaileysOnboarding {
    * Muestra el QR code en pantalla
    */
   displayQR(qrData) {
-    // Ocultar loading
+    // Ocultar loading y status de espera
     this.qrLoadingElement.style.display = 'none';
 
     // Limpiar QR anterior si existe
@@ -244,6 +255,15 @@ class BaileysOnboarding {
       correctLevel: QRCode.CorrectLevel.H
     });
 
+    // Mostrar mensaje de "Escanea el código"
+    this.qrStatusElement.innerHTML = `
+      <span class="status-badge status-ready" style="background-color: #10b981; color: white;">
+        <i class="fas fa-qrcode"></i>
+        Escanea el código QR
+      </span>
+    `;
+    this.qrStatusElement.style.display = 'block';
+
     console.log('✅ QR mostrado en pantalla');
   }
 
@@ -253,6 +273,15 @@ class BaileysOnboarding {
   hideQR() {
     this.qrCodeElement.style.display = 'none';
     this.qrLoadingElement.style.display = 'block';
+    
+    // Mensaje de espera mientras se regenera
+    this.qrStatusElement.innerHTML = `
+      <span class="status-badge status-waiting">
+        <i class="fas fa-clock"></i>
+        Esperando nuevo código QR...
+      </span>
+    `;
+    this.qrStatusElement.style.display = 'block';
   }
 
   /**
