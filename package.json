@@ -11,7 +11,8 @@
     "test:baileys:fase1": "node test-fase1-baileys.js",
     "test:baileys:cleanup": "node test-fase1-cleanup.js",
     "test:fase2": "node test-fase2-baileys.js",
-    "test:fase2:unit": "node test-fase2-unit.cjs"
+    "test:fase2:unit": "node test-fase2-unit.cjs",
+    "test:fase3:api": "node test-fase3-api.cjs"
   },
   "keywords": [
     "kds",

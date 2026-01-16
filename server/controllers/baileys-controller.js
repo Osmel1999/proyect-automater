@@ -1,0 +1,363 @@
+/**
+ * Baileys Controller
+ * Maneja las peticiones HTTP para operaciones de WhatsApp con Baileys
+ */
+
+const baileys = require('../baileys');
+const logger = require('pino')({ level: 'info' });
+
+// Store para QR codes temporales (en memoria)
+const qrStore = new Map();
+
+// Store para estado de conexión
+const connectionStore = new Map();
+
+class BaileysController {
+  /**
+   * POST /api/baileys/connect
+   * Inicia una nueva sesión Baileys para un tenant
+   */
+  async connect(req, res) {
+    try {
+      const { tenantId } = req.body;
+
+      if (!tenantId) {
+        return res.status(400).json({ 
+          error: 'tenantId es requerido' 
+        });
+      }
+
+      logger.info(`[${tenantId}] Iniciando conexión Baileys desde API`);
+
+      // Verificar si ya está conectado
+      const isConnected = await baileys.isConnected(tenantId);
+      if (isConnected) {
+        return res.json({ 
+          success: true, 
+          message: 'Ya estás conectado',
+          connected: true 
+        });
+      }
+
+      // Iniciar sesión
+      await baileys.initSession(tenantId, {
+        onQR: (qr) => {
+          // Guardar QR en store temporal
+          qrStore.set(tenantId, {
+            qr,
+            timestamp: Date.now()
+          });
+          logger.info(`[${tenantId}] QR generado y almacenado`);
+        },
+        onConnected: (phoneNumber) => {
+          // Actualizar estado de conexión
+          connectionStore.set(tenantId, {
+            connected: true,
+            phoneNumber,
+            timestamp: Date.now()
+          });
+          logger.info(`[${tenantId}] Conectado: ${phoneNumber}`);
+        },
+        onDisconnected: (reason) => {
+          connectionStore.set(tenantId, {
+            connected: false,
+            reason,
+            timestamp: Date.now()
+          });
+          logger.info(`[${tenantId}] Desconectado: ${reason}`);
+        }
+      });
+
+      res.json({ 
+        success: true,
+        message: 'Sesión iniciada. Escanea el QR code.'
+      });
+
+    } catch (error) {
+      logger.error('Error en connect:', error);
+      res.status(500).json({ 
+        error: error.message || 'Error al conectar' 
+      });
+    }
+  }
+
+  /**
+   * GET /api/baileys/qr
+   * Obtiene el QR code actual para escanear
+   */
+  async getQR(req, res) {
+    try {
+      const { tenantId } = req.query;
+
+      if (!tenantId) {
+        return res.status(400).json({ 
+          error: 'tenantId es requerido' 
+        });
+      }
+
+      // Verificar si ya está conectado
+      const isConnected = await baileys.isConnected(tenantId);
+      if (isConnected) {
+        return res.json({ 
+          connected: true,
+          message: 'Ya estás conectado'
+        });
+      }
+
+      // Obtener QR del store
+      const qrData = qrStore.get(tenantId);
+
+      if (!qrData) {
+        return res.json({ 
+          qr: null,
+          connected: false,
+          message: 'QR no disponible. Inicia una conexión primero.'
+        });
+      }
+
+      // Verificar si el QR no ha expirado (30 segundos)
+      const age = Date.now() - qrData.timestamp;
+      if (age > 30000) {
+        qrStore.delete(tenantId);
+        return res.json({ 
+          qr: null,
+          connected: false,
+          expired: true,
+          message: 'QR expirado. Se generará uno nuevo.'
+        });
+      }
+
+      res.json({ 
+        qr: qrData.qr,
+        connected: false,
+        expiresIn: Math.max(0, 30000 - age)
+      });
+
+    } catch (error) {
+      logger.error('Error en getQR:', error);
+      res.status(500).json({ 
+        error: error.message || 'Error al obtener QR' 
+      });
+    }
+  }
+
+  /**
+   * POST /api/baileys/disconnect
+   * Desconecta la sesión de WhatsApp
+   */
+  async disconnect(req, res) {
+    try {
+      const { tenantId } = req.body;
+
+      if (!tenantId) {
+        return res.status(400).json({ 
+          error: 'tenantId es requerido' 
+        });
+      }
+
+      logger.info(`[${tenantId}] Desconectando desde API`);
+
+      await baileys.disconnect(tenantId);
+
+      // Limpiar stores
+      qrStore.delete(tenantId);
+      connectionStore.delete(tenantId);
+
+      res.json({ 
+        success: true,
+        message: 'Desconectado exitosamente'
+      });
+
+    } catch (error) {
+      logger.error('Error en disconnect:', error);
+      res.status(500).json({ 
+        error: error.message || 'Error al desconectar' 
+      });
+    }
+  }
+
+  /**
+   * GET /api/baileys/status
+   * Obtiene el estado actual de la conexión
+   */
+  async getStatus(req, res) {
+    try {
+      const { tenantId } = req.query;
+
+      if (!tenantId) {
+        return res.status(400).json({ 
+          error: 'tenantId es requerido' 
+        });
+      }
+
+      const isConnected = await baileys.isConnected(tenantId);
+      const connectionData = connectionStore.get(tenantId);
+
+      const status = {
+        connected: isConnected,
+        phoneNumber: connectionData?.phoneNumber || null,
+        lastUpdate: connectionData?.timestamp || null,
+        reason: connectionData?.reason || null
+      };
+
+      res.json(status);
+
+    } catch (error) {
+      logger.error('Error en getStatus:', error);
+      res.status(500).json({ 
+        error: error.message || 'Error al obtener estado' 
+      });
+    }
+  }
+
+  /**
+   * GET /api/baileys/stats
+   * Obtiene estadísticas de uso y anti-ban
+   */
+  async getStats(req, res) {
+    try {
+      const { tenantId } = req.query;
+
+      if (!tenantId) {
+        return res.status(400).json({ 
+          error: 'tenantId es requerido' 
+        });
+      }
+
+      const stats = await baileys.getAntiBanStats(tenantId);
+
+      res.json(stats);
+
+    } catch (error) {
+      logger.error('Error en getStats:', error);
+      res.status(500).json({ 
+        error: error.message || 'Error al obtener estadísticas' 
+      });
+    }
+  }
+
+  /**
+   * POST /api/baileys/send
+   * Envía un mensaje a través de WhatsApp
+   */
+  async sendMessage(req, res) {
+    try {
+      const { tenantId, to, text, type = 'text', mediaUrl, caption } = req.body;
+
+      if (!tenantId || !to || !text) {
+        return res.status(400).json({ 
+          error: 'tenantId, to y text son requeridos' 
+        });
+      }
+
+      // Verificar conexión
+      const isConnected = await baileys.isConnected(tenantId);
+      if (!isConnected) {
+        return res.status(400).json({ 
+          error: 'WhatsApp no está conectado. Conecta primero.' 
+        });
+      }
+
+      // Enviar mensaje
+      const message = {
+        to,
+        text,
+        type,
+        mediaUrl,
+        caption
+      };
+
+      const result = await baileys.sendMessage(tenantId, message);
+
+      res.json({ 
+        success: true,
+        messageId: result.key?.id,
+        timestamp: result.messageTimestamp
+      });
+
+    } catch (error) {
+      logger.error('Error en sendMessage:', error);
+      
+      // Mensaje específico si es por anti-ban
+      if (error.message.includes('Cooldown') || error.message.includes('Límite')) {
+        return res.status(429).json({ 
+          error: 'Rate limit alcanzado',
+          message: error.message,
+          retryAfter: error.waitTime || 60000
+        });
+      }
+
+      res.status(500).json({ 
+        error: error.message || 'Error al enviar mensaje' 
+      });
+    }
+  }
+
+  /**
+   * GET /api/baileys/chats
+   * Lista todos los chats activos
+   */
+  async getChats(req, res) {
+    try {
+      const { tenantId, limit = 50 } = req.query;
+
+      if (!tenantId) {
+        return res.status(400).json({ 
+          error: 'tenantId es requerido' 
+        });
+      }
+
+      // Por ahora retornamos estructura vacía
+      // NOTA: Se implementará en Fase 4 (Integración con Firebase)
+      const chats = [];
+
+      res.json({ 
+        chats,
+        count: chats.length,
+        limit: Number.parseInt(limit, 10)
+      });
+
+    } catch (error) {
+      logger.error('Error en getChats:', error);
+      res.status(500).json({ 
+        error: error.message || 'Error al obtener chats' 
+      });
+    }
+  }
+
+  /**
+   * GET /api/baileys/messages
+   * Obtiene mensajes de un chat específico
+   */
+  async getMessages(req, res) {
+    try {
+      const { tenantId, chatId, limit = 50 } = req.query;
+
+      if (!tenantId || !chatId) {
+        return res.status(400).json({ 
+          error: 'tenantId y chatId son requeridos' 
+        });
+      }
+
+      // Por ahora retornamos estructura vacía
+      // NOTA: Se implementará en Fase 4 (Integración con Firebase)
+      const messages = [];
+
+      res.json({ 
+        messages,
+        count: messages.length,
+        chatId,
+        limit: Number.parseInt(limit, 10)
+      });
+
+    } catch (error) {
+      logger.error('Error en getMessages:', error);
+      res.status(500).json({ 
+        error: error.message || 'Error al obtener mensajes' 
+      });
+    }
+  }
+}
+
+// Exportar instancia única
+module.exports = new BaileysController();

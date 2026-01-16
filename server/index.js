@@ -573,7 +573,15 @@ app.post('/api/send-test-message', async (req, res) => {
 // app.post('/webhook/twilio', twilioHandler.handleIncoming);
 
 // ====================================
-// RUTAS GENERALES
+// RUTAS DE API - BAILEYS (WhatsApp Multi-Device)
+// ====================================
+
+const baileysRoutes = require('./routes/baileys-routes');
+app.use('/api/baileys', baileysRoutes);
+console.log('✅ Rutas de Baileys registradas en /api/baileys');
+
+// ====================================
+// MANEJADOR DE ERRORES GLOBAL
 // ====================================
 
 // Health check
