@@ -40,37 +40,25 @@ class BaileysController {
       }
 
       // Iniciar sesión
-      await baileys.initSession(tenantId, {
-        onQR: (qr) => {
-          // Guardar QR en store temporal
-          qrStore.set(tenantId, {
-            qr,
-            timestamp: Date.now()
-          });
-          logger.info(`[${tenantId}] QR generado y almacenado`);
-        },
-        onConnected: (phoneNumber) => {
-          // Actualizar estado de conexión
-          connectionStore.set(tenantId, {
-            connected: true,
-            phoneNumber,
-            timestamp: Date.now()
-          });
-          logger.info(`[${tenantId}] Conectado: ${phoneNumber}`);
-        },
-        onDisconnected: (reason) => {
-          connectionStore.set(tenantId, {
-            connected: false,
-            reason,
-            timestamp: Date.now()
-          });
-          logger.info(`[${tenantId}] Desconectado: ${reason}`);
-        }
-      });
+      const result = await baileys.initializeSession(tenantId);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Error al inicializar sesión');
+      }
+
+      // Si se generó QR, guardarlo en el store
+      if (result.method === 'qr' && result.qrCode) {
+        qrStore.set(tenantId, {
+          qr: result.qrCode,
+          timestamp: Date.now()
+        });
+        logger.info(`[${tenantId}] QR generado y almacenado`);
+      }
 
       res.json({ 
         success: true,
-        message: 'Sesión iniciada. Escanea el QR code.'
+        message: result.message,
+        method: result.method
       });
 
     } catch (error) {

@@ -259,6 +259,16 @@ class SessionManager extends EventEmitter {
   }
 
   /**
+   * Verifica si un tenant está conectado
+   * @param {string} tenantId - ID del tenant
+   * @returns {boolean}
+   */
+  isConnected(tenantId) {
+    const state = this.sessionStates.get(tenantId);
+    return state?.connected || false;
+  }
+
+  /**
    * Obtiene lista de todos los tenants con sesión activa
    * @returns {Array<string>}
    */

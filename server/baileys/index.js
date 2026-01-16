@@ -139,21 +139,17 @@ class BaileysService {
   }
 
   /**
-   * Registra un callback para mensajes recibidos
+   * Verifica si un tenant está conectado
    * @param {string} tenantId - ID del tenant
-   * @param {function} callback - Función a ejecutar
+   * @returns {Promise<boolean>}
    */
-  onMessage(tenantId, callback) {
-    eventHandlers.onMessage(tenantId, callback);
-  }
-
-  /**
-   * Registra un callback para cambios de estado
-   * @param {string} tenantId - ID del tenant
-   * @param {function} callback - Función a ejecutar
-   */
-  onStatusChange(tenantId, callback) {
-    eventHandlers.onStatusChange(tenantId, callback);
+  async isConnected(tenantId) {
+    try {
+      return sessionManager.isConnected(tenantId);
+    } catch (error) {
+      logger.error(`[${tenantId}] Error verificando conexión:`, error);
+      return false;
+    }
   }
 
   /**
@@ -163,18 +159,15 @@ class BaileysService {
    */
   async getStatus(tenantId) {
     try {
-      const authStatus = await authHandler.checkAuthStatus(tenantId);
-      const usageStats = antiBanService.getUsageStats(tenantId);
+      const connected = await this.isConnected(tenantId);
+      const config = await storage.getWhatsAppConfig(tenantId);
 
       return {
-        connected: authStatus.connected,
-        phoneNumber: authStatus.phoneNumber,
-        lastSeen: authStatus.lastSeen,
-        hasStoredCredentials: authStatus.hasStoredCredentials,
-        usage: usageStats,
-        platform: 'baileys'
+        connected,
+        phoneNumber: config?.baileys?.phoneNumber || null,
+        lastSeen: config?.baileys?.lastSeen || null,
+        messageCount: config?.baileys?.messageCount || 0
       };
-
     } catch (error) {
       logger.error(`[${tenantId}] Error obteniendo estado:`, error);
       return {
@@ -185,12 +178,22 @@ class BaileysService {
   }
 
   /**
-   * Desconecta un tenant (mantiene credenciales)
+   * Obtiene estadísticas anti-ban de un tenant
+   * @param {string} tenantId - ID del tenant
+   * @returns {object}
+   */
+  getAntiBanStats(tenantId) {
+    return antiBanService.getUsageStats(tenantId);
+  }
+
+  /**
+   * Desconecta un tenant
    * @param {string} tenantId - ID del tenant
    */
   async disconnect(tenantId) {
     try {
-      await authHandler.disconnect(tenantId);
+      await sessionManager.disconnect(tenantId);
+      antiBanService.cleanup(tenantId);
       return { success: true };
     } catch (error) {
       logger.error(`[${tenantId}] Error desconectando:`, error);
