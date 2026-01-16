@@ -505,7 +505,7 @@ class BaileysController {
   async healthCheck(req, res) {
     try {
       const sessionManager = baileys.getSessionManager();
-      const activeSessions = sessionManager.getAllSessions().length;
+      const activeSessions = sessionManager.sessions.size;
 
       res.json({
         status: 'ok',
