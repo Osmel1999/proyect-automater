@@ -373,6 +373,130 @@ class BaileysController {
       });
     }
   }
+
+  /**
+   * GET /api/baileys/conversations
+   * Obtiene lista de conversaciones activas de un tenant
+   */
+  async getConversations(req, res) {
+    try {
+      const { tenantId, limit = 50 } = req.query;
+
+      if (!tenantId) {
+        return res.status(400).json({ 
+          error: 'tenantId es requerido' 
+        });
+      }
+
+      // Por ahora retornamos estructura vacía
+      // NOTA: Se implementará en Fase 4 (Integración con Firebase)
+      const conversations = [];
+
+      res.json({ 
+        conversations,
+        count: conversations.length,
+        limit: Number.parseInt(limit, 10)
+      });
+
+    } catch (error) {
+      logger.error('Error en getConversations:', error);
+      res.status(500).json({ 
+        error: error.message || 'Error al obtener conversaciones' 
+      });
+    }
+  }
+
+  /**
+   * POST /api/baileys/send-message
+   * Envía un mensaje manual desde el dashboard
+   */
+  async sendManualMessage(req, res) {
+    try {
+      const { tenantId, to, message, type = 'text' } = req.body;
+
+      if (!tenantId || !to || !message) {
+        return res.status(400).json({ 
+          error: 'tenantId, to y message son requeridos' 
+        });
+      }
+
+      logger.info(`[${tenantId}] Enviando mensaje manual a ${to}`);
+
+      // Verificar conexión
+      const isConnected = await baileys.isConnected(tenantId);
+      if (!isConnected) {
+        return res.status(400).json({ 
+          error: 'No hay conexión activa de WhatsApp' 
+        });
+      }
+
+      // Enviar mensaje
+      const result = await baileys.sendMessage(tenantId, to, {
+        text: message,
+        type
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || 'Error al enviar mensaje');
+      }
+
+      res.json({ 
+        success: true,
+        message: 'Mensaje enviado exitosamente',
+        messageId: result.messageId,
+        timestamp: result.timestamp
+      });
+
+    } catch (error) {
+      logger.error('Error en sendManualMessage:', error);
+      res.status(500).json({ 
+        error: error.message || 'Error al enviar mensaje' 
+      });
+    }
+  }
+
+  /**
+   * GET /api/baileys/profile
+   * Obtiene información del perfil de WhatsApp conectado
+   */
+  async getProfile(req, res) {
+    try {
+      const { tenantId } = req.query;
+
+      if (!tenantId) {
+        return res.status(400).json({ 
+          error: 'tenantId es requerido' 
+        });
+      }
+
+      // Verificar conexión
+      const isConnected = await baileys.isConnected(tenantId);
+      if (!isConnected) {
+        return res.json({ 
+          connected: false,
+          message: 'No hay conexión activa'
+        });
+      }
+
+      // Obtener información del perfil
+      const session = baileys.getSessionManager().getSession(tenantId);
+      const phoneNumber = session?.user?.id?.split(':')[0] || null;
+      const name = session?.user?.name || null;
+
+      res.json({ 
+        connected: true,
+        phoneNumber,
+        name,
+        profilePic: null // Se puede implementar con session.profilePictureUrl
+      });
+
+    } catch (error) {
+      logger.error('Error en getProfile:', error);
+      res.status(500).json({ 
+        error: error.message || 'Error al obtener perfil' 
+      });
+    }
+  }
 }
 
 // Exportar instancia única

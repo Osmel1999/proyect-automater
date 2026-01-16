@@ -62,28 +62,57 @@ router.get('/stats', (req, res) => {
 /**
  * POST /api/baileys/send
  * Envía un mensaje
- * Body: { tenantId, to, text, type?, mediaUrl?, caption? }
+ * Body: { tenantId, to, message }
  */
 router.post('/send', (req, res) => {
   baileysController.sendMessage(req, res);
 });
 
 /**
- * GET /api/baileys/chats
- * Lista todos los chats
+ * GET /api/baileys/conversations
+ * Obtiene lista de conversaciones activas
  * Query: ?tenantId=xxx&limit=50
  */
-router.get('/chats', (req, res) => {
-  baileysController.getChats(req, res);
+router.get('/conversations', (req, res) => {
+  baileysController.getConversations(req, res);
 });
 
 /**
  * GET /api/baileys/messages
- * Obtiene mensajes de un chat
+ * Obtiene mensajes de un chat específico
  * Query: ?tenantId=xxx&chatId=xxx&limit=50
  */
 router.get('/messages', (req, res) => {
   baileysController.getMessages(req, res);
+});
+
+/**
+ * POST /api/baileys/send-message
+ * Envía un mensaje manual desde el dashboard
+ * Body: { tenantId, to, message, type }
+ */
+router.post('/send-message', (req, res) => {
+  baileysController.sendManualMessage(req, res);
+});
+
+/**
+ * GET /api/baileys/profile
+ * Obtiene información del perfil conectado
+ * Query: ?tenantId=xxx
+ */
+router.get('/profile', (req, res) => {
+  baileysController.getProfile(req, res);
+});
+
+// ==================== HEALTH CHECK ====================
+
+/**
+ * GET /api/baileys/health
+ * Verifica el estado de la API de Baileys
+ * Query: ?tenantId=xxx
+ */
+router.get('/health', (req, res) => {
+  baileysController.healthCheck(req, res);
 });
 
 module.exports = router;

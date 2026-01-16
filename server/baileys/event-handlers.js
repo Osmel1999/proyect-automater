@@ -53,6 +53,11 @@ class EventHandlers {
       
       logger.info(`[${tenantId}] Mensaje recibido de ${internalMessage.from}: ${internalMessage.text?.substring(0, 50) || '[media]'}`);
 
+      // Emitir evento WebSocket
+      if (global.baileysWebSocket) {
+        global.baileysWebSocket.emitMessageReceived(tenantId, internalMessage);
+      }
+
       // Marcar como leído automáticamente
       await messageAdapter.markAsRead(tenantId, baileysMessage.key);
 
@@ -102,15 +107,21 @@ class EventHandlers {
   /**
    * Maneja cambio de estado de conexión
    * @param {string} tenantId - ID del tenant
-   * @param {string} state - Estado de conexión
+   * @param {string} state - Estado (open, close)
    * @param {object} info - Información adicional
    */
   async handleConnectionChange(tenantId, state, info = {}) {
     try {
-      logger.info(`[${tenantId}] Estado de conexión: ${state}`);
+      logger.info(`[${tenantId}] Cambio de estado de conexión: ${state}`);
 
-      // Actualizar estado en Firebase
-      await storage.updateConnectionStatus(tenantId, {
+      // Emitir evento WebSocket
+      if (global.baileysWebSocket) {
+        const status = state === 'open' ? 'connected' : 'disconnected';
+        global.baileysWebSocket.emitConnectionStatus(tenantId, status, info);
+      }
+
+      // Guardar estado en Firebase
+      await storage.saveConnectionState(tenantId, {
         connected: state === 'open',
         phoneNumber: info.phoneNumber || null,
         lastSeen: new Date().toISOString(),

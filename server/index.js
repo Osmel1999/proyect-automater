@@ -4,6 +4,8 @@
  */
 
 const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
 const path = require('path');
 const axios = require('axios');
 require('dotenv').config();
@@ -28,9 +30,24 @@ const encryptionService = require('./encryption-service');
 console.log('  ✅ encryption-service cargado');
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 
 console.log('✅ Todos los servicios cargados correctamente');
+
+// Inicializar WebSocket handler
+const BaileysWebSocketHandler = require('./websocket/baileys-socket');
+const wsHandler = new BaileysWebSocketHandler(io);
+
+// Hacer wsHandler disponible globalmente para que otros módulos puedan emitir eventos
+global.baileysWebSocket = wsHandler;
 
 // Middleware
 app.use(express.urlencoded({ extended: false }));
@@ -627,13 +644,14 @@ app.use((err, req, res, next) => {
 // INICIO DEL SERVIDOR
 // ====================================
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log('━'.repeat(50));
   console.log('🚀 SERVIDOR BACKEND KDS + WHATSAPP SAAS');
   console.log('━'.repeat(50));
   console.log(`📡 Servidor corriendo en puerto: ${PORT}`);
   console.log(`🌐 URL local: http://localhost:${PORT}`);
   console.log(`🏢 Modo: Multi-tenant SaaS`);
+  console.log(`🔌 WebSocket: Habilitado (Socket.IO)`);
   console.log('');
   console.log('🔧 Servicios configurados:');
   console.log(`   🔥 Firebase: ${process.env.FIREBASE_PROJECT_ID ? '✅ ' + process.env.FIREBASE_PROJECT_ID : '❌ No configurado'}`);
