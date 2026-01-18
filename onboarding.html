@@ -476,11 +476,9 @@
           });
         }
         
-        // Si aún no hay tenantId, mostrar error
+        // Si aún no hay tenantId, redirigir silenciosamente al auth
         if (!tenantId) {
-          console.error('❌ No se encontró tenant ID en URL ni en localStorage');
-          console.error('localStorage completo:', localStorage);
-          alert('Error: No se pudo obtener tu identificador de negocio. Por favor, regístrate nuevamente.');
+          console.log('ℹ️ No se encontró tenant ID, redirigiendo a auth...');
           window.location.href = '/auth.html';
           return null;
         }
