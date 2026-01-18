@@ -4,10 +4,12 @@
     ".write": false,
     
     "users": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      ".indexOn": ["email", "tenantId", "firebaseUid"],
       "$userId": {
         ".read": true,
-        ".write": true,
-        ".indexOn": ["email", "tenantId", "firebaseUid"]
+        ".write": true
       }
     },
     
