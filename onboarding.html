@@ -7,8 +7,8 @@
   <meta name="description" content="Conecta tu WhatsApp Business escaneando un QR y comienza a recibir pedidos automáticamente">
   <link rel="icon" type="image/png" href="assets/images/kds-logo.png">
   
-  <!-- QRCode.js Library (compatible con new QRCode()) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- QRCode.js Library - davidshimjs/qrcodejs -->
+  <script src="https://cdn.jsdelivr.net/npm/davidshimjs-qrcodejs@0.0.2/qrcode.min.js"></script>
   
   <style>
     * {
@@ -518,6 +518,14 @@
         console.log('🚀 Iniciando onboarding Baileys');
         console.log('Tenant ID:', this.tenantId);
 
+        // Verificar que QRCode esté cargado
+        if (typeof QRCode === 'undefined') {
+          console.error('❌ QRCode library not loaded. Reloading...');
+          setTimeout(() => window.location.reload(), 2000);
+          return;
+        }
+        console.log('✅ QRCode library loaded');
+
         // Verificar si ya está conectado
         const status = await this.checkStatus();
         
@@ -708,21 +716,45 @@
         this.qrCodeElement.innerHTML = '';
         this.qrCodeElement.style.display = 'block';
 
-        new QRCode(this.qrCodeElement, {
-          text: qrData,
-          width: 256,
-          height: 256,
-          colorDark: '#000000',
-          colorLight: '#ffffff',
-          correctLevel: QRCode.CorrectLevel.H
-        });
+        // Verificar que QRCode esté disponible
+        if (typeof QRCode === 'undefined') {
+          console.error('❌ QRCode no está definido. Recargando en 2 segundos...');
+          this.qrStatusElement.innerHTML = `
+            <span style="background-color: #ef4444; color: white; padding: 12px 24px; border-radius: 8px;">
+              ⚠️ Error cargando QR. Recargando...
+            </span>
+          `;
+          setTimeout(() => location.reload(), 2000);
+          return;
+        }
 
-        this.qrStatusElement.innerHTML = `
-          <span style="background-color: #10b981; color: white; padding: 12px 24px; border-radius: 8px;">
-            📱 Escanea el código QR
-          </span>
-        `;
-        this.qrStatusElement.style.display = 'block';
+        try {
+          new QRCode(this.qrCodeElement, {
+            text: qrData,
+            width: 256,
+            height: 256,
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.H
+          });
+
+          this.qrStatusElement.innerHTML = `
+            <span style="background-color: #10b981; color: white; padding: 12px 24px; border-radius: 8px;">
+              📱 Escanea el código QR
+            </span>
+          `;
+          this.qrStatusElement.style.display = 'block';
+        } catch (error) {
+          console.error('❌ Error generando QR:', error);
+          this.qrStatusElement.innerHTML = `
+            <span style="background-color: #ef4444; color: white; padding: 12px 24px; border-radius: 8px;">
+              ❌ Error generando QR
+            </span>
+            <button onclick="location.reload()" style="margin-top: 15px; padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;">
+              🔄 Reintentar
+            </button>
+          `;
+        }
       }
 
       hideQR() {
@@ -811,6 +843,27 @@
 
     // Inicializar cuando la página carga
     document.addEventListener('DOMContentLoaded', () => {
+      // Verificar que QRCode esté disponible antes de inicializar
+      if (typeof QRCode === 'undefined') {
+        console.error('❌ QRCode library no se cargó correctamente');
+        const qrStatusElement = document.getElementById('qr-status');
+        if (qrStatusElement) {
+          qrStatusElement.innerHTML = `
+            <span style="background-color: #ef4444; color: white; padding: 12px 24px; border-radius: 8px;">
+              ⚠️ Error cargando librería QR. Recargando...
+            </span>
+          `;
+        }
+        
+        // Intentar recargar después de un delay
+        setTimeout(() => {
+          console.log('🔄 Intentando recargar página...');
+          location.reload();
+        }, 3000);
+        return;
+      }
+
+      console.log('✅ QRCode library cargada correctamente');
       const app = new BaileysOnboarding();
     });
   </script>
