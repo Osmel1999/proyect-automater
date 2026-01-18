@@ -160,7 +160,11 @@
       width: 100%;
     }
 
-    #qr-code img,
+    /* Solo mostrar el canvas, ocultar el img que genera la librería */
+    #qr-code img {
+      display: none !important;
+    }
+
     #qr-code canvas {
       display: block !important;
       margin: 0 auto !important;
