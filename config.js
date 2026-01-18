@@ -11,6 +11,13 @@ const firebaseConfig = {
     measurementId: "G-0Q1V5WV35X"
 };
 
+// Configuración del Backend API
+const API_BASE_URL = window.location.hostname === 'localhost' 
+    ? 'http://localhost:3000'  // Desarrollo local
+    : 'https://api.kdsapp.site';  // Producción
+
+console.log('🔧 API Base URL:', API_BASE_URL);
+
 // Inicializar Firebase
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();

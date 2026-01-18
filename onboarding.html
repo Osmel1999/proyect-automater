@@ -543,7 +543,7 @@
 
       async checkStatus() {
         try {
-          const response = await fetch(`/api/baileys/status?tenantId=${this.tenantId}`);
+          const response = await fetch(`${API_BASE_URL}/api/baileys/status?tenantId=${this.tenantId}`);
           return await response.json();
         } catch (error) {
           console.error('Error verificando estado:', error);
@@ -558,7 +558,7 @@
           // Limpieza agresiva de sesión corrupta
           try {
             console.log('🧹 Limpiando sesión completamente...');
-            const cleanResponse = await fetch('/api/baileys/clean-session', {
+            const cleanResponse = await fetch(`${API_BASE_URL}/api/baileys/clean-session`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ tenantId: this.tenantId })
@@ -573,7 +573,7 @@
             console.log('⚠️ Error al limpiar sesión (puede ser normal):', cleanError.message);
           }
 
-          const response = await fetch('/api/baileys/connect', {
+          const response = await fetch(`${API_BASE_URL}/api/baileys/connect`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ tenantId: this.tenantId })
@@ -616,7 +616,7 @@
 
         const poll = async () => {
           try {
-            const response = await fetch(`/api/baileys/qr?tenantId=${this.tenantId}`);
+            const response = await fetch(`${API_BASE_URL}/api/baileys/qr?tenantId=${this.tenantId}`);
             const data = await response.json();
 
             if (data.connected) {
@@ -739,7 +739,7 @@
         }
 
         try {
-          const statsResponse = await fetch(`/api/baileys/stats?tenantId=${this.tenantId}`);
+          const statsResponse = await fetch(`${API_BASE_URL}/api/baileys/stats?tenantId=${this.tenantId}`);
           const stats = await statsResponse.json();
 
           if (!stats.error) {
@@ -757,7 +757,7 @@
         }
 
         try {
-          const response = await fetch('/api/baileys/disconnect', {
+          const response = await fetch(`${API_BASE_URL}/api/baileys/disconnect`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ tenantId: this.tenantId })
