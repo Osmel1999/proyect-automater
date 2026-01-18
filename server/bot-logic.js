@@ -82,57 +82,32 @@ async function processMessage(tenantId, from, texto) {
   console.log(`   Mensaje: "${textoOriginal}"`);
   
   // ====================================
-  // VALIDAR PROGRESO DE ONBOARDING Y ESTADO DEL BOT
+  // VALIDAR ESTADO DEL BOT (SOLO TOGGLE)
   // ====================================
   try {
-    // 1. Verificar progreso del onboarding
-    const onboardingSnapshot = await firebaseService.database.ref(`tenants/${tenantId}/onboarding`).once('value');
-    const onboarding = onboardingSnapshot.val();
-    
-    const progress = onboarding?.progress || 0;
-    
-    console.log(`🔍 Debug - Progreso de onboarding: ${progress}%`);
-    
-    // El bot solo puede estar activo si el onboarding está al menos al 75%
-    if (progress < 75) {
-      console.log(`🔴 Onboarding incompleto (${progress}%). Bot no disponible.`);
-      return null; // No responder nada
-    }
-    
-    // 2. Verificar si el menú está configurado
-    const menuSnapshot = await firebaseService.database.ref(`tenants/${tenantId}/menu/items`).once('value');
-    const menuItems = menuSnapshot.val();
-    
-    if (!menuItems || Object.keys(menuItems).length === 0) {
-      console.log(`🔴 Menú no configurado. Bot no disponible.`);
-      return null; // No responder nada
-    }
-    
-    console.log(`✅ Menú configurado: ${Object.keys(menuItems).length} items`);
-    
-    // 3. Verificar si el bot está activo (toggle en dashboard)
+    // Verificar si el bot está activo (toggle en dashboard)
     const botConfig = await firebaseService.database.ref(`tenants/${tenantId}/bot/config`).once('value');
     const config = botConfig.val();
     
     console.log(`🔍 Debug - config obtenido:`, config);
     
-    // Por defecto el bot está ACTIVO (si no existe config o active no está definido)
-    // Solo se desactiva si explícitamente active === false
-    const botActive = config?.active !== false;
+    // El bot solo responde si active === true (explícitamente)
+    // Si no existe config o active no es true, el bot NO responde
+    const botActive = config?.active === true;
     
     console.log(`🔍 Debug - botActive calculado: ${botActive}`);
     console.log(`🔍 Debug - config?.active: ${config?.active}`);
     console.log(`🔍 Debug - typeof config?.active: ${typeof config?.active}`);
     
     if (!botActive) {
-      console.log(`🔴 Bot desactivado manualmente para tenant ${tenantId}. Ignorando mensaje.`);
+      console.log(`🔴 Bot desactivado para tenant ${tenantId}. Ignorando mensaje.`);
       return null; // No responder nada
     }
     
-    console.log(`🟢 Bot activo para tenant ${tenantId} (onboarding: ${progress}%, active: ${config?.active ?? 'undefined'})`);
+    console.log(`🟢 Bot activo para tenant ${tenantId} - Procesando mensaje`);
   } catch (error) {
     console.error(`⚠️ Error verificando estado del bot para tenant ${tenantId}:`, error);
-    // En caso de error, NO asumir que el bot está activo (fail-safe)
+    // En caso de error, NO responder (fail-safe)
     return null;
   }
   

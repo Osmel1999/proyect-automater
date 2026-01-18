@@ -1284,12 +1284,34 @@
           onboardingState = tenantData.onboarding.steps || onboardingState;
         }
 
+        // Calcular progreso de onboarding
+        const completed = Object.values(onboardingState).filter(v => v === true).length;
+        const total = Object.keys(onboardingState).length;
+        onboardingPercentage = Math.round((completed / total) * 100);
+        
+        console.log(`📊 Progreso de onboarding calculado: ${onboardingPercentage}%`);
+
         // Load bot state
-        if (tenantData.bot && tenantData.bot.config) {
-          botActive = tenantData.bot.config.active !== false; // Por defecto true si no existe
+        // Si el progreso es < 75%, forzar el bot a OFF sin importar el valor en Firebase
+        if (onboardingPercentage < 75) {
+          console.log('⚠️ Progreso < 75%, forzando bot a OFF');
+          botActive = false;
+          // Guardar en Firebase para asegurar consistencia
+          await firebase.database().ref(`tenants/${tenantId}/bot/config`).set({
+            active: false,
+            lastUpdated: new Date().toISOString(),
+            reason: 'onboarding_incomplete'
+          });
         } else {
-          botActive = true; // Por defecto activo
+          // Si el progreso >= 75%, respetar el valor en Firebase
+          if (tenantData.bot && tenantData.bot.config) {
+            botActive = tenantData.bot.config.active === true; // Solo true si es explícitamente true
+          } else {
+            botActive = false; // Por defecto OFF si no existe el config
+          }
         }
+
+        console.log(`🤖 Estado inicial del bot: ${botActive ? 'ON' : 'OFF'} (progreso: ${onboardingPercentage}%)`);
 
         // Check if onboarding is completed
         const isCompleted = Object.values(onboardingState).every(v => v === true);
@@ -1367,9 +1389,15 @@
     // Save onboarding state
     async function saveOnboardingState() {
       try {
+        // Calcular porcentaje
+        const completed = Object.values(onboardingState).filter(v => v === true).length;
+        const total = Object.keys(onboardingState).length;
+        const percentage = Math.round((completed / total) * 100);
+        
         await firebase.database().ref(`tenants/${tenantId}/onboarding`).set({
           completed: Object.values(onboardingState).every(v => v === true),
           steps: onboardingState,
+          progress: percentage, // ← GUARDAR EL PORCENTAJE
           lastUpdated: new Date().toISOString()
         });
 
@@ -1625,15 +1653,38 @@
     async function toggleBot() {
       const canActivate = onboardingPercentage >= 75;
 
-      // Si intenta activar pero no puede
+      // VALIDACIÓN CRÍTICA: Si intenta activar el bot pero el progreso es < 75%
       if (!botActive && !canActivate) {
+        console.warn('⚠️ Intento de activar bot con progreso insuficiente');
         alert('⚠️ Para activar el bot, debes completar al menos el 75% del onboarding.\n\nActualmente has completado: ' + onboardingPercentage + '%\n\n' +
               'Completa la configuración del menú y los mensajes personalizados para continuar.');
         return;
       }
 
+      // VALIDACIÓN ADICIONAL: Verificar progreso en Firebase antes de cambiar
+      try {
+        const onboardingSnapshot = await firebase.database().ref(`tenants/${tenantId}/onboarding`).once('value');
+        const onboarding = onboardingSnapshot.val();
+        const progress = onboarding?.progress || 0;
+        
+        console.log(`🔍 Validando progreso en Firebase: ${progress}%`);
+        
+        // Si intenta activar y el progreso en Firebase es < 75%, bloquear
+        if (!botActive && progress < 75) {
+          console.error('🚫 Validación de progreso falló. Progreso en Firebase:', progress);
+          alert('⚠️ El progreso de onboarding en el servidor es insuficiente (' + progress + '%).\n\n' +
+                'Completa al menos el 75% del onboarding antes de activar el bot.');
+          return;
+        }
+      } catch (error) {
+        console.error('Error validando progreso:', error);
+        alert('Error al validar el progreso. Por favor intenta de nuevo.');
+        return;
+      }
+
       // Cambiar estado
-      botActive = !botActive;
+      const newState = !botActive;
+      botActive = newState;
 
       // Guardar en Firebase
       try {
@@ -1642,7 +1693,7 @@
           lastUpdated: new Date().toISOString()
         });
 
-        console.log(`✅ Estado del bot actualizado: ${botActive ? 'ACTIVO' : 'DESACTIVADO'}`);
+        console.log(`✅ Estado del bot actualizado en Firebase: ${botActive ? 'ACTIVO (true)' : 'DESACTIVADO (false)'}`);
         
         // Actualizar UI
         updateBotControlUI();
