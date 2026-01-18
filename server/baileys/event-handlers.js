@@ -41,15 +41,23 @@ class EventHandlers {
    * @param {object} baileysMessage - Mensaje en formato Baileys
    */
   async handleIncomingMessage(tenantId, baileysMessage) {
+    console.log(`🔍 [DEBUG] handleIncomingMessage llamado para tenant ${tenantId}`);
+    console.log(`🔍 [DEBUG] baileysMessage:`, JSON.stringify(baileysMessage, null, 2));
+    
     try {
       // Ignorar mensajes del bot (evitar loops)
       if (messageAdapter.isFromBot(baileysMessage)) {
+        console.log(`🔍 [DEBUG] Mensaje propio ignorado (isFromBot = true)`);
         logger.debug(`[${tenantId}] Mensaje propio ignorado`);
         return;
       }
 
+      console.log(`🔍 [DEBUG] No es mensaje del bot, convirtiendo a formato interno`);
+      
       // Convertir a formato interno
       const internalMessage = messageAdapter.baileysToInternal(baileysMessage);
+      
+      console.log(`🔍 [DEBUG] Mensaje convertido:`, JSON.stringify(internalMessage, null, 2));
       
       // Agregar tenantId al mensaje
       internalMessage.tenantId = tenantId;
@@ -64,30 +72,42 @@ class EventHandlers {
       // Ejecutar callback específico del tenant o callback global
       let callback = this.messageCallbacks.get(tenantId);
       
+      console.log(`🔍 [DEBUG] Callback específico para ${tenantId}:`, callback ? 'ENCONTRADO' : 'NO ENCONTRADO');
+      
       if (!callback) {
         // Buscar callback global
         callback = this.messageCallbacks.get('*');
+        console.log(`🔍 [DEBUG] Callback global (*):`, callback ? 'ENCONTRADO' : 'NO ENCONTRADO');
       }
       
       if (callback) {
+        console.log(`🔍 [DEBUG] Ejecutando callback con mensaje:`, internalMessage.text);
+        
         try {
           const response = await callback(internalMessage);
+          
+          console.log(`🔍 [DEBUG] Respuesta del callback:`, response);
           
           // Si el callback retorna null, significa que el bot está desactivado
           // y no debe responder. Simplemente marcar como leído.
           if (response === null || response === undefined) {
+            console.log(`🔍 [DEBUG] Respuesta null/undefined, bot desactivado o sin respuesta`);
             logger.info(`[${tenantId}] Bot desactivado o sin respuesta, solo marcando como leído`);
             await messageAdapter.markAsRead(tenantId, baileysMessage.key);
             return;
           }
           
+          console.log(`🔍 [DEBUG] Marcando mensaje como leído`);
+          
           // Marcar como leído DESPUÉS de procesar (para dar tiempo a responder)
           await messageAdapter.markAsRead(tenantId, baileysMessage.key);
           logger.info(`[${tenantId}] Mensaje marcado como leído`);
         } catch (error) {
+          console.error(`🔍 [DEBUG] Error en callback:`, error);
           logger.error(`[${tenantId}] Error en callback de mensaje:`, error);
         }
       } else {
+        console.log(`🔍 [DEBUG] NO HAY CALLBACK REGISTRADO`);
         logger.warn(`[${tenantId}] No hay callback registrado para mensajes`);
         
         // Marcar como leído de todos modos
@@ -99,6 +119,7 @@ class EventHandlers {
       await this.saveMessageToFirebase(tenantId, internalMessage);
 
     } catch (error) {
+      console.error(`🔍 [DEBUG] Error en handleIncomingMessage:`, error);
       logger.error(`[${tenantId}] Error manejando mensaje entrante:`, error);
     }
   }

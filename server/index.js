@@ -623,19 +623,26 @@ console.log('🤖 Inicializando Bot Logic con Baileys...');
 
 // Registrar callback global para procesar mensajes entrantes
 eventHandlers.onMessage('*', async (message) => {
+  console.log(`🔍 [DEBUG] Callback global ejecutado`);
+  console.log(`🔍 [DEBUG] Mensaje recibido en callback:`, JSON.stringify(message, null, 2));
+  
   try {
     const tenantId = message.tenantId || 'default';
     const from = message.from;
     const text = message.text || '';
 
     console.log(`🤖 Bot procesando mensaje de ${from} en tenant ${tenantId}`);
+    console.log(`🔍 [DEBUG] Llamando a botLogic.processMessage`);
 
     // Procesar mensaje a través de bot-logic
     // bot-logic.js maneja toda la lógica: validación del toggle, onboarding, etc.
     const response = await botLogic.processMessage(tenantId, from, text);
 
+    console.log(`🔍 [DEBUG] Respuesta de botLogic.processMessage:`, response);
+
     // Si hay respuesta, enviarla
     if (response) {
+      console.log(`🔍 [DEBUG] Enviando respuesta a ${from}`);
       await baileys.sendMessage(tenantId, from, response);
       console.log(`✅ Respuesta enviada a ${from}`);
     } else {
@@ -643,6 +650,7 @@ eventHandlers.onMessage('*', async (message) => {
     }
   } catch (error) {
     console.error('❌ Error en bot callback:', error);
+    console.error('Stack trace:', error.stack);
   }
 });
 

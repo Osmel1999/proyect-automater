@@ -237,10 +237,18 @@ class SessionManager extends EventEmitter {
    * @private
    */
   async handleIncomingMessages(tenantId, messages, type) {
+    console.log(`🔍 [DEBUG] handleIncomingMessages llamado para tenant ${tenantId}, type: ${type}, mensajes: ${messages.length}`);
+    
     for (const message of messages) {
       if (type === 'notify') {
+        console.log(`🔍 [DEBUG] Mensaje tipo notify de ${message.key.remoteJid}`);
         logger.info(`[${tenantId}] Mensaje recibido de ${message.key.remoteJid}`);
+        
+        console.log(`🔍 [DEBUG] Emitiendo evento 'message' para tenant ${tenantId}`);
         this.emit('message', tenantId, message);
+        console.log(`🔍 [DEBUG] Evento 'message' emitido`);
+      } else {
+        console.log(`🔍 [DEBUG] Mensaje ignorado, type: ${type}`);
       }
     }
   }

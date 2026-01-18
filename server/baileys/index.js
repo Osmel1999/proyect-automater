@@ -25,12 +25,16 @@ class BaileysService {
    * @private
    */
   setupEventListeners() {
+    console.log('🔍 [DEBUG] Configurando event listeners de Baileys');
+    
     // Conectar session-manager con event-handlers
     sessionManager.on('message', (tenantId, message) => {
+      console.log(`🔍 [DEBUG] Evento 'message' recibido en BaileysService para tenant ${tenantId}`);
       eventHandlers.handleIncomingMessage(tenantId, message);
     });
 
     sessionManager.on('connected', async (tenantId, phoneNumber) => {
+      console.log(`🔍 [DEBUG] Evento 'connected' para tenant ${tenantId}, phone: ${phoneNumber}`);
       await eventHandlers.handleConnectionChange(tenantId, 'open', { phoneNumber });
       
       // Inicializar anti-ban para este tenant
@@ -40,6 +44,7 @@ class BaileysService {
     });
 
     sessionManager.on('disconnected', async (tenantId) => {
+      console.log(`🔍 [DEBUG] Evento 'disconnected' para tenant ${tenantId}`);
       await eventHandlers.handleConnectionChange(tenantId, 'close');
     });
 
