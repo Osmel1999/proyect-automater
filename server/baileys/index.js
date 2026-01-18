@@ -245,6 +245,14 @@ class BaileysService {
   getSessionManager() {
     return sessionManager;
   }
+
+  /**
+   * Obtiene el eventHandlers (para registrar callbacks)
+   * @returns {EventHandlers}
+   */
+  getEventHandlers() {
+    return eventHandlers;
+  }
 }
 
 // Singleton instance

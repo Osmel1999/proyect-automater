@@ -17,7 +17,7 @@ class EventHandlers {
 
   /**
    * Registra un callback para mensajes recibidos
-   * @param {string} tenantId - ID del tenant
+   * @param {string} tenantId - ID del tenant o '*' para todos
    * @param {function} callback - Función a ejecutar cuando llegue un mensaje
    */
   onMessage(tenantId, callback) {
@@ -51,6 +51,9 @@ class EventHandlers {
       // Convertir a formato interno
       const internalMessage = messageAdapter.baileysToInternal(baileysMessage);
       
+      // Agregar tenantId al mensaje
+      internalMessage.tenantId = tenantId;
+      
       logger.info(`[${tenantId}] Mensaje recibido de ${internalMessage.from}: ${internalMessage.text?.substring(0, 50) || '[media]'}`);
 
       // Emitir evento WebSocket
@@ -58,19 +61,30 @@ class EventHandlers {
         global.baileysWebSocket.emitMessageReceived(tenantId, internalMessage);
       }
 
-      // Marcar como leído automáticamente
-      await messageAdapter.markAsRead(tenantId, baileysMessage.key);
-
-      // Ejecutar callback registrado
-      const callback = this.messageCallbacks.get(tenantId);
+      // Ejecutar callback específico del tenant o callback global
+      let callback = this.messageCallbacks.get(tenantId);
+      
+      if (!callback) {
+        // Buscar callback global
+        callback = this.messageCallbacks.get('*');
+      }
+      
       if (callback) {
         try {
           await callback(internalMessage);
+          
+          // Marcar como leído DESPUÉS de procesar (para dar tiempo a responder)
+          await messageAdapter.markAsRead(tenantId, baileysMessage.key);
+          logger.info(`[${tenantId}] Mensaje marcado como leído`);
         } catch (error) {
           logger.error(`[${tenantId}] Error en callback de mensaje:`, error);
         }
       } else {
         logger.warn(`[${tenantId}] No hay callback registrado para mensajes`);
+        
+        // Marcar como leído de todos modos
+        await messageAdapter.markAsRead(tenantId, baileysMessage.key);
+        logger.info(`[${tenantId}] Mensaje marcado como leído`);
       }
 
       // Guardar en Firebase si es necesario

@@ -613,6 +613,37 @@ const baileysRoutes = require('./routes/baileys-routes');
 app.use('/api/baileys', baileysRoutes);
 console.log('✅ Rutas de Baileys registradas en /api/baileys');
 
+// Inicializar Bot Logic con Baileys
+const baileys = require('./baileys');
+const botLogic = require('./bot-logic');
+const eventHandlers = baileys.getEventHandlers();
+
+console.log('🤖 Inicializando Bot Logic con Baileys...');
+
+// Registrar callback global para procesar mensajes entrantes
+eventHandlers.onMessage('*', async (message) => {
+  try {
+    const tenantId = message.tenantId || 'default';
+    const from = message.from;
+    const text = message.text || '';
+
+    console.log(`🤖 Bot procesando mensaje de ${from} en tenant ${tenantId}`);
+
+    // Procesar mensaje con bot-logic
+    const response = await botLogic.processMessage(tenantId, from, text);
+
+    // Enviar respuesta si hay
+    if (response) {
+      await baileys.sendMessage(tenantId, from, response);
+      console.log(`✅ Respuesta enviada a ${from}`);
+    }
+  } catch (error) {
+    console.error('❌ Error en bot callback:', error);
+  }
+});
+
+console.log('✅ Bot Logic inicializado y callback registrado');
+
 // ====================================
 // MANEJADOR DE ERRORES GLOBAL
 // ====================================
