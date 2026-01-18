@@ -523,6 +523,65 @@ class BaileysController {
       });
     }
   }
+
+  /**
+   * POST /api/baileys/clean-session
+   * Limpia completamente una sesión corrupta (archivos y estado)
+   */
+  async cleanSession(req, res) {
+    try {
+      const { tenantId } = req.body;
+
+      if (!tenantId) {
+        return res.status(400).json({ 
+          error: 'tenantId es requerido' 
+        });
+      }
+
+      logger.info(`[${tenantId}] Limpiando sesión corrupta...`);
+
+      // Primero desconectar si está conectado
+      try {
+        await baileys.disconnect(tenantId);
+      } catch (disconnectError) {
+        logger.warn(`[${tenantId}] Error al desconectar (puede ser normal):`, disconnectError.message);
+      }
+
+      // Limpiar archivos de sesión
+      const fs = require('fs').promises;
+      const path = require('path');
+      const sessionDir = path.join(__dirname, '../../sessions', tenantId);
+
+      try {
+        const files = await fs.readdir(sessionDir);
+        for (const file of files) {
+          await fs.unlink(path.join(sessionDir, file));
+        }
+        logger.info(`[${tenantId}] ${files.length} archivos de sesión eliminados`);
+      } catch (fsError) {
+        if (fsError.code !== 'ENOENT') {
+          logger.error(`[${tenantId}] Error al limpiar archivos:`, fsError);
+        }
+      }
+
+      // Limpiar stores
+      qrStore.delete(tenantId);
+      connectionStore.delete(tenantId);
+
+      logger.info(`[${tenantId}] Sesión limpiada completamente`);
+
+      res.json({ 
+        success: true,
+        message: 'Sesión limpiada exitosamente'
+      });
+
+    } catch (error) {
+      logger.error('Error en cleanSession:', error);
+      res.status(500).json({ 
+        error: error.message || 'Error al limpiar sesión' 
+      });
+    }
+  }
 }
 
 // Exportar instancia única

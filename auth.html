@@ -448,32 +448,42 @@
                 let userSnapshot = null;
                 let retries = 3;
                 
-                while (retries > 0 && !userSnapshot) {
+                while (retries > 0) {
                     try {
+                        console.log(`🔍 Buscando usuario en BD (intento ${4 - retries}/3)...`);
+                        
                         userSnapshot = await firebase.database()
                             .ref('users')
                             .orderByChild('email')
                             .equalTo(email)
                             .once('value');
                         
+                        console.log('📦 Snapshot recibido:', userSnapshot.exists() ? 'SÍ existe' : 'NO existe');
+                        
                         if (userSnapshot.exists()) {
+                            console.log('✅ Usuario encontrado en BD');
                             break;
                         }
                         
-                        console.log(`⚠️ Usuario no encontrado en BD, reintentando... (${retries} intentos restantes)`);
-                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        console.log(`⚠️ Usuario no encontrado en BD, reintentando... (${retries - 1} intentos restantes)`);
                         retries--;
+                        
+                        if (retries > 0) {
+                            await new Promise(resolve => setTimeout(resolve, 1500));
+                        }
                     } catch (dbError) {
-                        console.error('Error al consultar BD:', dbError);
+                        console.error('❌ Error al consultar BD:', dbError);
                         retries--;
                         if (retries > 0) {
-                            await new Promise(resolve => setTimeout(resolve, 1000));
+                            await new Promise(resolve => setTimeout(resolve, 1500));
                         }
                     }
                 }
                 
                 if (!userSnapshot || !userSnapshot.exists()) {
-                    throw new Error('Usuario no encontrado en la base de datos');
+                    console.error('❌ Usuario no encontrado después de 3 intentos');
+                    console.log('📧 Email buscado:', email);
+                    throw new Error('Usuario no encontrado en la base de datos. Por favor, contacta soporte.');
                 }
 
                 const userData = Object.values(userSnapshot.val())[0];

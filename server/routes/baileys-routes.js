@@ -38,6 +38,15 @@ router.post('/disconnect', (req, res) => {
 });
 
 /**
+ * POST /api/baileys/clean-session
+ * Limpia completamente una sesión corrupta
+ * Body: { tenantId: string }
+ */
+router.post('/clean-session', (req, res) => {
+  baileysController.cleanSession(req, res);
+});
+
+/**
  * GET /api/baileys/status
  * Obtiene el estado de conexión
  * Query: ?tenantId=xxx
