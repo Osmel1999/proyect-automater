@@ -62,6 +62,42 @@ function limpiarSesionesInactivas() {
 setInterval(limpiarSesionesInactivas, 10 * 60 * 1000);
 
 /**
+ * Obtiene el menú del tenant desde Firebase en formato para el parser
+ * @param {string} tenantId - ID del tenant
+ * @returns {Promise<Array>} Array de items del menú en formato parser
+ */
+async function obtenerMenuTenant(tenantId) {
+  try {
+    const menuSnapshot = await firebaseService.database.ref(`tenants/${tenantId}/menu/items`).once('value');
+    const menuItems = menuSnapshot.val();
+    
+    if (!menuItems || Object.keys(menuItems).length === 0) {
+      // Fallback: usar menú hardcodeado
+      console.log(`⚠️  Tenant ${tenantId} no tiene menú en Firebase, usando menú hardcodeado`);
+      return menu.obtenerTodos();
+    }
+    
+    // Convertir objeto de Firebase a array en formato del parser
+    const items = Object.values(menuItems)
+      .filter(item => item.available !== false)
+      .map((item, index) => ({
+        numero: item.numero || item.number || String(index + 1),
+        nombre: item.name || item.nombre || 'Sin nombre',
+        precio: item.price || item.precio || 0,
+        descripcion: item.description || item.descripcion || '',
+        categoria: item.category || item.categoria || 'Otros'
+      }));
+    
+    console.log(`✅ Menú del tenant ${tenantId} cargado: ${items.length} items`);
+    return items;
+  } catch (error) {
+    console.error(`❌ Error obteniendo menú del tenant ${tenantId}:`, error);
+    // Fallback: usar menú hardcodeado
+    return menu.obtenerTodos();
+  }
+}
+
+/**
  * Procesa un mensaje entrante y retorna la respuesta
  * @param {string} tenantId - ID del tenant (restaurante)
  * @param {string} from - Número de teléfono del cliente
@@ -207,7 +243,11 @@ async function processMessage(tenantId, from, texto) {
   
   // Si parece un pedido en lenguaje natural o tiene múltiples números
   if (tienePalabrasClave || tieneMultiplesNumeros || texto.length > 15) {
-    const resultado = parsearPedido(textoOriginal);
+    // Obtener el menú del tenant para el parser
+    const menuTenant = await obtenerMenuTenant(tenantId);
+    console.log(`📋 Menú del tenant obtenido: ${menuTenant.length} items`);
+    
+    const resultado = parsearPedido(textoOriginal, menuTenant);
     
     if (resultado.exitoso && resultado.items.length > 0) {
       // Guardar items parseados para confirmación

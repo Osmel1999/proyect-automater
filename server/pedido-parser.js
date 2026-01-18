@@ -4,8 +4,11 @@
  * Ejemplo: "Quiero 2 hamburguesas y 3 coca colas"
  */
 
-const { menu } = require('./menu');
+const { menu: menuDefault } = require('./menu');
 const fuzz = require('fuzzball');
+
+// Variable para almacenar el menú activo (puede ser el default o el del tenant)
+let menuActivo = menuDefault;
 
 /**
  * Normaliza texto para comparación
@@ -96,13 +99,16 @@ function obtenerVariaciones(producto) {
 
 /**
  * Busca un producto por nombre o variación con fuzzy matching
+ * @param {string} textoProducto - Texto del producto a buscar
+ * @param {Array} menuCustom - Menú personalizado (opcional, usa menuActivo por defecto)
  */
-function buscarProducto(textoProducto) {
+function buscarProducto(textoProducto, menuCustom = null) {
+  const menuAUsar = menuCustom || menuActivo;
   const textoNormalizado = normalizarTexto(textoProducto);
   const textoFonetico = normalizarFonetica(textoProducto);
   
   // Nivel 1: Coincidencia exacta
-  for (const producto of menu) {
+  for (const producto of menuAUsar) {
     const variaciones = obtenerVariaciones(producto);
     
     if (variaciones.includes(textoNormalizado)) {
@@ -111,7 +117,7 @@ function buscarProducto(textoProducto) {
   }
   
   // Nivel 2: Coincidencia parcial (contiene)
-  for (const producto of menu) {
+  for (const producto of menuAUsar) {
     const nombreNormalizado = normalizarTexto(producto.nombre);
     
     if (nombreNormalizado.includes(textoNormalizado) || 
@@ -121,7 +127,7 @@ function buscarProducto(textoProducto) {
   }
   
   // Nivel 3: Búsqueda por palabras clave
-  for (const producto of menu) {
+  for (const producto of menuAUsar) {
     const variaciones = obtenerVariaciones(producto);
     
     for (const variacion of variaciones) {
@@ -132,7 +138,7 @@ function buscarProducto(textoProducto) {
   }
   
   // Nivel 4: Búsqueda fonética (para errores ortográficos)
-  for (const producto of menu) {
+  for (const producto of menuAUsar) {
     const nombreFonetico = normalizarFonetica(producto.nombre);
     const variaciones = obtenerVariaciones(producto);
     
@@ -155,7 +161,7 @@ function buscarProducto(textoProducto) {
   let mejorScore = 0;
   const UMBRAL_FUZZY = 75; // 75% de similitud mínima
   
-  for (const producto of menu) {
+  for (const producto of menuAUsar) {
     const nombreNormalizado = normalizarTexto(producto.nombre);
     const variaciones = obtenerVariaciones(producto);
     
@@ -228,7 +234,14 @@ function extraerCantidad(texto) {
  * - "1 pizza muzzarella con 2 cervezas"
  * - "Dame una milanesa napolitana y papas fritas"
  */
-function parsearPedido(textoPedido) {
+/**
+ * Parsea un pedido en lenguaje natural
+ * @param {string} textoPedido - Texto del pedido
+ * @param {Array} menuCustom - Menú personalizado del tenant (opcional)
+ * @returns {Object} Objeto con items parseados y errores
+ */
+function parsearPedido(textoPedido, menuCustom = null) {
+  const menuAUsar = menuCustom || menuActivo;
   const items = [];
   const errores = [];
   
@@ -276,7 +289,7 @@ function parsearPedido(textoPedido) {
         fragmentoActual += (fragmentoActual ? ' ' : '') + palabras[i];
         
         // Verificar si lo que llevamos hasta ahora es un producto válido
-        const productoEncontrado = buscarProducto(fragmentoActual);
+        const productoEncontrado = buscarProducto(fragmentoActual, menuAUsar);
         
         if (productoEncontrado && i < palabras.length - 1) {
           // Encontramos un producto, guardarlo y empezar uno nuevo
@@ -324,7 +337,7 @@ function parsearPedido(textoPedido) {
     }
     
     // Buscar producto
-    const producto = buscarProducto(nombreProducto);
+    const producto = buscarProducto(nombreProducto, menuAUsar);
     
     if (producto) {
       // Verificar si ya existe en el carrito
