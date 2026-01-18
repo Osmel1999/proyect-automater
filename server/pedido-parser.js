@@ -11,6 +11,16 @@ const fuzz = require('fuzzball');
 let menuActivo = menuDefault;
 
 /**
+ * Formatea un precio con separadores de miles
+ * @param {number} precio - Precio a formatear
+ * @returns {string} Precio formateado (ej: 40000 → "40.000")
+ */
+function formatearPrecio(precio) {
+  if (!precio || isNaN(precio)) return '0';
+  return Number(precio).toLocaleString('es-CO');
+}
+
+/**
  * Normaliza texto para comparación
  */
 function normalizarTexto(texto) {
@@ -393,11 +403,11 @@ function generarMensajeConfirmacion(resultado) {
     const subtotal = item.precio * item.cantidad;
     total += subtotal;
     mensaje += `${index + 1}. ${item.cantidad}x ${item.nombre}\n`;
-    mensaje += `   $${item.precio} c/u = $${subtotal}\n\n`;
+    mensaje += `   $${formatearPrecio(item.precio)} c/u = $${formatearPrecio(subtotal)}\n\n`;
   });
   
   mensaje += '━'.repeat(30) + '\n\n';
-  mensaje += `💰 *Total: $${total}*\n\n`;
+  mensaje += `💰 *Total: $${formatearPrecio(total)}*\n\n`;
   
   if (resultado.errores.length > 0) {
     mensaje += `⚠️ No encontré: ${resultado.errores.join(', ')}\n\n`;
@@ -416,5 +426,6 @@ module.exports = {
   parsearPedido,
   generarMensajeConfirmacion,
   buscarProducto,
-  normalizarTexto
+  normalizarTexto,
+  formatearPrecio
 };

@@ -14,6 +14,16 @@ const { parsearPedido, generarMensajeConfirmacion } = require('./pedido-parser')
 const sesionesUsuarios = new Map();
 
 /**
+ * Formatea un precio con separadores de miles
+ * @param {number} precio - Precio a formatear
+ * @returns {string} Precio formateado (ej: 40000 → "40.000")
+ */
+function formatearPrecio(precio) {
+  if (!precio || isNaN(precio)) return '0';
+  return Number(precio).toLocaleString('es-CO');
+}
+
+/**
  * Genera clave única para sesión de usuario en un tenant
  */
 function generarClaveSesion(tenantId, telefono) {
@@ -343,7 +353,7 @@ async function mostrarMenu(tenantId) {
         const precio = item.price || item.precio || 0;
         const descripcion = item.description || item.descripcion || '';
         
-        mensaje += `${numero}. ${nombre} - $${precio}\n`;
+        mensaje += `${numero}. ${nombre} - $${formatearPrecio(precio)}\n`;
         if (descripcion) {
           mensaje += `   _${descripcion}_\n`;
         }
@@ -439,7 +449,7 @@ function agregarAlCarrito(sesion, texto) {
   });
   
   return `✅ *Agregado al carrito*\n\n` +
-         `${item.nombre} - $${item.precio}\n\n` +
+         `${item.nombre} - $${formatearPrecio(item.precio)}\n\n` +
          `🛒 Total de items: ${sesion.carrito.length}\n\n` +
          'Opciones:\n' +
          '• Envía otro número para agregar más\n' +
@@ -473,12 +483,12 @@ function verCarrito(sesion) {
   Object.values(itemsAgrupados).forEach(item => {
     const subtotal = item.precio * item.cantidad;
     mensaje += `• ${item.cantidad}x ${item.nombre}\n`;
-    mensaje += `  $${item.precio} c/u = $${subtotal}\n\n`;
+    mensaje += `  $${formatearPrecio(item.precio)} c/u = $${formatearPrecio(subtotal)}\n\n`;
     total += subtotal;
   });
   
   mensaje += '━'.repeat(30) + '\n';
-  mensaje += `💰 *TOTAL: $${total}*\n`;
+  mensaje += `💰 *TOTAL: $${formatearPrecio(total)}*\n`;
   mensaje += '━'.repeat(30) + '\n\n';
   mensaje += '¿Confirmas tu pedido?\n\n';
   mensaje += '• *confirmar* - Enviar pedido a la cocina\n';
@@ -550,7 +560,7 @@ async function confirmarPedido(sesion) {
     let mensaje = '🎉 *¡PEDIDO CONFIRMADO!*\n\n';
     mensaje += `🏪 ${restaurantName}\n`;
     mensaje += `📋 Número de pedido: #${numeroHex}\n`;
-    mensaje += `💰 Total: $${total}\n`;
+    mensaje += `💰 Total: $${formatearPrecio(total)}\n`;
     mensaje += `📱 Cliente: ${sesion.telefono}\n\n`;
     mensaje += '━'.repeat(30) + '\n\n';
     mensaje += '✅ Tu pedido fue enviado a la cocina\n';
@@ -583,7 +593,7 @@ function eliminarUltimoItem(sesion) {
   const itemEliminado = sesion.carrito.pop();
   
   let mensaje = `🗑️ *Item eliminado*\n\n`;
-  mensaje += `${itemEliminado.nombre} - $${itemEliminado.precio}\n\n`;
+  mensaje += `${itemEliminado.nombre} - $${formatearPrecio(itemEliminado.precio)}\n\n`;
   
   if (sesion.carrito.length > 0) {
     mensaje += `🛒 Items restantes: ${sesion.carrito.length}\n\n`;
