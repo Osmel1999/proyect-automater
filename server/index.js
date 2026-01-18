@@ -630,50 +630,16 @@ eventHandlers.onMessage('*', async (message) => {
 
     console.log(`🤖 Bot procesando mensaje de ${from} en tenant ${tenantId}`);
 
-    // Verificar estado del tenant antes de procesar
-    const tenantData = await firebaseService.getData(`tenants/${tenantId}`);
-    
-    if (!tenantData) {
-      console.log(`⚠️  Tenant ${tenantId} no encontrado, ignorando mensaje`);
-      return;
-    }
-
-    // Verificar que el onboarding esté completo
-    const onboardingSteps = tenantData.onboarding?.steps || {};
-    const completedSteps = Object.values(onboardingSteps).filter(v => v === true).length;
-    const totalSteps = Object.keys(onboardingSteps).length;
-    const completionPercentage = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
-
-    console.log(`📊 Onboarding: ${completedSteps}/${totalSteps} pasos (${completionPercentage.toFixed(0)}%)`);
-
-    // Requerir al menos 75% del onboarding completo
-    if (completionPercentage < 75) {
-      console.log(`⚠️  Onboarding incompleto (${completionPercentage.toFixed(0)}%), enviando mensaje de configuración`);
-      
-      const setupMessage = `👋 *¡Hola!*\n\n` +
-        `Gracias por contactarnos. 🙏\n\n` +
-        `📋 *Nuestro sistema aún está en configuración*\n\n` +
-        `Para poder atenderte correctamente, el administrador debe completar la configuración del sistema:\n\n` +
-        `✅ Conectar WhatsApp\n` +
-        `${onboardingSteps.menu_configured ? '✅' : '⬜'} Configurar menú de productos\n` +
-        `${onboardingSteps.messages_customized ? '✅' : '⬜'} Personalizar mensajes\n` +
-        `${onboardingSteps.bot_tested ? '✅' : '⬜'} Probar el sistema\n\n` +
-        `📱 Por favor, vuelve a intentarlo más tarde o contacta directamente con el restaurante.\n\n` +
-        `Gracias por tu paciencia. 😊`;
-
-      await baileys.sendMessage(tenantId, from, setupMessage);
-      console.log(`✅ Mensaje de configuración enviado a ${from}`);
-      return;
-    }
-
-    // Onboarding completo, procesar mensaje normal
-    console.log(`✅ Onboarding completo, procesando mensaje`);
+    // Procesar mensaje a través de bot-logic
+    // bot-logic.js maneja toda la lógica: validación del toggle, onboarding, etc.
     const response = await botLogic.processMessage(tenantId, from, text);
 
-    // Enviar respuesta si hay
+    // Si hay respuesta, enviarla
     if (response) {
       await baileys.sendMessage(tenantId, from, response);
       console.log(`✅ Respuesta enviada a ${from}`);
+    } else {
+      console.log(`ℹ️  Sin respuesta (bot desactivado o sin configurar)`);
     }
   } catch (error) {
     console.error('❌ Error en bot callback:', error);
