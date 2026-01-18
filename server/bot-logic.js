@@ -82,9 +82,35 @@ async function processMessage(tenantId, from, texto) {
   console.log(`   Mensaje: "${textoOriginal}"`);
   
   // ====================================
-  // VALIDAR SI EL BOT ESTÁ ACTIVO
+  // VALIDAR PROGRESO DE ONBOARDING Y ESTADO DEL BOT
   // ====================================
   try {
+    // 1. Verificar progreso del onboarding
+    const onboardingSnapshot = await firebaseService.database.ref(`tenants/${tenantId}/onboarding`).once('value');
+    const onboarding = onboardingSnapshot.val();
+    
+    const progress = onboarding?.progress || 0;
+    
+    console.log(`🔍 Debug - Progreso de onboarding: ${progress}%`);
+    
+    // El bot solo puede estar activo si el onboarding está al menos al 75%
+    if (progress < 75) {
+      console.log(`🔴 Onboarding incompleto (${progress}%). Bot no disponible.`);
+      return null; // No responder nada
+    }
+    
+    // 2. Verificar si el menú está configurado
+    const menuSnapshot = await firebaseService.database.ref(`tenants/${tenantId}/menu/items`).once('value');
+    const menuItems = menuSnapshot.val();
+    
+    if (!menuItems || Object.keys(menuItems).length === 0) {
+      console.log(`🔴 Menú no configurado. Bot no disponible.`);
+      return null; // No responder nada
+    }
+    
+    console.log(`✅ Menú configurado: ${Object.keys(menuItems).length} items`);
+    
+    // 3. Verificar si el bot está activo (toggle en dashboard)
     const botConfig = await firebaseService.database.ref(`tenants/${tenantId}/bot/config`).once('value');
     const config = botConfig.val();
     
@@ -99,14 +125,15 @@ async function processMessage(tenantId, from, texto) {
     console.log(`🔍 Debug - typeof config?.active: ${typeof config?.active}`);
     
     if (!botActive) {
-      console.log(`🔴 Bot desactivado para tenant ${tenantId}. Ignorando mensaje.`);
+      console.log(`🔴 Bot desactivado manualmente para tenant ${tenantId}. Ignorando mensaje.`);
       return null; // No responder nada
     }
     
-    console.log(`🟢 Bot activo para tenant ${tenantId} (active: ${config?.active ?? 'undefined'})`);
+    console.log(`🟢 Bot activo para tenant ${tenantId} (onboarding: ${progress}%, active: ${config?.active ?? 'undefined'})`);
   } catch (error) {
     console.error(`⚠️ Error verificando estado del bot para tenant ${tenantId}:`, error);
-    // En caso de error, asumir que el bot está activo (fail-safe)
+    // En caso de error, NO asumir que el bot está activo (fail-safe)
+    return null;
   }
   
   // ====================================
@@ -117,7 +144,31 @@ async function processMessage(tenantId, from, texto) {
   if (texto === 'hola' || texto === 'menu' || texto === 'empezar' || texto === 'start') {
     sesion.esperandoConfirmacion = false;
     sesion.pedidoPendiente = null;
-    return await mostrarMenu(tenantId);
+    
+    // Obtener mensaje de bienvenida personalizado
+    try {
+      const messagesSnapshot = await firebaseService.database.ref(`tenants/${tenantId}/bot/messages`).once('value');
+      const messages = messagesSnapshot.val();
+      
+      console.log(`🔍 Debug - Mensajes configurados:`, messages);
+      
+      let welcomeMessage = '';
+      
+      // Si el usuario escribió "hola", usar el mensaje de bienvenida
+      if (texto === 'hola') {
+        welcomeMessage = messages?.welcome || '👋 *¡Hola! Bienvenido a nuestro restaurante*\n\n';
+      }
+      
+      // Obtener el menú
+      const menuMessage = await mostrarMenu(tenantId);
+      
+      // Combinar bienvenida + menú
+      return welcomeMessage + menuMessage;
+    } catch (error) {
+      console.error(`⚠️ Error obteniendo mensajes personalizados:`, error);
+      // Fallback: solo mostrar menú
+      return await mostrarMenu(tenantId);
+    }
   }
   
   if (texto === 'ayuda' || texto === 'help' || texto === '?') {
