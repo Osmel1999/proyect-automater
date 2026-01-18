@@ -28,8 +28,8 @@ class AntiBanService {
       cooldownMinutes: 30,
       
       // Detección de spam
-      maxSameMessage: 3,    // Máximo de mensajes idénticos consecutivos
-      maxSameRecipient: 10  // Máximo de mensajes al mismo número en 1 hora
+      maxSameMessage: 10,    // Máximo de mensajes idénticos consecutivos (aumentado para pruebas)
+      maxSameRecipient: 50  // Máximo de mensajes al mismo número en 1 hora (aumentado para pruebas)
     };
 
     // Tracking de uso por tenant
