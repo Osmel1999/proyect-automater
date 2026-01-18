@@ -572,6 +572,21 @@
         try {
           console.log('📡 Iniciando conexión...');
 
+          // Primero, intentar limpiar cualquier sesión corrupta
+          try {
+            console.log('🧹 Limpiando posibles sesiones corruptas...');
+            await fetch('/api/baileys/disconnect', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ tenantId: this.tenantId })
+            });
+            
+            // Esperar un momento para que se procese
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          } catch (cleanError) {
+            console.log('⚠️ Error al limpiar sesión (puede ser normal):', cleanError.message);
+          }
+
           const response = await fetch('/api/baileys/connect', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -591,8 +606,19 @@
           this.startStatusPolling();
 
         } catch (error) {
-          console.error('Error al iniciar conexión:', error);
-          alert('Error al conectar: ' + error.message);
+          console.error('❌ Error al iniciar conexión:', error);
+          
+          // Mostrar error al usuario de forma amigable
+          this.qrLoadingElement.style.display = 'none';
+          this.qrStatusElement.classList.remove('status-waiting');
+          this.qrStatusElement.classList.add('status-error');
+          this.qrStatusElement.innerHTML = `
+            <span>❌ Error al conectar</span>
+            <div style="margin-top: 10px; font-size: 14px;">${error.message}</div>
+            <button onclick="location.reload()" style="margin-top: 15px; padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;">
+              🔄 Reintentar
+            </button>
+          `;
         }
       }
 

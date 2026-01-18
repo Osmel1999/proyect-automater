@@ -83,8 +83,31 @@ class SessionManager extends EventEmitter {
       const sessionDir = path.join(__dirname, '../../sessions', tenantId);
       await fs.mkdir(sessionDir, { recursive: true });
 
-      // Cargar o crear estado de autenticación
-      const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
+      // Intentar cargar estado de autenticación
+      let state, saveCreds;
+      try {
+        const authState = await useMultiFileAuthState(sessionDir);
+        state = authState.state;
+        saveCreds = authState.saveCreds;
+      } catch (authError) {
+        logger.warn(`[${tenantId}] Error al cargar estado de autenticación: ${authError.message}`);
+        logger.info(`[${tenantId}] Limpiando sesión corrupta y creando nueva...`);
+        
+        // Limpiar carpeta de sesión corrupta
+        try {
+          const files = await fs.readdir(sessionDir);
+          for (const file of files) {
+            await fs.unlink(path.join(sessionDir, file));
+          }
+        } catch (cleanError) {
+          logger.error(`[${tenantId}] Error al limpiar sesión:`, cleanError);
+        }
+        
+        // Intentar crear nuevo estado
+        const authState = await useMultiFileAuthState(sessionDir);
+        state = authState.state;
+        saveCreds = authState.saveCreds;
+      }
 
       // Configurar socket de Baileys
       const socket = makeWASocket({

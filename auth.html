@@ -422,26 +422,64 @@
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const email = document.getElementById('loginEmail').value;
+            const email = document.getElementById('loginEmail').value.trim();
             const password = document.getElementById('loginPassword').value;
 
             document.getElementById('loginLoading').classList.add('show');
             document.getElementById('loginForm').style.display = 'none';
 
             try {
+                // Asegurar que no hay sesión previa activa
+                const currentUser = firebase.auth().currentUser;
+                if (currentUser) {
+                    console.log('⚠️ Sesión previa activa, cerrando primero...');
+                    await firebase.auth().signOut();
+                    // Esperar un momento para que Firebase procese el cierre
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+
                 // Sign in with Firebase Auth
                 const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
                 const user = userCredential.user;
 
-                // Get user data from database
-                const userSnapshot = await firebase.database().ref('users').orderByChild('email').equalTo(email).once('value');
+                console.log('✅ Firebase Auth login exitoso:', user.uid);
+
+                // Get user data from database con retry
+                let userSnapshot = null;
+                let retries = 3;
                 
-                if (!userSnapshot.exists()) {
+                while (retries > 0 && !userSnapshot) {
+                    try {
+                        userSnapshot = await firebase.database()
+                            .ref('users')
+                            .orderByChild('email')
+                            .equalTo(email)
+                            .once('value');
+                        
+                        if (userSnapshot.exists()) {
+                            break;
+                        }
+                        
+                        console.log(`⚠️ Usuario no encontrado en BD, reintentando... (${retries} intentos restantes)`);
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        retries--;
+                    } catch (dbError) {
+                        console.error('Error al consultar BD:', dbError);
+                        retries--;
+                        if (retries > 0) {
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                        }
+                    }
+                }
+                
+                if (!userSnapshot || !userSnapshot.exists()) {
                     throw new Error('Usuario no encontrado en la base de datos');
                 }
 
                 const userData = Object.values(userSnapshot.val())[0];
                 const userId = Object.keys(userSnapshot.val())[0];
+
+                console.log('✅ Datos de usuario obtenidos:', { userId, tenantId: userData.tenantId });
 
                 // Store user data in localStorage
                 localStorage.setItem('currentUserId', userId);
@@ -451,27 +489,35 @@
                 localStorage.setItem('userName', userData.name);
                 localStorage.setItem('businessName', userData.businessName);
 
+                console.log('✅ Datos guardados en localStorage');
+
                 // Check onboarding status
                 if (!userData.onboardingCompleted || !userData.whatsappConnected) {
+                    console.log('🔄 Redirigiendo al onboarding...');
                     // Redirect to onboarding
                     window.location.href = '/onboarding.html';
                 } else {
+                    console.log('🔄 Redirigiendo a select...');
                     // Redirect to selection page
                     window.location.href = '/select.html';
                 }
 
             } catch (error) {
-                console.error('Error al iniciar sesión:', error);
+                console.error('❌ Error al iniciar sesión:', error);
                 document.getElementById('loginLoading').classList.remove('show');
                 document.getElementById('loginForm').style.display = 'block';
                 
                 let errorMessage = 'Error al iniciar sesión. Verifica tus credenciales.';
                 if (error.code === 'auth/user-not-found') {
-                    errorMessage = 'Usuario no encontrado.';
+                    errorMessage = 'Usuario no encontrado. ¿Necesitas registrarte?';
                 } else if (error.code === 'auth/wrong-password') {
-                    errorMessage = 'Contraseña incorrecta.';
+                    errorMessage = 'Contraseña incorrecta. Intenta de nuevo.';
                 } else if (error.code === 'auth/invalid-email') {
                     errorMessage = 'Correo electrónico inválido.';
+                } else if (error.code === 'auth/too-many-requests') {
+                    errorMessage = 'Demasiados intentos fallidos. Intenta más tarde.';
+                } else if (error.message) {
+                    errorMessage = error.message;
                 }
                 
                 showAlert(errorMessage, 'error');

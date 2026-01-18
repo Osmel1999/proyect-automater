@@ -36,8 +36,16 @@
         "destination": "/home.html"
       },
       {
-        "source": "/login",
-        "destination": "/login.html"
+        "source": "/auth",
+        "destination": "/auth.html"
+      },
+      {
+        "source": "/select",
+        "destination": "/select.html"
+      },
+      {
+        "source": "/dashboard",
+        "destination": "/dashboard.html"
       }
     ],
     "headers": [
