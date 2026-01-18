@@ -124,4 +124,80 @@ router.get('/health', (req, res) => {
   baileysController.healthCheck(req, res);
 });
 
+// ==================== TEST ENDPOINT ====================
+
+/**
+ * POST /api/baileys/test-message
+ * Simula un mensaje entrante para pruebas (solo desarrollo)
+ * Body: { tenantId, from, message }
+ */
+router.post('/test-message', async (req, res) => {
+  try {
+    const { tenantId, from, message } = req.body;
+    
+    if (!tenantId || !from || !message) {
+      return res.status(400).json({
+        success: false,
+        error: 'tenantId, from y message son requeridos'
+      });
+    }
+    
+    console.log(`🧪 [TEST] Simulando mensaje entrante:`);
+    console.log(`   Tenant: ${tenantId}`);
+    console.log(`   From: ${from}`);
+    console.log(`   Message: ${message}`);
+    
+    // Obtener event handlers
+    const baileys = require('../baileys');
+    const eventHandlers = baileys.getEventHandlers();
+    
+    // Simular mensaje en formato interno
+    const testMessage = {
+      tenantId,
+      from,
+      text: message,
+      timestamp: Date.now(),
+      messageId: `test-${Date.now()}`,
+      type: 'text'
+    };
+    
+    console.log(`🧪 [TEST] Mensaje simulado:`, testMessage);
+    
+    // Buscar callback
+    let callback = eventHandlers.messageCallbacks.get(tenantId);
+    if (!callback) {
+      callback = eventHandlers.messageCallbacks.get('*');
+    }
+    
+    if (!callback) {
+      console.log(`🧪 [TEST] ❌ No hay callback registrado`);
+      return res.status(500).json({
+        success: false,
+        error: 'No hay callback registrado para procesar mensajes'
+      });
+    }
+    
+    console.log(`🧪 [TEST] Ejecutando callback...`);
+    
+    // Ejecutar callback
+    const response = await callback(testMessage);
+    
+    console.log(`🧪 [TEST] Respuesta del bot:`, response);
+    
+    res.json({
+      success: true,
+      message: testMessage,
+      response
+    });
+    
+  } catch (error) {
+    console.error(`🧪 [TEST] Error:`, error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: error.stack
+    });
+  }
+});
+
 module.exports = router;
