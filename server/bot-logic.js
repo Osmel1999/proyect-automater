@@ -117,7 +117,7 @@ async function processMessage(tenantId, from, texto) {
   if (texto === 'hola' || texto === 'menu' || texto === 'empezar' || texto === 'start') {
     sesion.esperandoConfirmacion = false;
     sesion.pedidoPendiente = null;
-    return mostrarMenu();
+    return await mostrarMenu(tenantId);
   }
   
   if (texto === 'ayuda' || texto === 'help' || texto === '?') {
@@ -224,53 +224,87 @@ async function processMessage(tenantId, from, texto) {
 }
 
 /**
- * Muestra el menú completo
+ * Muestra el menú completo del tenant
  */
-function mostrarMenu() {
-  const items = menu.obtenerTodos();
-  
-  console.log(`📋 Generando menú. Items disponibles: ${items.length}`);
-  
-  if (items.length === 0) {
-    return '❌ *Lo sentimos*\n\nEl menú aún no está disponible. Por favor contacta al restaurante.';
-  }
-  
-  let mensaje = '🍽️ *MENÚ DISPONIBLE*\n\n';
-  
-  // Agrupar por categoría
-  const categorias = {};
-  items.forEach(item => {
-    if (!categorias[item.categoria]) {
-      categorias[item.categoria] = [];
+async function mostrarMenu(tenantId) {
+  try {
+    // Obtener menú del tenant desde Firebase
+    const menuSnapshot = await firebaseService.database.ref(`tenants/${tenantId}/menu/items`).once('value');
+    const menuItems = menuSnapshot.val();
+    
+    console.log(`📋 Generando menú para tenant ${tenantId}`);
+    console.log(`   Items en Firebase:`, menuItems ? Object.keys(menuItems).length : 0);
+    
+    // Si no hay menú en Firebase, usar el menú hardcodeado como fallback
+    let items = [];
+    
+    if (menuItems && Object.keys(menuItems).length > 0) {
+      // Convertir objeto de Firebase a array
+      items = Object.values(menuItems).filter(item => item.available !== false);
+      console.log(`   ✅ Usando menú de Firebase: ${items.length} items`);
+    } else {
+      // Fallback: usar menú hardcodeado
+      items = menu.obtenerTodos();
+      console.log(`   ⚠️  Usando menú hardcodeado (fallback): ${items.length} items`);
     }
-    categorias[item.categoria].push(item);
-  });
-  
-  // Mostrar por categorías
-  for (const [categoria, items] of Object.entries(categorias)) {
-    mensaje += `*${categoria.toUpperCase()}*\n`;
-    items.forEach(item => {
-      mensaje += `${item.numero}. ${item.nombre} - $${item.precio}\n`;
-      mensaje += `   _${item.descripcion}_\n`;
+    
+    if (items.length === 0) {
+      return '❌ *Lo sentimos*\n\nEl menú aún no está disponible. Por favor contacta al restaurante.';
+    }
+    
+    let mensaje = '🍽️ *MENÚ DISPONIBLE*\n\n';
+    
+    // Agrupar por categoría
+    const categorias = {};
+    items.forEach((item, index) => {
+      const categoria = item.category || item.categoria || 'Otros';
+      if (!categorias[categoria]) {
+        categorias[categoria] = [];
+      }
+      // Agregar número si no tiene
+      if (!item.numero && !item.number) {
+        item.numero = String(index + 1);
+      }
+      categorias[categoria].push(item);
     });
-    mensaje += '\n';
+    
+    // Mostrar por categorías
+    for (const [categoria, itemsCategoria] of Object.entries(categorias)) {
+      mensaje += `*${categoria.toUpperCase()}*\n`;
+      itemsCategoria.forEach(item => {
+        const numero = item.numero || item.number || '?';
+        const nombre = item.name || item.nombre || 'Sin nombre';
+        const precio = item.price || item.precio || 0;
+        const descripcion = item.description || item.descripcion || '';
+        
+        mensaje += `${numero}. ${nombre} - $${precio}\n`;
+        if (descripcion) {
+          mensaje += `   _${descripcion}_\n`;
+        }
+      });
+      mensaje += '\n';
+    }
+    
+    mensaje += '━'.repeat(30) + '\n\n';
+    mensaje += '📝 *¿Cómo ordenar?*\n\n';
+    mensaje += '*Opción 1 - Lenguaje Natural:*\n';
+    mensaje += 'Escribe tu pedido directamente:\n';
+    mensaje += '_"Quiero 2 hamburguesas y 1 coca cola"_\n\n';
+    mensaje += '*Opción 2 - Por Número:*\n';
+    mensaje += 'Envía el número del item que deseas.\n';
+    mensaje += 'Ejemplo: *1* para agregar item #1\n\n';
+    mensaje += '━'.repeat(30) + '\n\n';
+    mensaje += '💡 Luego escribe *ver* para revisar\n';
+    mensaje += 'y *confirmar* para finalizar tu pedido.';
+    
+    console.log(`✅ Menú generado. Longitud: ${mensaje.length} caracteres`);
+    
+    return mensaje;
+  } catch (error) {
+    console.error(`❌ Error generando menú para tenant ${tenantId}:`, error);
+    // Fallback en caso de error
+    return '❌ *Error temporal*\n\nNo pudimos cargar el menú. Por favor intenta de nuevo en un momento.';
   }
-  
-  mensaje += '━'.repeat(30) + '\n\n';
-  mensaje += '📝 *¿Cómo ordenar?*\n\n';
-  mensaje += '*Opción 1 - Lenguaje Natural:*\n';
-  mensaje += 'Escribe tu pedido directamente:\n';
-  mensaje += '_"Quiero 2 hamburguesas y 1 coca cola"_\n\n';
-  mensaje += '*Opción 2 - Por Número:*\n';
-  mensaje += 'Envía el número del item que deseas.\n';
-  mensaje += 'Ejemplo: *1* para agregar item #1\n\n';
-  mensaje += '━'.repeat(30) + '\n\n';
-  mensaje += '💡 Luego escribe *ver* para revisar\n';
-  mensaje += 'y *confirmar* para finalizar tu pedido.';
-  
-  console.log(`✅ Menú generado. Longitud: ${mensaje.length} caracteres`);
-  
-  return mensaje;
 }
 
 /**
