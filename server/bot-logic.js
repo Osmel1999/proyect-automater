@@ -88,13 +88,16 @@ async function processMessage(tenantId, from, texto) {
     const botConfig = await firebaseService.database.ref(`tenants/${tenantId}/bot/config`).once('value');
     const config = botConfig.val();
     
-    // Si el bot está explícitamente desactivado, no responder
-    if (config && config.active === false) {
+    // Por defecto el bot está ACTIVO (si no existe config o active no está definido)
+    // Solo se desactiva si explícitamente active === false
+    const botActive = config?.active !== false;
+    
+    if (!botActive) {
       console.log(`🔴 Bot desactivado para tenant ${tenantId}. Ignorando mensaje.`);
       return null; // No responder nada
     }
     
-    console.log(`🟢 Bot activo para tenant ${tenantId}`);
+    console.log(`🟢 Bot activo para tenant ${tenantId} (active: ${config?.active ?? 'undefined'})`);
   } catch (error) {
     console.error(`⚠️ Error verificando estado del bot para tenant ${tenantId}:`, error);
     // En caso de error, asumir que el bot está activo (fail-safe)
