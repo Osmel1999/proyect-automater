@@ -66,7 +66,7 @@ setInterval(limpiarSesionesInactivas, 10 * 60 * 1000);
  * @param {string} tenantId - ID del tenant (restaurante)
  * @param {string} from - Número de teléfono del cliente
  * @param {string} texto - Mensaje recibido
- * @returns {Promise<string>} Respuesta a enviar
+ * @returns {Promise<string|null>} Respuesta a enviar (null si el bot está apagado)
  */
 async function processMessage(tenantId, from, texto) {
   // Limpiar el prefijo whatsapp: del número si existe
@@ -80,6 +80,25 @@ async function processMessage(tenantId, from, texto) {
   console.log(`📩 Procesando mensaje en tenant ${tenantId}`);
   console.log(`   Cliente: ${telefono}`);
   console.log(`   Mensaje: "${textoOriginal}"`);
+  
+  // ====================================
+  // VALIDAR SI EL BOT ESTÁ ACTIVO
+  // ====================================
+  try {
+    const botConfig = await firebaseService.database.ref(`tenants/${tenantId}/bot/config`).once('value');
+    const config = botConfig.val();
+    
+    // Si el bot está explícitamente desactivado, no responder
+    if (config && config.active === false) {
+      console.log(`🔴 Bot desactivado para tenant ${tenantId}. Ignorando mensaje.`);
+      return null; // No responder nada
+    }
+    
+    console.log(`🟢 Bot activo para tenant ${tenantId}`);
+  } catch (error) {
+    console.error(`⚠️ Error verificando estado del bot para tenant ${tenantId}:`, error);
+    // En caso de error, asumir que el bot está activo (fail-safe)
+  }
   
   // ====================================
   // COMANDOS PRINCIPALES
@@ -201,6 +220,12 @@ async function processMessage(tenantId, from, texto) {
 function mostrarMenu() {
   const items = menu.obtenerTodos();
   
+  console.log(`📋 Generando menú. Items disponibles: ${items.length}`);
+  
+  if (items.length === 0) {
+    return '❌ *Lo sentimos*\n\nEl menú aún no está disponible. Por favor contacta al restaurante.';
+  }
+  
   let mensaje = '🍽️ *MENÚ DISPONIBLE*\n\n';
   
   // Agrupar por categoría
@@ -233,6 +258,8 @@ function mostrarMenu() {
   mensaje += '━'.repeat(30) + '\n\n';
   mensaje += '💡 Luego escribe *ver* para revisar\n';
   mensaje += 'y *confirmar* para finalizar tu pedido.';
+  
+  console.log(`✅ Menú generado. Longitud: ${mensaje.length} caracteres`);
   
   return mensaje;
 }

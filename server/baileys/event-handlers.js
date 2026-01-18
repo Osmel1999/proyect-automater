@@ -71,7 +71,15 @@ class EventHandlers {
       
       if (callback) {
         try {
-          await callback(internalMessage);
+          const response = await callback(internalMessage);
+          
+          // Si el callback retorna null, significa que el bot está desactivado
+          // y no debe responder. Simplemente marcar como leído.
+          if (response === null || response === undefined) {
+            logger.info(`[${tenantId}] Bot desactivado o sin respuesta, solo marcando como leído`);
+            await messageAdapter.markAsRead(tenantId, baileysMessage.key);
+            return;
+          }
           
           // Marcar como leído DESPUÉS de procesar (para dar tiempo a responder)
           await messageAdapter.markAsRead(tenantId, baileysMessage.key);
