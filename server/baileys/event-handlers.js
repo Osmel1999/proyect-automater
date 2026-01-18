@@ -88,8 +88,9 @@ class EventHandlers {
           
           console.log(`🔍 [DEBUG] Respuesta del callback:`, response);
           
-          // Si el callback retorna null, significa que el bot está desactivado
-          // y no debe responder. Simplemente marcar como leído.
+          // Si el callback retorna null/undefined, significa que el bot está desactivado
+          // o no pudo procesar el mensaje. Solo marcar como leído.
+          // Si retorna true, significa que se procesó y envió correctamente.
           if (response === null || response === undefined) {
             console.log(`🔍 [DEBUG] Respuesta null/undefined, bot desactivado o sin respuesta`);
             logger.info(`[${tenantId}] Bot desactivado o sin respuesta, solo marcando como leído`);
@@ -97,7 +98,7 @@ class EventHandlers {
             return;
           }
           
-          console.log(`🔍 [DEBUG] Marcando mensaje como leído`);
+          console.log(`🔍 [DEBUG] Mensaje procesado correctamente, marcando como leído`);
           
           // Marcar como leído DESPUÉS de procesar (para dar tiempo a responder)
           await messageAdapter.markAsRead(tenantId, baileysMessage.key);

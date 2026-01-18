@@ -643,14 +643,31 @@ eventHandlers.onMessage('*', async (message) => {
     // Si hay respuesta, enviarla
     if (response) {
       console.log(`🔍 [DEBUG] Enviando respuesta a ${from}`);
-      await baileys.sendMessage(tenantId, from, response);
-      console.log(`✅ Respuesta enviada a ${from}`);
+      
+      // Convertir el texto de respuesta a un objeto de mensaje
+      const messageToSend = typeof response === 'string' ? { text: response } : response;
+      
+      console.log(`🔍 [DEBUG] Mensaje a enviar:`, messageToSend);
+      
+      const result = await baileys.sendMessage(tenantId, from, messageToSend);
+      
+      console.log(`🔍 [DEBUG] Resultado de sendMessage:`, result);
+      
+      if (result && result.success) {
+        console.log(`✅ Respuesta enviada a ${from}`);
+        return true; // Retornar true para indicar que se procesó correctamente
+      } else {
+        console.error(`❌ Error enviando respuesta:`, result);
+        return null; // Retornar null para indicar que hubo un error
+      }
     } else {
       console.log(`ℹ️  Sin respuesta (bot desactivado o sin configurar)`);
+      return null; // Retornar null cuando el bot está desactivado
     }
   } catch (error) {
     console.error('❌ Error en bot callback:', error);
     console.error('Stack trace:', error.stack);
+    return null; // Retornar null en caso de error
   }
 });
 
