@@ -25,6 +25,32 @@
       align-items: center;
       justify-content: center;
       padding: 20px;
+      position: relative;
+    }
+
+    /* Botón de Logout */
+    .logout-button {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(255, 255, 255, 0.9);
+      color: #667eea;
+      border: 2px solid #667eea;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      z-index: 1000;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .logout-button:hover {
+      background: #667eea;
+      color: white;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
     }
 
     .onboarding-container {
@@ -36,6 +62,7 @@
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
       text-align: center;
       animation: slideUp 0.6s ease-out;
+      position: relative;
     }
 
     @keyframes slideUp {
@@ -357,6 +384,11 @@
   </style>
 </head>
 <body>
+  <!-- Botón de Logout -->
+  <button class="logout-button" id="logoutButton" title="Cerrar sesión">
+    🚪 Cerrar Sesión
+  </button>
+
   <div class="onboarding-container">
     <!-- Logo -->
     <div class="onboarding-logo">
@@ -467,7 +499,7 @@
         
         if (!tenantId) {
           alert('Error: No se encontró el tenant ID. Redirigiendo al login...');
-          window.location.href = '/login.html';
+          window.location.href = '/auth.html';
           return null;
         }
         
@@ -501,6 +533,11 @@
 
         document.getElementById('btn-disconnect')?.addEventListener('click', () => {
           this.disconnect();
+        });
+
+        // Logout button
+        document.getElementById('logoutButton')?.addEventListener('click', () => {
+          this.handleLogout();
         });
       }
 
@@ -708,6 +745,29 @@
         } catch (error) {
           console.error('Error al desconectar:', error);
           alert('Error al desconectar: ' + error.message);
+        }
+      }
+
+      handleLogout() {
+        if (!confirm('¿Estás seguro de cerrar sesión? Podrás volver más tarde para completar el onboarding.')) {
+          return;
+        }
+
+        try {
+          // Limpiar localStorage
+          console.log('🚪 Cerrando sesión...');
+          localStorage.removeItem('currentUserId');
+          localStorage.removeItem('currentTenantId');
+          localStorage.removeItem('tenantId');
+          localStorage.removeItem('userEmail');
+          localStorage.removeItem('userName');
+          localStorage.removeItem('businessName');
+
+          // Redirigir al auth
+          window.location.href = '/auth.html';
+        } catch (error) {
+          console.error('Error al cerrar sesión:', error);
+          alert('Error al cerrar sesión: ' + error.message);
         }
       }
     }

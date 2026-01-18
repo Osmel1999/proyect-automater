@@ -524,11 +524,11 @@
                 // Hash the PIN
                 const hashedPin = await hashPin(pin);
 
-                // Generate userId
-                const userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                // Generate userId (solo alfanumérico, sin guiones)
+                const userId = 'user' + Date.now() + Math.random().toString(36).substr(2, 9).replace(/[^a-z0-9]/gi, '');
 
-                // Generate tenantId (identificador único para el negocio)
-                const tenantId = 'tenant_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                // Generate tenantId (identificador único para el negocio - solo alfanumérico)
+                const tenantId = 'tenant' + Date.now() + Math.random().toString(36).substr(2, 9).replace(/[^a-z0-9]/gi, '');
 
                 // Create user data in database
                 await firebase.database().ref('users/' + userId).set({
