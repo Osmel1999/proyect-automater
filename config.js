@@ -16,6 +16,9 @@ const API_BASE_URL = window.location.hostname === 'localhost'
     ? 'http://localhost:3000'  // Desarrollo local
     : 'https://api.kdsapp.site';  // Producción
 
+// Exportar como variable global
+window.API_BASE_URL = API_BASE_URL;
+
 console.log('🔧 API Base URL:', API_BASE_URL);
 
 // Inicializar Firebase
