@@ -123,6 +123,28 @@
       box-shadow: 0 4px 12px rgba(245, 101, 101, 0.3);
     }
 
+    .btn-connect {
+      padding: 8px 16px;
+      background: #c6f6d5;
+      color: #22543d;
+      border: 2px solid #48bb78;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-connect:hover {
+      background: #48bb78;
+      color: white;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
+    }
+
     .whatsapp-status {
       display: inline-flex;
       align-items: center;
@@ -808,6 +830,11 @@
         📱 Desconectar WhatsApp
       </button>
       
+      <!-- Connect WhatsApp Button -->
+      <button class="btn-connect" id="btn-connect-whatsapp" style="display: none;" onclick="connectWhatsApp()">
+        📱 Conectar WhatsApp
+      </button>
+      
       <a href="/kds.html" class="btn-secondary" id="kdsBtn">📺 Ver KDS</a>
       <a href="/select.html" class="btn-secondary">🏠 Inicio</a>
     </div>
@@ -1164,6 +1191,7 @@
       const statusDot = document.getElementById('status-dot');
       const statusText = document.getElementById('status-text');
       const disconnectBtn = document.getElementById('btn-disconnect-whatsapp');
+      const connectBtn = document.getElementById('btn-connect-whatsapp');
       
       statusElement.style.display = 'inline-flex';
       
@@ -1173,13 +1201,22 @@
         statusDot.classList.remove('disconnected');
         statusText.textContent = `Conectado: ${phoneNumber}`;
         disconnectBtn.style.display = 'inline-flex';
+        connectBtn.style.display = 'none';
       } else {
         // Desconectado
         statusElement.classList.add('disconnected');
         statusDot.classList.add('disconnected');
         statusText.textContent = 'WhatsApp Desconectado';
         disconnectBtn.style.display = 'none';
+        connectBtn.style.display = 'inline-flex';
       }
+    }
+
+    /**
+     * Redirige al onboarding para conectar WhatsApp
+     */
+    function connectWhatsApp() {
+      window.location.href = `/onboarding?tenant=${tenantId}`;
     }
 
     /**
