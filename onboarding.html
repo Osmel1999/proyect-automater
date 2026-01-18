@@ -469,12 +469,18 @@
         // Si no está en URL, buscar en localStorage
         if (!tenantId) {
           tenantId = localStorage.getItem('tenantId') || localStorage.getItem('currentTenantId');
+          console.log('🔍 Buscando tenantId en localStorage:', {
+            tenantId: localStorage.getItem('tenantId'),
+            currentTenantId: localStorage.getItem('currentTenantId'),
+            found: !!tenantId
+          });
         }
         
         // Si aún no hay tenantId, mostrar error
         if (!tenantId) {
           console.error('❌ No se encontró tenant ID en URL ni en localStorage');
-          alert('Por favor, inicia sesión o regístrate para continuar con el onboarding.');
+          console.error('localStorage completo:', localStorage);
+          alert('Error: No se pudo obtener tu identificador de negocio. Por favor, regístrate nuevamente.');
           window.location.href = '/auth.html';
           return null;
         }

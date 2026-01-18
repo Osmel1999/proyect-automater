@@ -550,13 +550,23 @@
                 localStorage.setItem('userEmail', email);
                 localStorage.setItem('userName', name);
                 localStorage.setItem('businessName', businessName);
+                
+                // Verificar que se guardó correctamente
+                console.log('✅ Usuario registrado y datos guardados en localStorage:', {
+                    userId,
+                    tenantId,
+                    email,
+                    name,
+                    businessName
+                });
 
-                showAlert('¡Cuenta creada exitosamente! Redirigiendo...', 'success');
+                showAlert('¡Cuenta creada exitosamente! Redirigiendo al onboarding...', 'success');
 
-                // Redirect to onboarding after 1 second
+                // Redirect to onboarding after 1.5 seconds (dar tiempo a que se guarde localStorage)
                 setTimeout(() => {
+                    console.log('🔄 Redirigiendo a onboarding con tenantId:', localStorage.getItem('tenantId'));
                     window.location.href = '/onboarding.html';
-                }, 1000);
+                }, 1500);
 
             } catch (error) {
                 console.error('Error al registrar usuario:', error);
