@@ -73,6 +73,22 @@ app.use((req, res, next) => {
   next();
 });
 
+// Middleware para rutas limpias (sin .html)
+// Permite acceder a /onboarding en lugar de /onboarding.html
+app.use((req, res, next) => {
+  // Si la ruta no tiene extensión y no es una ruta de API
+  if (!req.path.includes('.') && !req.path.startsWith('/api/')) {
+    const htmlPath = path.join(__dirname, '..', req.path + '.html');
+    const fs = require('fs');
+    
+    // Verificar si existe el archivo .html correspondiente
+    if (fs.existsSync(htmlPath)) {
+      return res.sendFile(htmlPath);
+    }
+  }
+  next();
+});
+
 // Servir archivos estáticos del KDS Frontend
 app.use(express.static(path.join(__dirname, '..')));
 

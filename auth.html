@@ -446,6 +446,7 @@
                 // Store user data in localStorage
                 localStorage.setItem('currentUserId', userId);
                 localStorage.setItem('currentTenantId', userData.tenantId);
+                localStorage.setItem('tenantId', userData.tenantId);
                 localStorage.setItem('userEmail', userData.email);
                 localStorage.setItem('userName', userData.name);
                 localStorage.setItem('businessName', userData.businessName);
@@ -526,13 +527,16 @@
                 // Generate userId
                 const userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 
+                // Generate tenantId (identificador único para el negocio)
+                const tenantId = 'tenant_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+
                 // Create user data in database
                 await firebase.database().ref('users/' + userId).set({
                     email: email,
                     name: name,
                     businessName: businessName,
                     pin: hashedPin,
-                    tenantId: null, // Will be set after WhatsApp connection
+                    tenantId: tenantId, // Generated tenant ID for this business
                     createdAt: new Date().toISOString(),
                     onboardingCompleted: false,
                     whatsappConnected: false,
@@ -541,6 +545,8 @@
 
                 // Store user data in localStorage
                 localStorage.setItem('currentUserId', userId);
+                localStorage.setItem('currentTenantId', tenantId);
+                localStorage.setItem('tenantId', tenantId);
                 localStorage.setItem('userEmail', email);
                 localStorage.setItem('userName', name);
                 localStorage.setItem('businessName', businessName);

@@ -462,15 +462,28 @@
       }
 
       getTenantId() {
+        // Primero intentar obtener de URL
         const urlParams = new URLSearchParams(window.location.search);
-        const tenantId = urlParams.get('tenantId') || localStorage.getItem('tenantId');
+        let tenantId = urlParams.get('tenantId');
         
+        // Si no está en URL, buscar en localStorage
         if (!tenantId) {
-          alert('Error: No se encontró el tenant ID. Redirigiendo al login...');
-          window.location.href = '/login.html';
+          tenantId = localStorage.getItem('tenantId') || localStorage.getItem('currentTenantId');
+        }
+        
+        // Si aún no hay tenantId, mostrar error
+        if (!tenantId) {
+          console.error('❌ No se encontró tenant ID en URL ni en localStorage');
+          alert('Por favor, inicia sesión o regístrate para continuar con el onboarding.');
+          window.location.href = '/auth.html';
           return null;
         }
         
+        // Guardar en localStorage para uso futuro
+        localStorage.setItem('tenantId', tenantId);
+        localStorage.setItem('currentTenantId', tenantId);
+        
+        console.log('✅ Tenant ID obtenido correctamente:', tenantId);
         return tenantId;
       }
 
