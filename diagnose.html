@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnóstico KDS</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        .test { margin: 10px 0; padding: 10px; background: #2d2d30; border-left: 4px solid #007acc; }
+        .pass { border-left-color: #4ec9b0; }
+        .fail { border-left-color: #f48771; }
+        button { background: #007acc; color: white; border: none; padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Diagnóstico KDS</h1>
+    <button onclick="runTests()">Ejecutar Pruebas</button>
+    <button onclick="checkServiceWorker()">Verificar Service Worker</button>
+    <button onclick="unregisterServiceWorkers()">Eliminar Service Workers</button>
+    <button onclick="location.reload(true)">Hard Reload</button>
+    <div id="results"></div>
+
+    <script>
+        async function runTests() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<h2>Ejecutando pruebas...</h2>';
+            
+            const tests = [];
+            
+            // Test 1: Verificar URL actual
+            tests.push({
+                name: 'URL Actual',
+                result: window.location.href,
+                pass: true
+            });
+            
+            // Test 2: Verificar si existe el elemento con id="currentTime"
+            const currentTimeElement = document.getElementById('currentTime');
+            tests.push({
+                name: 'Elemento con id="currentTime" existe',
+                result: currentTimeElement ? 'SÍ' : 'NO',
+                pass: !!currentTimeElement
+            });
+            
+            // Test 3: Verificar si existe el elemento con id="clock"
+            const clockElement = document.getElementById('clock');
+            tests.push({
+                name: 'Elemento con id="clock" existe',
+                result: clockElement ? 'SÍ (VERSIÓN ANTIGUA)' : 'NO',
+                pass: !clockElement
+            });
+            
+            // Test 4: Verificar versión de app.js cargado
+            try {
+                const response = await fetch('/app.js?v=2026011902', { cache: 'no-store' });
+                const text = await response.text();
+                const hasDefensiveCode = text.includes('getElementById(\'currentTime\') || getElementById(\'clock\')');
+                tests.push({
+                    name: 'app.js tiene código defensivo',
+                    result: hasDefensiveCode ? 'SÍ (v2026011902)' : 'NO (versión antigua)',
+                    pass: hasDefensiveCode
+                });
+            } catch (e) {
+                tests.push({
+                    name: 'app.js accesible',
+                    result: 'ERROR: ' + e.message,
+                    pass: false
+                });
+            }
+            
+            // Test 5: Verificar HTML actual
+            try {
+                const response = await fetch('/kds.html', { cache: 'no-store' });
+                const html = await response.text();
+                const hasCurrentTimeId = html.includes('id="currentTime"');
+                const hasOldClockId = html.includes('id="clock"') && !html.includes('id="currentTime"');
+                tests.push({
+                    name: 'HTML tiene id="currentTime"',
+                    result: hasCurrentTimeId ? 'SÍ' : (hasOldClockId ? 'NO (usa id="clock")' : 'NO ENCONTRADO'),
+                    pass: hasCurrentTimeId
+                });
+            } catch (e) {
+                tests.push({
+                    name: 'HTML accesible',
+                    result: 'ERROR: ' + e.message,
+                    pass: false
+                });
+            }
+            
+            // Test 6: Service Workers
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                tests.push({
+                    name: 'Service Workers activos',
+                    result: registrations.length > 0 ? `SÍ (${registrations.length})` : 'NO',
+                    pass: registrations.length === 0
+                });
+            }
+            
+            // Test 7: Cache Storage
+            if ('caches' in window) {
+                const cacheNames = await caches.keys();
+                tests.push({
+                    name: 'Cache Storage',
+                    result: cacheNames.length > 0 ? `${cacheNames.length} caches: ${cacheNames.join(', ')}` : 'Vacío',
+                    pass: cacheNames.length === 0
+                });
+            }
+            
+            // Mostrar resultados
+            let html = '<h2>Resultados:</h2>';
+            tests.forEach(test => {
+                html += `
+                    <div class="test ${test.pass ? 'pass' : 'fail'}">
+                        <strong>${test.pass ? '✅' : '❌'} ${test.name}</strong><br>
+                        ${test.result}
+                    </div>
+                `;
+            });
+            
+            const failedTests = tests.filter(t => !t.pass).length;
+            if (failedTests === 0) {
+                html += '<div class="test pass"><strong>🎉 Todos los tests pasaron!</strong><br>El KDS debería funcionar correctamente.</div>';
+            } else {
+                html += `<div class="test fail"><strong>⚠️ ${failedTests} tests fallaron</strong><br>Revisa los errores arriba.</div>`;
+            }
+            
+            results.innerHTML = html;
+        }
+        
+        async function checkServiceWorker() {
+            const results = document.getElementById('results');
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                if (registrations.length === 0) {
+                    results.innerHTML = '<div class="test pass">✅ No hay Service Workers registrados</div>';
+                } else {
+                    let html = '<div class="test fail">⚠️ Service Workers encontrados:<br>';
+                    registrations.forEach(reg => {
+                        html += `- Scope: ${reg.scope}<br>`;
+                    });
+                    html += '</div>';
+                    results.innerHTML = html;
+                }
+            } else {
+                results.innerHTML = '<div class="test">Service Workers no soportados en este navegador</div>';
+            }
+        }
+        
+        async function unregisterServiceWorkers() {
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                let count = 0;
+                for (const registration of registrations) {
+                    await registration.unregister();
+                    count++;
+                }
+                
+                // También limpiar caches
+                if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    for (const cacheName of cacheNames) {
+                        await caches.delete(cacheName);
+                    }
+                }
+                
+                document.getElementById('results').innerHTML = `
+                    <div class="test pass">
+                        ✅ ${count} Service Worker(s) eliminado(s)<br>
+                        ✅ Cache Storage limpiado<br>
+                        <strong>Ahora recarga la página (F5 o Cmd+R)</strong>
+                    </div>
+                `;
+            }
+        }
+        
+        // Auto-ejecutar al cargar
+        window.addEventListener('load', runTests);
+    </script>
+</body>
+</html>
