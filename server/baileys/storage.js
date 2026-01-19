@@ -30,11 +30,29 @@ class Storage {
    */
   async hasSessionData(tenantId) {
     try {
+      // Verificar primero en Firestore (más confiable en Railway)
+      if (firebaseService) {
+        try {
+          const db = firebaseService.db;
+          const sessionRef = db.collection('baileys_sessions').doc(tenantId);
+          const doc = await sessionRef.get();
+          
+          if (doc.exists && doc.data().creds) {
+            logger.debug(`[${tenantId}] Sesión encontrada en Firestore`);
+            return true;
+          }
+        } catch (firestoreError) {
+          logger.warn(`[${tenantId}] Error verificando Firestore:`, firestoreError.message);
+        }
+      }
+
+      // Fallback: verificar archivos locales
       const sessionDir = path.join(this.sessionsPath, tenantId);
       const credsPath = path.join(sessionDir, 'creds.json');
       
       try {
         await fs.access(credsPath);
+        logger.debug(`[${tenantId}] Sesión encontrada en archivos locales`);
         return true;
       } catch {
         return false;

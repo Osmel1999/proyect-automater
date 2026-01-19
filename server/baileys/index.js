@@ -61,10 +61,31 @@ class BaileysService {
     try {
       logger.info(`[${tenantId}] Inicializando sesión Baileys...`);
 
-      // Verificar si ya existe sesión guardada
+      // Si se fuerza nueva sesión, eliminar credenciales antiguas
+      if (options.forceNew) {
+        logger.info(`[${tenantId}] Forzando nueva sesión, limpiando credenciales...`);
+        try {
+          await storage.deleteSessionData(tenantId);
+        } catch (err) {
+          logger.warn(`[${tenantId}] Error limpiando sesión:`, err.message);
+        }
+      }
+
+      // Verificar si ya existe sesión guardada (solo si no se fuerza nueva)
       const hasSessionData = await storage.hasSessionData(tenantId);
 
       if (hasSessionData && !options.forceNew) {
+        // Verificar si ya está conectado
+        const isConnected = sessionManager.isConnected(tenantId);
+        if (isConnected) {
+          logger.info(`[${tenantId}] Ya está conectado`);
+          return {
+            success: true,
+            method: 'already_connected',
+            message: 'Ya estás conectado'
+          };
+        }
+
         // Reconectar con credenciales existentes
         logger.info(`[${tenantId}] Credenciales encontradas, reconectando...`);
         const success = await authHandler.reconnect(tenantId);
@@ -75,6 +96,9 @@ class BaileysService {
             method: 'reconnect',
             message: 'Reconectado con credenciales existentes'
           };
+        } else {
+          // Si falla la reconexión, generar nuevo QR
+          logger.warn(`[${tenantId}] Reconexión fallida, generando nuevo QR...`);
         }
       }
 
@@ -104,9 +128,10 @@ class BaileysService {
    * @param {string} tenantId - ID del tenant
    * @param {string} to - Número destino
    * @param {object} message - Mensaje a enviar
+   * @param {object} options - Opciones adicionales (messageKey, humanize, etc.)
    * @returns {Promise<object>}
    */
-  async sendMessage(tenantId, to, message) {
+  async sendMessage(tenantId, to, message, options = {}) {
     try {
       // Verificar si se puede enviar
       const check = antiBanService.canSendMessage(tenantId, to, message.text || '');
@@ -124,8 +149,8 @@ class BaileysService {
       // Aplicar delay anti-ban
       await antiBanService.applyDelay(tenantId);
 
-      // Enviar mensaje
-      const result = await messageAdapter.sendMessage(tenantId, to, message);
+      // Enviar mensaje con opciones (incluye humanización)
+      const result = await messageAdapter.sendMessage(tenantId, to, message, options);
 
       // Registrar envío
       if (result.success) {
