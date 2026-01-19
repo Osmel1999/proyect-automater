@@ -108,7 +108,14 @@ function updateClock() {
         minute: '2-digit',
         second: '2-digit'
     });
-    document.getElementById('currentTime').textContent = timeString;
+    
+    // Intentar con ambos IDs para compatibilidad con caché
+    const clockElement = document.getElementById('currentTime') || document.getElementById('clock');
+    if (clockElement) {
+        clockElement.textContent = timeString;
+    } else {
+        console.warn('⚠️ No se encontró el elemento del reloj (currentTime o clock)');
+    }
 }
 
 // Escuchar cambios en Firebase
