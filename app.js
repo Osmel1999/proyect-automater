@@ -108,10 +108,7 @@ function updateClock() {
         minute: '2-digit',
         second: '2-digit'
     });
-    const clockElement = document.getElementById('clock');
-    if (clockElement) {
-        clockElement.textContent = timeString;
-    }
+    document.getElementById('currentTime').textContent = timeString;
 }
 
 // Escuchar cambios en Firebase
