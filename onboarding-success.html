@@ -403,7 +403,8 @@
       tenantIdElement.classList.remove('loading');
 
       // Actualizar link del dashboard con el tenant ID
-      btnDashboard.href = `dashboard.html?tenant=${tenantId}`;
+      // Redirigir a select.html para que el usuario elija qué hacer
+      btnDashboard.href = `/select.html`;
 
       // Cargar información del tenant desde el backend (Railway)
       const backendUrl = 'https://api.kdsapp.site';
@@ -509,19 +510,6 @@
       };
       document.head.appendChild(updateUserScript);
     }
-  </script>
-  
-  <script>
-    // Cambiar el href del dashboard para redirigir a la página de selección
-    document.addEventListener('DOMContentLoaded', function() {
-      const btnDashboard = document.getElementById('btn-dashboard');
-      if (btnDashboard) {
-        btnDashboard.addEventListener('click', function(e) {
-          e.preventDefault();
-          window.location.href = '/select.html';
-        });
-      }
-    });
   </script>
 </body>
 </html>

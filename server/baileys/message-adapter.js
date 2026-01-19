@@ -5,6 +5,7 @@
 
 const pino = require('pino');
 const sessionManager = require('./session-manager');
+const humanization = require('./humanization');
 
 const logger = pino({ level: 'info' });
 
@@ -192,9 +193,12 @@ class MessageAdapter {
    * @param {string} tenantId - ID del tenant
    * @param {string} to - Número destino
    * @param {object} message - Mensaje a enviar
+   * @param {object} options - Opciones adicionales
+   * @param {object} options.messageKey - Key del mensaje recibido (para marcar como leído)
+   * @param {boolean} options.humanize - Si debe aplicar humanización (default: true)
    * @returns {Promise<object>} Resultado del envío
    */
-  async sendMessage(tenantId, to, message) {
+  async sendMessage(tenantId, to, message, options = {}) {
     try {
       const socket = sessionManager.getSession(tenantId);
       
@@ -208,17 +212,57 @@ class MessageAdapter {
       // Convertir mensaje a formato Baileys
       const baileysMessage = this.internalToBaileys(message);
 
-      // Enviar mensaje
-      logger.info(`[${tenantId}] Enviando mensaje a ${to}`);
-      const result = await socket.sendMessage(jid, baileysMessage);
+      // Extraer texto para humanización
+      const messageText = message.text || message.caption || '';
 
-      return {
-        success: true,
-        messageId: result.key.id,
-        timestamp: new Date().toISOString(),
-        to: this.formatPhoneNumber(jid),
-        platform: 'baileys'
-      };
+      // Aplicar humanización si está habilitada (por defecto: true)
+      const shouldHumanize = options.humanize !== false && messageText.length > 0;
+
+      logger.info(`[${tenantId}] Enviando mensaje a ${to} ${shouldHumanize ? '(con humanización)' : '(sin humanización)'}`);
+
+      let result;
+      let stats = null;
+
+      if (shouldHumanize) {
+        // Usar flujo humanizado completo
+        const humanizedResult = await humanization.humanizedResponse(
+          socket,
+          jid,
+          options.messageKey || null,
+          messageText,
+          {
+            skipReadDelay: !options.messageKey, // Si no hay messageKey, no marcar como leído
+            skipThinkingDelay: false,
+            skipTypingIndicator: false,
+            skipTypingDuration: false
+          }
+        );
+        
+        result = humanizedResult;
+        stats = humanizedResult.stats;
+        
+        return {
+          success: true,
+          messageId: humanizedResult.messageId,
+          timestamp: new Date().toISOString(),
+          to: this.formatPhoneNumber(jid),
+          platform: 'baileys',
+          humanized: true,
+          stats
+        };
+      } else {
+        // Envío directo sin humanización
+        result = await socket.sendMessage(jid, baileysMessage);
+        
+        return {
+          success: true,
+          messageId: result.key.id,
+          timestamp: new Date().toISOString(),
+          to: this.formatPhoneNumber(jid),
+          platform: 'baileys',
+          humanized: false
+        };
+      }
 
     } catch (error) {
       logger.error(`[${tenantId}] Error enviando mensaje:`, error);
@@ -295,8 +339,9 @@ class MessageAdapter {
    * Marca un mensaje como leído
    * @param {string} tenantId - ID del tenant
    * @param {object} messageKey - Key del mensaje
+   * @param {boolean} humanize - Si debe aplicar delay humanizado (default: true)
    */
-  async markAsRead(tenantId, messageKey) {
+  async markAsRead(tenantId, messageKey, humanize = true) {
     try {
       const socket = sessionManager.getSession(tenantId);
       
@@ -304,8 +349,14 @@ class MessageAdapter {
         throw new Error(`No active session for tenant: ${tenantId}`);
       }
 
-      await socket.readMessages([messageKey]);
-      logger.info(`[${tenantId}] Mensaje marcado como leído`);
+      if (humanize) {
+        // Marcar como leído con delay humanizado
+        await humanization.humanizedRead(socket, messageKey);
+      } else {
+        // Marcar como leído inmediatamente
+        await socket.readMessages([messageKey]);
+        logger.info(`[${tenantId}] Mensaje marcado como leído (sin humanización)`);
+      }
       
     } catch (error) {
       logger.error(`[${tenantId}] Error marcando mensaje como leído:`, error);

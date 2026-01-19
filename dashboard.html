@@ -1282,14 +1282,28 @@
         // Load onboarding state
         if (tenantData.onboarding) {
           onboardingState = tenantData.onboarding.steps || onboardingState;
+          
+          // PRIORIDAD: Usar el progreso guardado en Firebase si existe
+          if (typeof tenantData.onboarding.progress === 'number') {
+            onboardingPercentage = tenantData.onboarding.progress;
+            console.log(`📊 Progreso de onboarding leído desde Firebase: ${onboardingPercentage}%`);
+          } else {
+            // Si no existe, calcularlo y guardarlo
+            const completed = Object.values(onboardingState).filter(v => v === true).length;
+            const total = Object.keys(onboardingState).length;
+            onboardingPercentage = Math.round((completed / total) * 100);
+            console.log(`📊 Progreso de onboarding calculado (no existía en Firebase): ${onboardingPercentage}%`);
+            
+            // Guardar el progreso calculado en Firebase
+            await firebase.database().ref(`tenants/${tenantId}/onboarding/progress`).set(onboardingPercentage);
+          }
+        } else {
+          // Si no hay datos de onboarding, el progreso es 25% (solo whatsapp_connected)
+          const completed = Object.values(onboardingState).filter(v => v === true).length;
+          const total = Object.keys(onboardingState).length;
+          onboardingPercentage = Math.round((completed / total) * 100);
+          console.log(`📊 Progreso de onboarding inicial (sin datos previos): ${onboardingPercentage}%`);
         }
-
-        // Calcular progreso de onboarding
-        const completed = Object.values(onboardingState).filter(v => v === true).length;
-        const total = Object.keys(onboardingState).length;
-        onboardingPercentage = Math.round((completed / total) * 100);
-        
-        console.log(`📊 Progreso de onboarding calculado: ${onboardingPercentage}%`);
 
         // Load bot state
         // Si el progreso es < 75%, forzar el bot a OFF sin importar el valor en Firebase
@@ -1611,6 +1625,11 @@
 
       const canActivate = onboardingPercentage >= 75;
 
+      console.log(`🎨 Actualizando UI del bot:
+        - Estado del bot: ${botActive ? 'ON' : 'OFF'}
+        - Progreso de onboarding: ${onboardingPercentage}%
+        - Puede activar (>= 75%): ${canActivate}`);
+
       // Actualizar toggle
       if (botActive) {
         toggle.classList.add('active');
@@ -1653,6 +1672,12 @@
     async function toggleBot() {
       const canActivate = onboardingPercentage >= 75;
 
+      console.log(`🎯 Toggle bot llamado:
+        - Estado actual del bot: ${botActive ? 'ON' : 'OFF'}
+        - Progreso local (onboardingPercentage): ${onboardingPercentage}%
+        - Puede activar (>= 75%): ${canActivate}
+        - Estado de onboarding: ${JSON.stringify(onboardingState)}`);
+
       // VALIDACIÓN CRÍTICA: Si intenta activar el bot pero el progreso es < 75%
       if (!botActive && !canActivate) {
         console.warn('⚠️ Intento de activar bot con progreso insuficiente');
@@ -1667,15 +1692,29 @@
         const onboarding = onboardingSnapshot.val();
         const progress = onboarding?.progress || 0;
         
-        console.log(`🔍 Validando progreso en Firebase: ${progress}%`);
+        console.log(`🔍 Validación en Firebase:
+          - Progreso guardado en Firebase: ${progress}%
+          - Steps en Firebase: ${JSON.stringify(onboarding?.steps)}
+          - Completed en Firebase: ${onboarding?.completed}`);
         
         // Si intenta activar y el progreso en Firebase es < 75%, bloquear
         if (!botActive && progress < 75) {
-          console.error('🚫 Validación de progreso falló. Progreso en Firebase:', progress);
+          console.error(`🚫 Validación de progreso falló. 
+            - Progreso en Firebase: ${progress}%
+            - Progreso local: ${onboardingPercentage}%
+            - Diferencia detectada: Se bloqueará la activación`);
           alert('⚠️ El progreso de onboarding en el servidor es insuficiente (' + progress + '%).\n\n' +
                 'Completa al menos el 75% del onboarding antes de activar el bot.');
           return;
         }
+        
+        // Si hay discrepancia entre el progreso local y Firebase, sincronizar
+        if (Math.abs(progress - onboardingPercentage) > 5) {
+          console.warn(`⚠️ Discrepancia detectada entre progreso local (${onboardingPercentage}%) y Firebase (${progress}%). Sincronizando...`);
+          onboardingPercentage = progress;
+          updateBotControlUI();
+        }
+        
       } catch (error) {
         console.error('Error validando progreso:', error);
         alert('Error al validar el progreso. Por favor intenta de nuevo.');

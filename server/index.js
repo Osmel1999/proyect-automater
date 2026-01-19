@@ -630,6 +630,7 @@ eventHandlers.onMessage('*', async (message) => {
     const tenantId = message.tenantId || 'default';
     const from = message.from;
     const text = message.text || '';
+    const messageKey = message.raw?.key; // Extraer el key original del mensaje de Baileys
 
     console.log(`🤖 Bot procesando mensaje de ${from} en tenant ${tenantId}`);
     console.log(`🔍 [DEBUG] Llamando a botLogic.processMessage`);
@@ -642,19 +643,26 @@ eventHandlers.onMessage('*', async (message) => {
 
     // Si hay respuesta, enviarla
     if (response) {
-      console.log(`🔍 [DEBUG] Enviando respuesta a ${from}`);
+      console.log(`🔍 [DEBUG] Enviando respuesta a ${from} con humanización`);
       
       // Convertir el texto de respuesta a un objeto de mensaje
       const messageToSend = typeof response === 'string' ? { text: response } : response;
       
       console.log(`🔍 [DEBUG] Mensaje a enviar:`, messageToSend);
       
-      const result = await baileys.sendMessage(tenantId, from, messageToSend);
+      // Enviar con humanización, pasando el messageKey para marcar como leído
+      const result = await baileys.sendMessage(tenantId, from, messageToSend, {
+        messageKey: messageKey, // Pasar el key del mensaje recibido
+        humanize: true // Activar humanización explícitamente
+      });
       
       console.log(`🔍 [DEBUG] Resultado de sendMessage:`, result);
       
       if (result && result.success) {
-        console.log(`✅ Respuesta enviada a ${from}`);
+        console.log(`✅ Respuesta enviada a ${from}${result.humanized ? ' (humanizado)' : ''}`);
+        if (result.stats) {
+          console.log(`📊 Stats humanización: read=${result.stats.readDelay}ms, think=${result.stats.thinkingDelay}ms, type=${result.stats.typingDuration}ms`);
+        }
         return true; // Retornar true para indicar que se procesó correctamente
       } else {
         console.error(`❌ Error enviando respuesta:`, result);

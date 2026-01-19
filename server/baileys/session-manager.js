@@ -92,10 +92,27 @@ class SessionManager extends EventEmitter {
         const authState = await storage.getAuthState(tenantId);
         state = authState.state;
         saveCreds = authState.saveCreds;
-        logger.info(`[${tenantId}] AuthState inicializado`);
+        
+        if (state.creds) {
+          logger.info(`[${tenantId}] ✅ Credenciales encontradas`);
+        } else {
+          logger.info(`[${tenantId}] 📝 Nueva sesión sin credenciales previas`);
+        }
       } catch (authError) {
-        logger.error(`[${tenantId}] Error al cargar estado de autenticación:`, authError);
-        throw authError;
+        logger.error(`[${tenantId}] ⚠️ Error al cargar credenciales:`, authError.message);
+        logger.warn(`[${tenantId}] Creando nueva sesión desde cero...`);
+        
+        // Limpiar credenciales corruptas
+        try {
+          await storage.deleteSessionData(tenantId);
+        } catch (cleanupError) {
+          logger.error(`[${tenantId}] Error limpiando credenciales:`, cleanupError.message);
+        }
+        
+        // Crear authState vacío para nueva sesión
+        const freshAuthState = await storage.getAuthState(tenantId);
+        state = freshAuthState.state;
+        saveCreds = freshAuthState.saveCreds;
       }
 
       // Configurar socket de Baileys
@@ -210,9 +227,29 @@ class SessionManager extends EventEmitter {
     } else if (connection === 'open') {
       logger.info(`[${tenantId}] Conexión establecida exitosamente`);
 
-      // Obtener información del número
+      // Obtener información del número con validación
       const socket = this.sessions.get(tenantId);
-      const phoneNumber = socket.user?.id?.split(':')[0] || null;
+      let phoneNumber = null;
+      
+      try {
+        if (socket && socket.user && socket.user.id) {
+          phoneNumber = socket.user.id.split(':')[0];
+          logger.info(`[${tenantId}] ✅ Número detectado: ${phoneNumber}`);
+        } else {
+          logger.warn(`[${tenantId}] ⚠️ Socket user no disponible aún, esperando...`);
+          
+          // Esperar un momento y reintentar
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          const retrySocket = this.sessions.get(tenantId);
+          if (retrySocket && retrySocket.user && retrySocket.user.id) {
+            phoneNumber = retrySocket.user.id.split(':')[0];
+            logger.info(`[${tenantId}] ✅ Número detectado (reintento): ${phoneNumber}`);
+          }
+        }
+      } catch (error) {
+        logger.error(`[${tenantId}] Error obteniendo número:`, error.message);
+      }
 
       // Actualizar estado solo si existe
       const state = this.sessionStates.get(tenantId);

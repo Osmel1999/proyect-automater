@@ -527,6 +527,9 @@
         console.log('🚀 Iniciando onboarding Baileys');
         console.log('Tenant ID:', this.tenantId);
 
+        // Configurar event listeners PRIMERO (antes de cualquier lógica)
+        this.setupEventListeners();
+
         // Verificar que QRCode esté cargado
         if (typeof QRCode === 'undefined') {
           console.error('❌ QRCode library not loaded. Reloading...');
@@ -546,24 +549,44 @@
 
         // Iniciar conexión
         await this.startConnection();
-
-        // Event listeners
-        this.setupEventListeners();
       }
 
       setupEventListeners() {
-        document.getElementById('btn-dashboard')?.addEventListener('click', () => {
-          window.location.href = `/dashboard.html?tenant=${this.tenantId}&tab=whatsapp`;
-        });
+        console.log('🎯 Configurando event listeners de botones...');
+        
+        const btnDashboard = document.getElementById('btn-dashboard');
+        const btnDisconnect = document.getElementById('btn-disconnect');
+        const btnLogout = document.getElementById('logoutButton');
+        
+        if (btnDashboard) {
+          btnDashboard.addEventListener('click', () => {
+            console.log('🖱️ Click en botón Dashboard');
+            window.location.href = `/dashboard.html?tenant=${this.tenantId}&tab=whatsapp`;
+          });
+          console.log('✅ Event listener para Dashboard configurado');
+        } else {
+          console.warn('⚠️ Botón Dashboard no encontrado');
+        }
 
-        document.getElementById('btn-disconnect')?.addEventListener('click', () => {
-          this.disconnect();
-        });
+        if (btnDisconnect) {
+          btnDisconnect.addEventListener('click', () => {
+            console.log('🖱️ Click en botón Desconectar');
+            this.disconnect();
+          });
+          console.log('✅ Event listener para Desconectar configurado');
+        } else {
+          console.warn('⚠️ Botón Desconectar no encontrado');
+        }
 
-        // Logout button
-        document.getElementById('logoutButton')?.addEventListener('click', () => {
-          this.handleLogout();
-        });
+        if (btnLogout) {
+          btnLogout.addEventListener('click', () => {
+            console.log('🖱️ Click en botón Cerrar Sesión');
+            this.handleLogout();
+          });
+          console.log('✅ Event listener para Cerrar Sesión configurado');
+        } else {
+          console.warn('⚠️ Botón Cerrar Sesión no encontrado');
+        }
       }
 
       async checkStatus() {
