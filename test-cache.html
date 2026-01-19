@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Test Cache - KDS</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5;
+            padding: 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 1rem;
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+        .info {
+            margin: 1rem 0;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+        }
+        .success {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+        .warning {
+            border-left-color: #ffc107;
+            background: #fff3cd;
+        }
+        .error {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+        code {
+            background: #e9ecef;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin: 0.5rem 0.5rem 0.5rem 0;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🔍 Diagnóstico de Cache - KDS</h1>
+        <p>Esta página te ayudará a verificar qué versión de los archivos estás cargando.</p>
+    </div>
+
+    <div class="card">
+        <h2>📋 Información del Sistema</h2>
+        <div id="systemInfo"></div>
+    </div>
+
+    <div class="card">
+        <h2>🧪 Pruebas Recomendadas</h2>
+        <button onclick="testKDSPage()">Probar KDS</button>
+        <button onclick="clearCacheAndTest()">Limpiar Cache y Probar</button>
+        <button onclick="checkScriptVersions()">Verificar Versiones de Scripts</button>
+        <div id="testResults" style="margin-top: 1rem;"></div>
+    </div>
+
+    <div class="card">
+        <h2>📖 Instrucciones</h2>
+        <div class="info">
+            <strong>Para forzar la carga de la última versión:</strong>
+            <ol>
+                <li>Haz clic en "Limpiar Cache y Probar"</li>
+                <li>O presiona <code>Cmd + Shift + R</code> (Mac) o <code>Ctrl + Shift + R</code> (Windows/Linux)</li>
+                <li>O abre una ventana de incógnito y visita el KDS</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        // Mostrar información del sistema
+        function displaySystemInfo() {
+            const info = {
+                'Navegador': navigator.userAgent,
+                'Fecha/Hora': new Date().toLocaleString('es-ES'),
+                'URL Actual': window.location.href,
+                'Cookies Habilitadas': navigator.cookieEnabled,
+                'Conexión Online': navigator.onLine
+            };
+
+            let html = '';
+            for (const [key, value] of Object.entries(info)) {
+                html += `<div class="info"><strong>${key}:</strong> ${value}</div>`;
+            }
+
+            document.getElementById('systemInfo').innerHTML = html;
+        }
+
+        // Probar página KDS
+        function testKDSPage() {
+            const resultsDiv = document.getElementById('testResults');
+            resultsDiv.innerHTML = '<div class="info">Abriendo KDS en nueva pestaña...</div>';
+            
+            // Abrir KDS con timestamp para evitar cache
+            const timestamp = new Date().getTime();
+            window.open(`/kds.html?nocache=${timestamp}`, '_blank');
+            
+            resultsDiv.innerHTML += `
+                <div class="info warning">
+                    <strong>⚠️ Importante:</strong> En la nueva pestaña, abre la consola de desarrollador (F12) y verifica:
+                    <ul style="margin-top: 0.5rem;">
+                        <li>No debe haber error: <code>Cannot set properties of null (setting 'textContent')</code></li>
+                        <li>Los scripts deben tener versión <code>v=2026011902</code></li>
+                        <li>El elemento del reloj debe tener <code>id="currentTime"</code></li>
+                    </ul>
+                </div>
+            `;
+        }
+
+        // Limpiar cache y probar
+        function clearCacheAndTest() {
+            const resultsDiv = document.getElementById('testResults');
+            resultsDiv.innerHTML = `
+                <div class="info warning">
+                    <strong>📝 Sigue estos pasos:</strong>
+                    <ol>
+                        <li>Presiona <code>Cmd + Shift + Delete</code> (Mac) o <code>Ctrl + Shift + Delete</code> (Windows/Linux)</li>
+                        <li>Selecciona "Imágenes y archivos en caché"</li>
+                        <li>Haz clic en "Borrar datos"</li>
+                        <li>Cierra esta pestaña</li>
+                        <li>Abre una nueva pestaña y visita el KDS</li>
+                    </ol>
+                    <p style="margin-top: 1rem;"><strong>O más fácil:</strong> Abre una ventana de incógnito y visita: <code>${window.location.origin}/kds.html</code></p>
+                </div>
+            `;
+        }
+
+        // Verificar versiones de scripts
+        async function checkScriptVersions() {
+            const resultsDiv = document.getElementById('testResults');
+            resultsDiv.innerHTML = '<div class="info">Verificando versiones de scripts...</div>';
+
+            try {
+                // Intentar cargar el KDS HTML y buscar las versiones
+                const timestamp = new Date().getTime();
+                const response = await fetch(`/kds.html?nocache=${timestamp}`);
+                const html = await response.text();
+
+                // Buscar las versiones de scripts
+                const appJsMatch = html.match(/app\.js\?v=(\d+)/);
+                const configJsMatch = html.match(/config\.js\?v=(\d+)/);
+                const clockIdMatch = html.match(/id="(currentTime|clock)"/);
+
+                let status = 'success';
+                let message = '<div class="info success"><strong>✅ Versiones correctas detectadas:</strong><ul>';
+
+                if (appJsMatch && appJsMatch[1] === '2026011902') {
+                    message += `<li>app.js: v${appJsMatch[1]} ✓</li>`;
+                } else {
+                    status = 'error';
+                    message += `<li>❌ app.js: v${appJsMatch ? appJsMatch[1] : 'no encontrada'} (esperada: v2026011902)</li>`;
+                }
+
+                if (configJsMatch && configJsMatch[1] === '2026011902') {
+                    message += `<li>config.js: v${configJsMatch[1]} ✓</li>`;
+                } else {
+                    status = 'error';
+                    message += `<li>❌ config.js: v${configJsMatch ? configJsMatch[1] : 'no encontrada'} (esperada: v2026011902)</li>`;
+                }
+
+                if (clockIdMatch && clockIdMatch[1] === 'currentTime') {
+                    message += `<li>ID del reloj: ${clockIdMatch[1]} ✓</li>`;
+                } else {
+                    status = 'warning';
+                    message += `<li>⚠️ ID del reloj: ${clockIdMatch ? clockIdMatch[1] : 'no encontrado'} (esperado: currentTime)</li>`;
+                }
+
+                message += '</ul></div>';
+
+                if (status === 'error') {
+                    message = message.replace('success', 'error').replace('✅ Versiones correctas', '❌ Versiones incorrectas');
+                    message += `
+                        <div class="info error">
+                            <strong>🔴 Cache detectado!</strong> El servidor está sirviendo una versión antigua.
+                            <br>Solución: Limpia la cache del navegador o usa modo incógnito.
+                        </div>
+                    `;
+                }
+
+                resultsDiv.innerHTML = message;
+
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="info error">
+                        <strong>❌ Error al verificar versiones:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Inicializar
+        displaySystemInfo();
+    </script>
+</body>
+</html>
