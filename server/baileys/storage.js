@@ -48,7 +48,7 @@ class Storage {
   /**
    * Guarda los datos de sesión de un tenant en Firebase
    * @param {string} tenantId - ID del tenant
-   * @param {object} sessionData - Datos de la sesión
+   * @param {object} sessionData - Datos de la sesión (credenciales de Baileys)
    */
   async saveSessionToFirebase(tenantId, sessionData) {
     if (!firebaseService) {
@@ -58,16 +58,25 @@ class Storage {
 
     try {
       const db = firebaseService.db;
-      const sessionRef = db.collection('tenants').doc(tenantId).collection('whatsapp').doc('baileys_session');
+      const sessionRef = db.collection('baileys_sessions').doc(tenantId);
 
+      // Guardar credenciales completas
       await sessionRef.set({
-        ...sessionData,
-        updatedAt: new Date().toISOString()
+        creds: sessionData.creds || sessionData,
+        keys: sessionData.keys || {},
+        updatedAt: new Date().toISOString(),
+        savedAt: Date.now()
       }, { merge: true });
 
-      logger.info(`[${tenantId}] Sesión guardada en Firebase`);
+      logger.info(`[${tenantId}] ✅ Credenciales guardadas en Firestore`);
+      
+      // También actualizar flag en Realtime Database
+      await firebaseService.database.ref(`tenants/${tenantId}/restaurant/whatsappConnected`).set(true);
+      await firebaseService.database.ref(`tenants/${tenantId}/restaurant/connectedAt`).set(new Date().toISOString());
+      
     } catch (error) {
-      logger.error(`[${tenantId}] Error guardando sesión en Firebase:`, error);
+      logger.error(`[${tenantId}] ❌ Error guardando sesión en Firebase:`, error);
+      throw error;
     }
   }
 
@@ -83,17 +92,23 @@ class Storage {
 
     try {
       const db = firebaseService.db;
-      const sessionRef = db.collection('tenants').doc(tenantId).collection('whatsapp').doc('baileys_session');
+      const sessionRef = db.collection('baileys_sessions').doc(tenantId);
       const doc = await sessionRef.get();
 
       if (doc.exists) {
-        logger.info(`[${tenantId}] Sesión recuperada de Firebase`);
-        return doc.data();
+        const data = doc.data();
+        logger.info(`[${tenantId}] ✅ Credenciales recuperadas de Firestore`);
+        logger.debug(`[${tenantId}]    Guardadas: ${new Date(data.savedAt).toLocaleString()}`);
+        return {
+          creds: data.creds,
+          keys: data.keys || {}
+        };
       }
 
+      logger.warn(`[${tenantId}] ⚠️ No hay credenciales guardadas en Firestore`);
       return null;
     } catch (error) {
-      logger.error(`[${tenantId}] Error cargando sesión desde Firebase:`, error);
+      logger.error(`[${tenantId}] ❌ Error cargando sesión desde Firebase:`, error);
       return null;
     }
   }
@@ -167,12 +182,15 @@ class Storage {
       await fs.rm(sessionDir, { recursive: true, force: true });
       logger.info(`[${tenantId}] Archivos de sesión locales eliminados`);
 
-      // Eliminar de Firebase
+      // Eliminar de Firestore (nueva ubicación)
       if (firebaseService) {
         const db = firebaseService.db;
-        const sessionRef = db.collection('tenants').doc(tenantId).collection('whatsapp').doc('baileys_session');
+        const sessionRef = db.collection('baileys_sessions').doc(tenantId);
         await sessionRef.delete();
-        logger.info(`[${tenantId}] Sesión eliminada de Firebase`);
+        logger.info(`[${tenantId}] ✅ Credenciales eliminadas de Firestore`);
+        
+        // Actualizar flag en Realtime Database
+        await firebaseService.database.ref(`tenants/${tenantId}/restaurant/whatsappConnected`).set(false);
       }
 
       return true;
@@ -310,6 +328,141 @@ class Storage {
     } catch (error) {
       logger.error(`[${tenantId}] Error calculando tamaño de sesión:`, error);
       return 0;
+    }
+  }
+
+  /**
+   * Implementación de AuthState compatible con Baileys usando Firestore
+   * Similar a useMultiFileAuthState pero con persistencia en Firestore
+   * @param {string} tenantId - ID del tenant
+   * @returns {Promise<object>} { state, saveCreds }
+   */
+  async getAuthState(tenantId) {
+    const logger = pino({ level: 'info' });
+    
+    // Inicializar state vacío
+    let state = {
+      creds: undefined,
+      keys: {
+        get: async (type, ids) => {
+          const data = {};
+          if (!firebaseService) return data;
+          
+          try {
+            const db = firebaseService.db;
+            const sessionRef = db.collection('baileys_sessions').doc(tenantId);
+            const doc = await sessionRef.get();
+            
+            if (!doc.exists) return data;
+            
+            const sessionData = doc.data();
+            const keys = sessionData.keys || {};
+            
+            for (const id of ids) {
+              const key = `${type}-${id}`;
+              if (keys[key]) {
+                data[id] = keys[key];
+              }
+            }
+          } catch (error) {
+            logger.error(`[${tenantId}] Error obteniendo keys desde Firestore:`, error);
+          }
+          
+          return data;
+        },
+        set: async (data) => {
+          if (!firebaseService) return;
+          
+          try {
+            const db = firebaseService.db;
+            const sessionRef = db.collection('baileys_sessions').doc(tenantId);
+            
+            // Convertir data a formato plano
+            const keysUpdate = {};
+            for (const category in data) {
+              for (const id in data[category]) {
+                const key = `${category}-${id}`;
+                keysUpdate[`keys.${key}`] = data[category][id];
+              }
+            }
+            
+            await sessionRef.set(keysUpdate, { merge: true });
+            logger.debug(`[${tenantId}] Keys guardadas en Firestore`);
+          } catch (error) {
+            logger.error(`[${tenantId}] Error guardando keys en Firestore:`, error);
+          }
+        }
+      }
+    };
+    
+    // Intentar cargar credenciales existentes
+    try {
+      const sessionData = await this.loadSessionFromFirebase(tenantId);
+      if (sessionData && sessionData.creds) {
+        state.creds = sessionData.creds;
+        logger.info(`[${tenantId}] Credenciales cargadas desde Firestore`);
+      }
+    } catch (error) {
+      logger.warn(`[${tenantId}] No hay credenciales previas, iniciando nueva sesión:`, error.message);
+      // No hacer nada, state.creds quedará undefined (nueva sesión)
+    }
+    
+    // Función para guardar credenciales
+    const saveCreds = async () => {
+      if (!firebaseService || !state.creds) return;
+      
+      try {
+        const db = firebaseService.db;
+        const sessionRef = db.collection('baileys_sessions').doc(tenantId);
+        
+        await sessionRef.set({
+          creds: state.creds,
+          updatedAt: new Date().toISOString(),
+          savedAt: Date.now()
+        }, { merge: true });
+        
+        logger.info(`[${tenantId}] ✅ Credenciales guardadas en Firestore`);
+        
+        // Actualizar flag en Realtime Database
+        await firebaseService.database.ref(`tenants/${tenantId}/restaurant/whatsappConnected`).set(true);
+        await firebaseService.database.ref(`tenants/${tenantId}/restaurant/connectedAt`).set(new Date().toISOString());
+      } catch (error) {
+        logger.error(`[${tenantId}] ❌ Error guardando credenciales:`, error);
+      }
+    };
+    
+    return { state, saveCreds };
+  }
+
+  /**
+   * Guarda el estado de conexión en Firebase
+   * @param {string} tenantId - ID del tenant
+   * @param {object} state - Estado de conexión
+   */
+  async saveConnectionState(tenantId, state) {
+    if (!firebaseService) {
+      return;
+    }
+
+    try {
+      const db = firebaseService.db;
+      const whatsappRef = db.collection('tenants').doc(tenantId).collection('whatsapp').doc('config');
+
+      await whatsappRef.set({
+        provider: 'baileys',
+        baileys: {
+          connected: state.connected,
+          phoneNumber: state.phoneNumber || null,
+          lastSeen: state.lastSeen || new Date().toISOString(),
+          messageCount: state.messageCount || 0,
+          dailyLimit: state.dailyLimit || 1000,
+          updatedAt: new Date().toISOString()
+        }
+      }, { merge: true });
+
+      logger.info(`[${tenantId}] Estado de conexión guardado en Firebase`);
+    } catch (error) {
+      logger.error(`[${tenantId}] Error guardando estado de conexión en Firebase:`, error);
     }
   }
 }

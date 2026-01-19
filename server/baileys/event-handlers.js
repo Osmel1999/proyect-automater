@@ -6,6 +6,8 @@
 const pino = require('pino');
 const messageAdapter = require('./message-adapter');
 const storage = require('./storage');
+const connectionManager = require('./connection-manager');
+const messageQueue = require('./message-queue');
 
 const logger = pino({ level: 'info' });
 
@@ -64,9 +66,23 @@ class EventHandlers {
       
       logger.info(`[${tenantId}] Mensaje recibido de ${internalMessage.from}: ${internalMessage.text?.substring(0, 50) || '[media]'}`);
 
+      // 🚀 AUTO-RECONEXIÓN: Verificar conexión antes de procesar
+      const isConnected = await connectionManager.ensureConnected(tenantId);
+      
+      if (!isConnected) {
+        logger.warn(`[${tenantId}] Bot desconectado, agregando mensaje a la cola`);
+        
+        // Agregar mensaje a la cola si no está conectado
+        await messageQueue.enqueue(tenantId, internalMessage);
+        
+        // Marcar como leído para no parecer ignorado
+        await messageAdapter.markAsRead(tenantId, baileysMessage.key, true);
+        return;
+      }
+
       // Emitir evento WebSocket
-      if (global.baileysWebSocket) {
-        global.baileysWebSocket.emitMessageReceived(tenantId, internalMessage);
+      if (globalThis.baileysWebSocket) {
+        globalThis.baileysWebSocket.emitMessageReceived(tenantId, internalMessage);
       }
 
       // Ejecutar callback específico del tenant o callback global
@@ -89,20 +105,24 @@ class EventHandlers {
           console.log(`🔍 [DEBUG] Respuesta del callback:`, response);
           
           // Si el callback retorna null/undefined, significa que el bot está desactivado
-          // o no pudo procesar el mensaje. Solo marcar como leído.
+          // o no pudo procesar el mensaje. Solo marcar como leído con humanización.
           // Si retorna true, significa que se procesó y envió correctamente.
           if (response === null || response === undefined) {
             console.log(`🔍 [DEBUG] Respuesta null/undefined, bot desactivado o sin respuesta`);
-            logger.info(`[${tenantId}] Bot desactivado o sin respuesta, solo marcando como leído`);
-            await messageAdapter.markAsRead(tenantId, baileysMessage.key);
+            logger.info(`[${tenantId}] Bot desactivado o sin respuesta, solo marcando como leído con humanización`);
+            
+            // Marcar como leído con delay humanizado
+            await messageAdapter.markAsRead(tenantId, baileysMessage.key, true);
             return;
           }
           
-          console.log(`🔍 [DEBUG] Mensaje procesado correctamente, marcando como leído`);
+          console.log(`🔍 [DEBUG] Mensaje procesado correctamente`);
           
-          // Marcar como leído DESPUÉS de procesar (para dar tiempo a responder)
-          await messageAdapter.markAsRead(tenantId, baileysMessage.key);
-          logger.info(`[${tenantId}] Mensaje marcado como leído`);
+          // NOTA: El marcado como leído y la humanización ahora se manejan
+          // dentro de messageAdapter.sendMessage() si se pasa messageKey en las opciones.
+          // Ya no marcamos aquí para evitar duplicados.
+          
+          logger.info(`[${tenantId}] Mensaje procesado con éxito`);
         } catch (error) {
           console.error(`🔍 [DEBUG] Error en callback:`, error);
           logger.error(`[${tenantId}] Error en callback de mensaje:`, error);
@@ -111,9 +131,9 @@ class EventHandlers {
         console.log(`🔍 [DEBUG] NO HAY CALLBACK REGISTRADO`);
         logger.warn(`[${tenantId}] No hay callback registrado para mensajes`);
         
-        // Marcar como leído de todos modos
-        await messageAdapter.markAsRead(tenantId, baileysMessage.key);
-        logger.info(`[${tenantId}] Mensaje marcado como leído`);
+        // Marcar como leído con delay humanizado de todos modos
+        await messageAdapter.markAsRead(tenantId, baileysMessage.key, true);
+        logger.info(`[${tenantId}] Mensaje marcado como leído (humanizado)`);
       }
 
       // Guardar en Firebase si es necesario
@@ -149,6 +169,55 @@ class EventHandlers {
   }
 
   /**
+   * Procesa la cola de mensajes pendientes después de reconectar
+   * @param {string} tenantId - ID del tenant
+   */
+  async processQueuedMessages(tenantId) {
+    try {
+      const queueSize = messageQueue.getQueueSize(tenantId);
+      
+      if (queueSize === 0) {
+        logger.debug(`[${tenantId}] No hay mensajes en cola para procesar`);
+        return;
+      }
+
+      logger.info(`[${tenantId}] Procesando ${queueSize} mensajes en cola...`);
+
+      // Obtener callback registrado
+      let callback = this.messageCallbacks.get(tenantId);
+      if (!callback) {
+        callback = this.messageCallbacks.get('*');
+      }
+
+      if (!callback) {
+        logger.warn(`[${tenantId}] No hay callback registrado, limpiando cola`);
+        await messageQueue.clearQueue(tenantId);
+        return;
+      }
+
+      // Procesar todos los mensajes en cola
+      await messageQueue.processQueue(tenantId, async (message) => {
+        logger.info(`[${tenantId}] Procesando mensaje en cola de ${message.from}`);
+        
+        // Ejecutar callback
+        const response = await callback(message);
+        
+        // Si hay respuesta, no necesitamos hacer nada más
+        // (el callback ya envió la respuesta)
+        if (response === null || response === undefined) {
+          logger.info(`[${tenantId}] Mensaje en cola procesado (sin respuesta)`);
+        } else {
+          logger.info(`[${tenantId}] Mensaje en cola procesado exitosamente`);
+        }
+      });
+
+      logger.info(`[${tenantId}] Cola procesada completamente`);
+    } catch (error) {
+      logger.error(`[${tenantId}] Error procesando cola de mensajes:`, error);
+    }
+  }
+
+  /**
    * Maneja cambio de estado de conexión
    * @param {string} tenantId - ID del tenant
    * @param {string} state - Estado (open, close)
@@ -159,9 +228,9 @@ class EventHandlers {
       logger.info(`[${tenantId}] Cambio de estado de conexión: ${state}`);
 
       // Emitir evento WebSocket
-      if (global.baileysWebSocket) {
+      if (globalThis.baileysWebSocket) {
         const status = state === 'open' ? 'connected' : 'disconnected';
-        global.baileysWebSocket.emitConnectionStatus(tenantId, status, info);
+        globalThis.baileysWebSocket.emitConnectionStatus(tenantId, status, info);
       }
 
       // Guardar estado en Firebase
@@ -171,6 +240,20 @@ class EventHandlers {
         lastSeen: new Date().toISOString(),
         messageCount: info.messageCount || 0
       });
+
+      // 🚀 Procesar mensajes en cola si la conexión es reestablecida
+      if (state === 'open') {
+        logger.info(`[${tenantId}] Conexión reestablecida, procesando mensajes en cola...`);
+        
+        // Procesar cola en segundo plano (no bloqueante)
+        setImmediate(async () => {
+          try {
+            await this.processQueuedMessages(tenantId);
+          } catch (error) {
+            logger.error(`[${tenantId}] Error procesando cola después de reconexión:`, error);
+          }
+        });
+      }
 
       // Ejecutar callback registrado
       const callback = this.statusCallbacks.get(tenantId);

@@ -8,6 +8,8 @@ const pino = require('pino');
 const path = require('node:path');
 const fs = require('node:fs').promises;
 const EventEmitter = require('node:events');
+const storage = require('./storage');
+const connectionManager = require('./connection-manager');
 
 const logger = pino({ level: 'info' });
 
@@ -79,34 +81,21 @@ class SessionManager extends EventEmitter {
         await this.closeSession(tenantId);
       }
 
-      // Crear directorio de sesión si no existe
+      // Crear directorio de sesión si no existe (para compatibilidad)
       const sessionDir = path.join(__dirname, '../../sessions', tenantId);
       await fs.mkdir(sessionDir, { recursive: true });
 
-      // Intentar cargar estado de autenticación
+      // Usar getAuthState de storage (persistencia en Firestore)
       let state, saveCreds;
       try {
-        const authState = await useMultiFileAuthState(sessionDir);
+        logger.info(`[${tenantId}] Cargando credenciales desde Firestore...`);
+        const authState = await storage.getAuthState(tenantId);
         state = authState.state;
         saveCreds = authState.saveCreds;
+        logger.info(`[${tenantId}] AuthState inicializado`);
       } catch (authError) {
-        logger.warn(`[${tenantId}] Error al cargar estado de autenticación: ${authError.message}`);
-        logger.info(`[${tenantId}] Limpiando sesión corrupta y creando nueva...`);
-        
-        // Limpiar carpeta de sesión corrupta
-        try {
-          const files = await fs.readdir(sessionDir);
-          for (const file of files) {
-            await fs.unlink(path.join(sessionDir, file));
-          }
-        } catch (cleanError) {
-          logger.error(`[${tenantId}] Error al limpiar sesión:`, cleanError);
-        }
-        
-        // Intentar crear nuevo estado
-        const authState = await useMultiFileAuthState(sessionDir);
-        state = authState.state;
-        saveCreds = authState.saveCreds;
+        logger.error(`[${tenantId}] Error al cargar estado de autenticación:`, authError);
+        throw authError;
       }
 
       // Configurar socket de Baileys
@@ -193,13 +182,20 @@ class SessionManager extends EventEmitter {
       logger.info(`[${tenantId}] Conexión cerrada. Reconectar: ${shouldReconnect}`);
 
       if (shouldReconnect) {
-        logger.info(`[${tenantId}] Intentando reconectar...`);
-        setTimeout(() => {
-          this.initSession(tenantId);
-        }, 3000);
+        logger.info(`[${tenantId}] Delegando reconexión a ConnectionManager...`);
+        
+        // Actualizar estado en connection-manager
+        connectionManager.updateConnectionState(tenantId, false);
+        
+        // El connection-manager manejará la reconexión automática
+        // cuando llegue el próximo mensaje
       } else {
         logger.info(`[${tenantId}] Sesión cerrada permanentemente (logout)`);
         await this.closeSession(tenantId);
+        
+        // Eliminar credenciales guardadas
+        await storage.deleteSessionData(tenantId);
+        
         this.emit('logged-out', tenantId);
       }
 
@@ -227,6 +223,9 @@ class SessionManager extends EventEmitter {
         state.phoneNumber = phoneNumber;
         this.sessionStates.set(tenantId, state);
       }
+
+      // Actualizar estado en connection-manager
+      connectionManager.updateConnectionState(tenantId, true);
 
       this.emit('connected', tenantId, phoneNumber);
     }
