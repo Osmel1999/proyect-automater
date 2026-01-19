@@ -8,8 +8,6 @@ const pino = require('pino');
 const path = require('node:path');
 const fs = require('node:fs').promises;
 const EventEmitter = require('node:events');
-const storage = require('./storage');
-const connectionManager = require('./connection-manager');
 
 const logger = pino({ level: 'info' });
 
@@ -81,38 +79,34 @@ class SessionManager extends EventEmitter {
         await this.closeSession(tenantId);
       }
 
-      // Crear directorio de sesión si no existe (para compatibilidad)
+      // Crear directorio de sesión si no existe
       const sessionDir = path.join(__dirname, '../../sessions', tenantId);
       await fs.mkdir(sessionDir, { recursive: true });
 
-      // Usar getAuthState de storage (persistencia en Firestore)
+      // Intentar cargar estado de autenticación
       let state, saveCreds;
       try {
-        logger.info(`[${tenantId}] Cargando credenciales desde Firestore...`);
-        const authState = await storage.getAuthState(tenantId);
+        const authState = await useMultiFileAuthState(sessionDir);
         state = authState.state;
         saveCreds = authState.saveCreds;
-        
-        if (state.creds) {
-          logger.info(`[${tenantId}] ✅ Credenciales encontradas`);
-        } else {
-          logger.info(`[${tenantId}] 📝 Nueva sesión sin credenciales previas`);
-        }
       } catch (authError) {
-        logger.error(`[${tenantId}] ⚠️ Error al cargar credenciales:`, authError.message);
-        logger.warn(`[${tenantId}] Creando nueva sesión desde cero...`);
+        logger.warn(`[${tenantId}] Error al cargar estado de autenticación: ${authError.message}`);
+        logger.info(`[${tenantId}] Limpiando sesión corrupta y creando nueva...`);
         
-        // Limpiar credenciales corruptas
+        // Limpiar carpeta de sesión corrupta
         try {
-          await storage.deleteSessionData(tenantId);
-        } catch (cleanupError) {
-          logger.error(`[${tenantId}] Error limpiando credenciales:`, cleanupError.message);
+          const files = await fs.readdir(sessionDir);
+          for (const file of files) {
+            await fs.unlink(path.join(sessionDir, file));
+          }
+        } catch (cleanError) {
+          logger.error(`[${tenantId}] Error al limpiar sesión:`, cleanError);
         }
         
-        // Crear authState vacío para nueva sesión
-        const freshAuthState = await storage.getAuthState(tenantId);
-        state = freshAuthState.state;
-        saveCreds = freshAuthState.saveCreds;
+        // Intentar crear nuevo estado
+        const authState = await useMultiFileAuthState(sessionDir);
+        state = authState.state;
+        saveCreds = authState.saveCreds;
       }
 
       // Configurar socket de Baileys
@@ -199,20 +193,13 @@ class SessionManager extends EventEmitter {
       logger.info(`[${tenantId}] Conexión cerrada. Reconectar: ${shouldReconnect}`);
 
       if (shouldReconnect) {
-        logger.info(`[${tenantId}] Delegando reconexión a ConnectionManager...`);
-        
-        // Actualizar estado en connection-manager
-        connectionManager.updateConnectionState(tenantId, false);
-        
-        // El connection-manager manejará la reconexión automática
-        // cuando llegue el próximo mensaje
+        logger.info(`[${tenantId}] Intentando reconectar...`);
+        setTimeout(() => {
+          this.initSession(tenantId);
+        }, 3000);
       } else {
         logger.info(`[${tenantId}] Sesión cerrada permanentemente (logout)`);
         await this.closeSession(tenantId);
-        
-        // Eliminar credenciales guardadas
-        await storage.deleteSessionData(tenantId);
-        
         this.emit('logged-out', tenantId);
       }
 
@@ -227,28 +214,15 @@ class SessionManager extends EventEmitter {
     } else if (connection === 'open') {
       logger.info(`[${tenantId}] Conexión establecida exitosamente`);
 
-      // Obtener información del número con validación
+      // Obtener información del número
       const socket = this.sessions.get(tenantId);
       let phoneNumber = null;
       
-      try {
-        if (socket && socket.user && socket.user.id) {
-          phoneNumber = socket.user.id.split(':')[0];
-          logger.info(`[${tenantId}] ✅ Número detectado: ${phoneNumber}`);
-        } else {
-          logger.warn(`[${tenantId}] ⚠️ Socket user no disponible aún, esperando...`);
-          
-          // Esperar un momento y reintentar
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          
-          const retrySocket = this.sessions.get(tenantId);
-          if (retrySocket && retrySocket.user && retrySocket.user.id) {
-            phoneNumber = retrySocket.user.id.split(':')[0];
-            logger.info(`[${tenantId}] ✅ Número detectado (reintento): ${phoneNumber}`);
-          }
-        }
-      } catch (error) {
-        logger.error(`[${tenantId}] Error obteniendo número:`, error.message);
+      if (socket?.user?.id) {
+        phoneNumber = socket.user.id.split(':')[0] || null;
+        logger.info(`[${tenantId}] Número de teléfono: ${phoneNumber}`);
+      } else {
+        logger.warn(`[${tenantId}] Socket o user info no disponible aún, será actualizado después`);
       }
 
       // Actualizar estado solo si existe
