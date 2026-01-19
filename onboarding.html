@@ -506,6 +506,7 @@
         
         this.isPolling = false;
         this.isConnected = false;
+        this.statusPollingStarted = false; // Para iniciar status polling solo una vez
         
         this.init();
       }
@@ -635,9 +636,8 @@
 
           console.log('✅ Conexión iniciada');
 
-          // Iniciar polling
+          // Iniciar polling de QR (el status polling se iniciará después de mostrar el QR)
           this.startQRPolling();
-          this.startStatusPolling();
 
         } catch (error) {
           console.error('❌ Error al iniciar conexión:', error);
@@ -681,6 +681,13 @@
               console.log('📱 QR recibido');
               this.displayQR(data.qr);
               
+              // Iniciar status polling después de mostrar el QR (solo una vez)
+              if (!this.statusPollingStarted) {
+                console.log('🔍 Iniciando status polling para detectar conexión...');
+                this.statusPollingStarted = true;
+                this.startStatusPolling();
+              }
+              
               if (!this.isConnected && this.isPolling) {
                 setTimeout(poll, 3000);
               }
@@ -714,32 +721,40 @@
       }
 
       startStatusPolling() {
+        console.log('🔍 Iniciando polling de status...');
         const poll = async () => {
-          if (this.isConnected) return;
+          if (this.isConnected) {
+            console.log('🛑 Status polling detenido - ya está conectado');
+            return;
+          }
 
           try {
+            console.log('🔍 Verificando status de conexión...');
             const status = await this.checkStatus();
+            console.log('🔍 Status recibido:', status);
             
             if (status && status.connected) {
-              console.log('✅ Conectado confirmado');
+              console.log('✅ ¡Conectado confirmado! Mostrando vista conectada...');
               this.isConnected = true;
               this.isPolling = false;
               this.showConnectedView(status);
               return;
             }
 
+            console.log('⏳ Aún no conectado, verificando nuevamente en 3 segundos...');
             if (!this.isConnected) {
-              setTimeout(poll, 5000);
+              setTimeout(poll, 3000); // Reducido de 5 a 3 segundos para respuesta más rápida
             }
           } catch (error) {
-            console.error('Error en status polling:', error);
+            console.error('❌ Error en status polling:', error);
             if (!this.isConnected) {
-              setTimeout(poll, 5000);
+              setTimeout(poll, 3000);
             }
           }
         };
 
-        setTimeout(poll, 5000);
+        // Ejecutar la primera verificación después de 2 segundos (dar tiempo al escaneo)
+        setTimeout(poll, 2000);
       }
 
       displayQR(qrData) {

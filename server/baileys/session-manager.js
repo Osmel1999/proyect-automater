@@ -11,6 +11,14 @@ const EventEmitter = require('node:events');
 
 const logger = pino({ level: 'info' });
 
+// Connection Manager para actualizar estado de conexión
+let connectionManager = null;
+try {
+  connectionManager = require('./connection-manager');
+} catch (error) {
+  logger.warn('Connection Manager no disponible:', error.message);
+}
+
 // Baileys es ESM, se carga dinámicamente
 let baileys = null;
 let baileysPromise = null;
@@ -236,7 +244,9 @@ class SessionManager extends EventEmitter {
       }
 
       // Actualizar estado en connection-manager
-      connectionManager.updateConnectionState(tenantId, true);
+      if (connectionManager) {
+        connectionManager.updateConnectionState(tenantId, true);
+      }
 
       this.emit('connected', tenantId, phoneNumber);
     }
