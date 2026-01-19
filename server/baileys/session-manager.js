@@ -240,6 +240,13 @@ class SessionManager extends EventEmitter {
     console.log(`🔍 [DEBUG] handleIncomingMessages llamado para tenant ${tenantId}, type: ${type}, mensajes: ${messages.length}`);
     
     for (const message of messages) {
+      // 🛡️ FILTRO: Ignorar estados/historias de WhatsApp
+      if (message.key.remoteJid === 'status@broadcast') {
+        console.log(`🔍 [DEBUG] Estado/Historia de WhatsApp ignorado (status@broadcast)`);
+        logger.info(`[${tenantId}] Estado/Historia de WhatsApp ignorado - no se procesará`);
+        continue; // Saltar este mensaje
+      }
+      
       if (type === 'notify') {
         console.log(`🔍 [DEBUG] Mensaje tipo notify de ${message.key.remoteJid}`);
         logger.info(`[${tenantId}] Mensaje recibido de ${message.key.remoteJid}`);
