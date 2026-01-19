@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnóstico KDS Firebase</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 { color: #4ec9b0; }
+        h2 { color: #569cd6; margin-top: 30px; }
+        .status { margin: 10px 0; padding: 15px; background: #2d2d30; border-left: 4px solid #007acc; }
+        .success { border-left-color: #4ec9b0; }
+        .error { border-left-color: #f48771; }
+        .warning { border-left-color: #dcdcaa; }
+        button {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            margin: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            border-radius: 4px;
+        }
+        button:hover { background: #005a9e; }
+        pre {
+            background: #2d2d30;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            border: 1px solid #3e3e42;
+        }
+        .log { color: #858585; font-size: 12px; margin: 5px 0; }
+        .log.info { color: #4ec9b0; }
+        .log.error { color: #f48771; }
+        .log.warn { color: #dcdcaa; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Diagnóstico KDS - Firebase & Frontend</h1>
+    
+    <div class="status">
+        <strong>Tenant ID:</strong> <span id="tenantId">Cargando...</span><br>
+        <strong>Estado Firebase:</strong> <span id="firebaseStatus">Verificando...</span><br>
+        <strong>Pedidos en Firebase:</strong> <span id="orderCount">0</span>
+    </div>
+
+    <button onclick="runDiagnostic()">🔄 Ejecutar Diagnóstico Completo</button>
+    <button onclick="testFirebaseConnection()">🔥 Test Conexión Firebase</button>
+    <button onclick="listenToOrders()">👂 Escuchar Pedidos en Tiempo Real</button>
+    <button onclick="clearLogs()">🧹 Limpiar Logs</button>
+
+    <h2>📊 Resultados del Diagnóstico</h2>
+    <div id="results"></div>
+
+    <h2>📝 Logs en Tiempo Real</h2>
+    <div id="logs"></div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    
+    <!-- Config -->
+    <script src="config.js"></script>
+
+    <script>
+        let currentTenantId = null;
+        let logsContainer = document.getElementById('logs');
+        let resultsContainer = document.getElementById('results');
+
+        function log(message, type = 'info') {
+            const logEntry = document.createElement('div');
+            logEntry.className = `log ${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logsContainer.insertBefore(logEntry, logsContainer.firstChild);
+            console.log(`[${type.toUpperCase()}]`, message);
+        }
+
+        function clearLogs() {
+            logsContainer.innerHTML = '';
+            log('Logs limpiados', 'info');
+        }
+
+        function addResult(title, content, status = 'info') {
+            const result = document.createElement('div');
+            result.className = `status ${status}`;
+            result.innerHTML = `<strong>${title}</strong><br>${content}`;
+            resultsContainer.appendChild(result);
+        }
+
+        async function runDiagnostic() {
+            resultsContainer.innerHTML = '';
+            log('🔍 Iniciando diagnóstico completo...', 'info');
+            
+            // 1. Verificar localStorage
+            currentTenantId = localStorage.getItem('currentTenantId');
+            document.getElementById('tenantId').textContent = currentTenantId || '❌ NO ENCONTRADO';
+            
+            if (!currentTenantId) {
+                addResult('❌ Error: Tenant ID no encontrado', 
+                    'No hay tenantId en localStorage. Debes iniciar sesión primero.', 
+                    'error');
+                log('❌ Tenant ID no encontrado en localStorage', 'error');
+                return;
+            }
+            
+            addResult('✅ Tenant ID encontrado', currentTenantId, 'success');
+            log(`✅ Tenant ID: ${currentTenantId}`, 'info');
+
+            // 2. Verificar Firebase inicializado
+            if (typeof firebase === 'undefined' || !window.db) {
+                addResult('❌ Firebase no inicializado', 
+                    'Firebase SDK no está cargado o configurado correctamente', 
+                    'error');
+                log('❌ Firebase no está inicializado', 'error');
+                return;
+            }
+            
+            addResult('✅ Firebase inicializado', 'Firebase SDK cargado correctamente', 'success');
+            log('✅ Firebase SDK inicializado', 'info');
+
+            // 3. Verificar conexión a Firebase
+            try {
+                const connectedRef = window.db.ref('.info/connected');
+                connectedRef.once('value', (snapshot) => {
+                    const connected = snapshot.val();
+                    if (connected) {
+                        addResult('✅ Conexión a Firebase', 'Conectado exitosamente', 'success');
+                        log('✅ Conectado a Firebase', 'info');
+                        document.getElementById('firebaseStatus').textContent = '✅ Conectado';
+                    } else {
+                        addResult('❌ Conexión a Firebase', 'No conectado', 'error');
+                        log('❌ No conectado a Firebase', 'error');
+                        document.getElementById('firebaseStatus').textContent = '❌ Desconectado';
+                    }
+                });
+            } catch (error) {
+                addResult('❌ Error verificando conexión', error.message, 'error');
+                log(`❌ Error: ${error.message}`, 'error');
+            }
+
+            // 4. Verificar si el tenant existe
+            try {
+                log(`🔍 Verificando tenant: ${currentTenantId}...`, 'info');
+                const tenantSnapshot = await window.db.ref(`tenants/${currentTenantId}`).once('value');
+                
+                if (!tenantSnapshot.exists()) {
+                    addResult('❌ Tenant no existe', 
+                        `El tenant ${currentTenantId} no existe en Firebase`, 
+                        'error');
+                    log(`❌ Tenant ${currentTenantId} no existe`, 'error');
+                    return;
+                }
+                
+                const tenantData = tenantSnapshot.val();
+                addResult('✅ Tenant encontrado', 
+                    `Restaurante: ${tenantData.restaurant?.name || 'Sin nombre'}`, 
+                    'success');
+                log(`✅ Tenant encontrado: ${tenantData.restaurant?.name || 'Sin nombre'}`, 'info');
+
+            } catch (error) {
+                addResult('❌ Error verificando tenant', error.message, 'error');
+                log(`❌ Error verificando tenant: ${error.message}`, 'error');
+                return;
+            }
+
+            // 5. Verificar pedidos
+            try {
+                log(`🔍 Buscando pedidos en: tenants/${currentTenantId}/pedidos`, 'info');
+                const ordersSnapshot = await window.db.ref(`tenants/${currentTenantId}/pedidos`).once('value');
+                const orders = ordersSnapshot.val();
+                
+                if (!orders || Object.keys(orders).length === 0) {
+                    addResult('⚠️ No hay pedidos', 
+                        'No se encontraron pedidos activos para este tenant', 
+                        'warning');
+                    log('⚠️ No hay pedidos en Firebase', 'warn');
+                    document.getElementById('orderCount').textContent = '0';
+                } else {
+                    // Filtrar placeholder
+                    const realOrders = Object.entries(orders).filter(([key, _]) => key !== '_placeholder');
+                    const orderCount = realOrders.length;
+                    
+                    addResult('✅ Pedidos encontrados', 
+                        `${orderCount} pedido(s) activo(s)`, 
+                        'success');
+                    log(`✅ Encontrados ${orderCount} pedidos`, 'info');
+                    document.getElementById('orderCount').textContent = orderCount;
+
+                    // Mostrar detalles de cada pedido
+                    let orderDetails = '<pre>';
+                    realOrders.forEach(([key, order]) => {
+                        orderDetails += `\n📦 Pedido #${order.id || key}:\n`;
+                        orderDetails += `   - Estado: ${order.estado}\n`;
+                        orderDetails += `   - Cliente: ${order.cliente || 'N/A'}\n`;
+                        orderDetails += `   - Items: ${order.items?.length || 0}\n`;
+                        orderDetails += `   - Total: $${order.total || 0}\n`;
+                        orderDetails += `   - Timestamp: ${new Date(order.timestamp).toLocaleString()}\n`;
+                    });
+                    orderDetails += '</pre>';
+                    addResult('📋 Detalles de Pedidos', orderDetails, 'success');
+                }
+
+            } catch (error) {
+                addResult('❌ Error leyendo pedidos', error.message, 'error');
+                log(`❌ Error leyendo pedidos: ${error.message}`, 'error');
+            }
+
+            log('✅ Diagnóstico completado', 'info');
+        }
+
+        async function testFirebaseConnection() {
+            log('🔥 Probando conexión a Firebase...', 'info');
+            
+            try {
+                const testRef = window.db.ref('.info/serverTimeOffset');
+                const snapshot = await testRef.once('value');
+                const offset = snapshot.val();
+                
+                log(`✅ Conexión exitosa. Server time offset: ${offset}ms`, 'info');
+                addResult('✅ Test de Conexión', `Offset: ${offset}ms`, 'success');
+            } catch (error) {
+                log(`❌ Error de conexión: ${error.message}`, 'error');
+                addResult('❌ Test de Conexión', error.message, 'error');
+            }
+        }
+
+        async function listenToOrders() {
+            currentTenantId = localStorage.getItem('currentTenantId');
+            
+            if (!currentTenantId) {
+                log('❌ No hay tenant ID', 'error');
+                alert('Debes iniciar sesión primero');
+                return;
+            }
+
+            log(`👂 Escuchando cambios en: tenants/${currentTenantId}/pedidos`, 'info');
+            
+            const ordersRef = window.db.ref(`tenants/${currentTenantId}/pedidos`);
+            
+            ordersRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                
+                if (!data) {
+                    log('⚠️ No hay datos en pedidos', 'warn');
+                    document.getElementById('orderCount').textContent = '0';
+                    return;
+                }
+
+                // Filtrar placeholder
+                const orders = Object.entries(data).filter(([key, _]) => key !== '_placeholder');
+                const orderCount = orders.length;
+                
+                log(`📦 Actualización: ${orderCount} pedido(s) detectado(s)`, 'info');
+                document.getElementById('orderCount').textContent = orderCount;
+
+                // Mostrar cada pedido
+                orders.forEach(([key, order]) => {
+                    log(`  → Pedido #${order.id || key}: ${order.estado} - ${order.items?.length || 0} items`, 'info');
+                });
+            }, (error) => {
+                log(`❌ Error escuchando pedidos: ${error.message}`, 'error');
+            });
+
+            addResult('👂 Listener Activado', 
+                `Escuchando cambios en tiempo real en tenants/${currentTenantId}/pedidos`, 
+                'success');
+        }
+
+        // Auto-iniciar
+        window.addEventListener('load', () => {
+            log('🚀 Herramienta de diagnóstico cargada', 'info');
+            runDiagnostic();
+        });
+    </script>
+</body>
+</html>
