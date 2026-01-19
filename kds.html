@@ -385,12 +385,16 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
     
     <!-- Configuración de Firebase -->
-    <script src="config.js?v=2026011902"></script>
+    <script src="config.js?v=1768856159"></script>
     
     <!-- Lógica de la aplicación -->
-    <script src="app.js?v=2026011902"></script>
+    <script src="app.js?v=1768856159"></script>
     
     <script>
+        // Debug: Verificar versión cargada
+        console.log('🔄 KDS HTML cargado - Timestamp: 1768856159');
+        console.log('📍 Versión de scripts: app.js?v=1768856159');
+        
         // Configurar botón de dashboard
         document.getElementById('dashboardBtn').addEventListener('click', function(e) {
             e.preventDefault();
@@ -404,11 +408,31 @@
             }
         });
 
-        // Iniciar la aplicación cuando el DOM esté listo
+        // Iniciar la aplicación cuando el DOM esté listo - con manejo de errores
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', init);
+            document.addEventListener('DOMContentLoaded', function() {
+                try {
+                    if (typeof init === 'function') {
+                        init();
+                    } else {
+                        console.error('❌ Función init() no encontrada. app.js no se cargó correctamente.');
+                    }
+                } catch (error) {
+                    console.error('❌ Error al inicializar KDS:', error);
+                    alert('Error al inicializar KDS. Recarga la página (Ctrl+Shift+R)');
+                }
+            });
         } else {
-            init();
+            try {
+                if (typeof init === 'function') {
+                    init();
+                } else {
+                    console.error('❌ Función init() no encontrada. app.js no se cargó correctamente.');
+                }
+            } catch (error) {
+                console.error('❌ Error al inicializar KDS:', error);
+                alert('Error al inicializar KDS. Recarga la página (Ctrl+Shift+R)');
+            }
         }
     </script>
 </body>
