@@ -268,4 +268,109 @@ class ConnectionManager {
 // Singleton instance
 const connectionManager = new ConnectionManager();
 
+// ====================================
+// HEARTBEAT: Monitoreo de salud de sesiones
+// ====================================
+
+/**
+ * Verifica periódicamente la salud de todas las sesiones activas
+ * Detecta y reconecta sesiones caídas automáticamente
+ */
+function startSessionHealthMonitor() {
+  const HEARTBEAT_INTERVAL = 2 * 60 * 1000; // 2 minutos
+  const INITIAL_DELAY = 30 * 1000; // Esperar 30s después del startup antes del primer heartbeat
+
+  logger.info('[Heartbeat] 💓 Monitor de salud de sesiones iniciado');
+  logger.info(`[Heartbeat]    Intervalo: ${HEARTBEAT_INTERVAL / 1000}s`);
+  logger.info(`[Heartbeat]    Delay inicial: ${INITIAL_DELAY / 1000}s`);
+
+  setTimeout(() => {
+    setInterval(async () => {
+      const timestamp = new Date().toISOString();
+      logger.info(`[${timestamp}] [Heartbeat] 🩺 Verificando salud de sesiones...`);
+
+      try {
+        // Obtener todas las sesiones activas
+        const activeSessions = sessionManager.getAllSessions ? 
+          sessionManager.getAllSessions() : 
+          Array.from(sessionManager.sessions.keys());
+
+        if (activeSessions.length === 0) {
+          logger.debug('[Heartbeat] 📝 No hay sesiones activas que verificar');
+          return;
+        }
+
+        logger.info(`[Heartbeat] 📊 Verificando ${activeSessions.length} sesiones...`);
+
+        let healthyCount = 0;
+        let unhealthyCount = 0;
+        let reconnectedCount = 0;
+
+        // Verificar cada sesión
+        for (const tenantId of activeSessions) {
+          try {
+            const sock = sessionManager.getSession(tenantId);
+
+            if (!sock) {
+              logger.warn(`[Heartbeat] ⚠️ [${tenantId}] Sesión no encontrada en memory`);
+              unhealthyCount++;
+              continue;
+            }
+
+            // Verificar estado del WebSocket
+            const wsState = sock.ws?.readyState;
+            const isHealthy = wsState === 1; // 1 = OPEN
+
+            if (isHealthy) {
+              logger.debug(`[Heartbeat] ✅ [${tenantId}] Sesión saludable (WS:OPEN)`);
+              healthyCount++;
+            } else {
+              logger.warn(`[Heartbeat] ⚠️ [${tenantId}] Sesión no saludable (WS:${wsState || 'undefined'})`);
+              unhealthyCount++;
+
+              // Intentar reconectar
+              logger.info(`[Heartbeat] 🔄 [${tenantId}] Intentando reconexión automática...`);
+
+              try {
+                const reconnected = await connectionManager.ensureConnected(tenantId);
+
+                if (reconnected) {
+                  logger.info(`[Heartbeat] ✅ [${tenantId}] Reconexión exitosa`);
+                  reconnectedCount++;
+                  healthyCount++;
+                  unhealthyCount--;
+                } else {
+                  logger.error(`[Heartbeat] ❌ [${tenantId}] Falló reconexión`);
+                }
+              } catch (reconnectError) {
+                logger.error(`[Heartbeat] ❌ [${tenantId}] Error en reconexión:`, reconnectError.message);
+              }
+            }
+          } catch (error) {
+            logger.error(`[Heartbeat] ❌ [${tenantId}] Error verificando sesión:`, error.message);
+            unhealthyCount++;
+          }
+        }
+
+        // Resumen del heartbeat
+        logger.info('[Heartbeat] 📊 Resumen:');
+        logger.info(`[Heartbeat]    ✅ Saludables: ${healthyCount}/${activeSessions.length}`);
+        logger.info(`[Heartbeat]    ⚠️ No saludables: ${unhealthyCount}/${activeSessions.length}`);
+        if (reconnectedCount > 0) {
+          logger.info(`[Heartbeat]    🔄 Reconectadas: ${reconnectedCount}`);
+        }
+
+      } catch (error) {
+        logger.error('[Heartbeat] ❌ Error en monitor de salud:', error);
+        logger.error(error.stack);
+      }
+    }, HEARTBEAT_INTERVAL);
+
+    logger.info('[Heartbeat] ⏰ Primer heartbeat programado');
+  }, INITIAL_DELAY);
+}
+
+// Iniciar heartbeat automáticamente
+startSessionHealthMonitor();
+
 module.exports = connectionManager;
