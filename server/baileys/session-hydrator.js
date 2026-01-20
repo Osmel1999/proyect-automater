@@ -10,9 +10,8 @@ const pino = require('pino');
 
 const logger = pino({ level: 'info' });
 
-// Importar storage para acceder a Firestore
-const Storage = require('./storage');
-const storage = new Storage();
+// Importar storage singleton para acceder a Firestore
+const storage = require('./storage');
 
 /**
  * Hidrata una sesión local desde Firestore
