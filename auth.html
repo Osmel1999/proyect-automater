@@ -501,15 +501,34 @@
 
                 console.log('✅ Datos guardados en localStorage');
 
-                // Check onboarding status
-                if (!userData.onboardingCompleted || !userData.whatsappConnected) {
-                    console.log('🔄 Redirigiendo al onboarding...');
-                    // Redirect to onboarding
-                    window.location.href = '/onboarding.html';
-                } else {
-                    console.log('🔄 Redirigiendo a select...');
-                    // Redirect to selection page
-                    window.location.href = '/select.html';
+                // ✅ FIX: Verificar onboarding desde la tabla TENANTS (no users)
+                // Porque el progreso real está en tenants/onboarding
+                try {
+                    const tenantSnapshot = await firebase.database().ref(`tenants/${userData.tenantId}/onboarding`).once('value');
+                    const tenantOnboarding = tenantSnapshot.val();
+                    
+                    console.log('📋 Estado de onboarding del tenant:', tenantOnboarding);
+                    
+                    // Verificar si el onboarding está completo (todos los pasos en true)
+                    const isOnboardingComplete = tenantOnboarding?.completed === true || 
+                        (tenantOnboarding?.steps?.whatsapp_connected && 
+                         tenantOnboarding?.steps?.menu_configured && 
+                         tenantOnboarding?.steps?.messages_customized && 
+                         tenantOnboarding?.steps?.bot_tested);
+                    
+                    if (!isOnboardingComplete) {
+                        console.log('🔄 Onboarding incompleto, redirigiendo al dashboard...');
+                        // Redirigir al DASHBOARD (no onboarding) para que complete los pasos
+                        window.location.href = `/dashboard.html?tenant=${userData.tenantId}`;
+                    } else {
+                        console.log('🔄 Onboarding completo, redirigiendo a select...');
+                        // Redirect to selection page
+                        window.location.href = '/select.html';
+                    }
+                } catch (error) {
+                    console.error('❌ Error verificando onboarding:', error);
+                    // Si hay error, redirigir al dashboard por defecto
+                    window.location.href = `/dashboard.html?tenant=${userData.tenantId}`;
                 }
 
             } catch (error) {
