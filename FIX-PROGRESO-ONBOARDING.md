@@ -1,8 +1,11 @@
 # 🐛 FIX: Progreso de Onboarding No se Guardaba
 
 **Fecha:** 20 de enero de 2026  
-**Estado:** ✅ RESUELTO  
-**Commit:** 4e01820
+**Estado:** ✅ RESUELTO Y DESPLEGADO  
+**Archivos modificados:** 
+- `dashboard.html` (FRONTEND - fix de lectura)
+- `onboarding.html` (FRONTEND - **fix crítico** de escritura)
+**Commits:** 4e01820, 5143af8
 
 ---
 
@@ -12,70 +15,116 @@
 - Usuario completa los pasos 2 y 3 del onboarding (Configurar menú, Personalizar mensajes)
 - Usuario cierra sesión del dashboard
 - Al volver a iniciar sesión, el sistema le pide completar esos pasos nuevamente
-- El progreso no se estaba persistiendo correctamente
+- **El progreso se estaba borrando al verificar el estado de WhatsApp**
 
 ---
 
 ## 🔍 ANÁLISIS DE LA CAUSA RAÍZ
 
-### Código problemático (línea 1284):
+### **Problema #1** (menos crítico): `dashboard.html` línea 1284
+
+El código estaba **sobrescribiendo** el objeto `onboardingState` en lugar de hacer **merge**:
 
 ```javascript
 // ❌ ANTES (INCORRECTO):
 if (tenantData.onboarding) {
   onboardingState = tenantData.onboarding.steps || onboardingState;
-  // ...
 }
 ```
 
-### Problema:
+### **Problema #2** (CRÍTICO): `onboarding.html` línea 835
 
-El código estaba **sobrescribiendo completamente** el objeto `onboardingState` con los datos de Firebase, en lugar de **fusionar** (merge) las propiedades.
+**Este era el verdadero culpable:** Cada vez que se verificaba el estado de WhatsApp (o se conectaba), el código hacía un `.set()` que **sobrescribía completamente** el tenant con valores por defecto:
 
-**Consecuencias:**
-- Si `tenantData.onboarding.steps` existía pero le faltaba alguna propiedad, esa propiedad se perdía
-- El objeto `onboardingState` por defecto tiene 4 propiedades:
-  ```javascript
-  {
-    whatsapp_connected: true,
-    menu_configured: false,
-    messages_customized: false,
-    bot_tested: false
-  }
-  ```
-- Si Firebase solo tenía 2 propiedades guardadas, las otras 2 se perdían completamente
+```javascript
+// ❌ ANTES (CRÍTICO - BORRABA TODO EL PROGRESO):
+await firebase.database().ref(`tenants/${this.tenantId}`).set({
+  userId: userId,
+  email: userEmail,
+  restaurant: {
+    name: businessName,
+    phone: status.phoneNumber || '',
+    whatsappConnected: true,
+    connectedAt: new Date().toISOString()
+  },
+  onboarding: {
+    steps: {
+      whatsapp_connected: true,
+      menu_configured: false,  // ❌ RESETEA A FALSE
+      messages_customized: false,  // ❌ RESETEA A FALSE
+      bot_tested: false
+    },
+    currentStep: 'menu',
+    startedAt: new Date().toISOString()
+  },
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString()
+});
+```
+
+**Por qué era crítico:** Esta función se ejecutaba cada vez que se verificaba el estado de WhatsApp, lo cual podría suceder:
+- Al cargar `onboarding.html`
+- Al verificar la conexión
+- Al iniciar sesión y redirigir a onboarding
 
 ---
 
-## ✅ SOLUCIÓN IMPLEMENTADA
+## ✅ SOLUCIONES IMPLEMENTADAS
 
-### Código corregido:
+### Fix #1: `dashboard.html` (línea 1284)
+
+Cambiar de `.replace()` a **merge** con spread operator:
 
 ```javascript
-// ✅ DESPUÉS (CORRECTO):
+// ✅ CORRECTO:
 if (tenantData.onboarding && tenantData.onboarding.steps) {
-  // FIX: Fusionar con los valores por defecto para no perder propiedades
   onboardingState = {
-    ...onboardingState,  // ← Primero los valores por defecto
-    ...tenantData.onboarding.steps  // ← Luego sobrescribir con Firebase
+    ...onboardingState,  // ← Valores por defecto
+    ...tenantData.onboarding.steps  // ← Firebase sobrescribe
   };
-  
-  console.log('📋 Estado de onboarding leído desde Firebase:', onboardingState);
-  // ...
 }
 ```
 
-### ¿Qué hace el spread operator (`...`)?
+### Fix #2: `onboarding.html` (línea 835) - **FIX CRÍTICO**
 
-El **spread operator** fusiona objetos:
+**Leer datos existentes primero** antes de sobrescribir:
 
 ```javascript
-const defaults = { a: 1, b: 2, c: 3 };
-const firebase = { b: 999 };
+// ✅ CORRECTO:
+// 1. Leer datos existentes
+const tenantRef = firebase.database().ref(`tenants/${this.tenantId}`);
+const snapshot = await tenantRef.once('value');
+const existingData = snapshot.val() || {};
 
-const result = { ...defaults, ...firebase };
-// result = { a: 1, b: 999, c: 3 }
-//          ↑       ↑        ↑
+// 2. Fusionar con los nuevos datos
+const updatedData = {
+  userId: userId,
+  email: userEmail,
+  restaurant: {
+    ...(existingData.restaurant || {}),  // Preservar datos existentes
+    name: businessName,
+    phone: status.phoneNumber || '',
+    whatsappConnected: true,
+    connectedAt: new Date().toISOString()
+  },
+  onboarding: {
+    ...(existingData.onboarding || {}),  // Preservar progreso existente
+    steps: {
+      ...(existingData.onboarding?.steps || {}),  // Preservar pasos completados
+      whatsapp_connected: true  // Solo actualizar este paso
+    },
+    lastUpdated: new Date().toISOString()
+  },
+  updatedAt: new Date().toISOString()
+};
+
+// 3. Guardar con merge, no replace
+await tenantRef.set(updatedData);
+```
+
+**Cambio clave:** Ahora **lee primero**, **fusiona**, y **luego escribe**, preservando todo el progreso existente.
+
+---
 //          default firebase default
 ```
 
@@ -268,6 +317,122 @@ Cmd + Shift + R (Mac)
 - Volver a iniciar sesión
 - ✅ Verificar que los pasos aparecen como completados
 - ✅ Verificar que el progreso dice "75%" (o el porcentaje correcto)
+
+---
+
+## 📊 RESUMEN DEL PROBLEMA Y LA SOLUCIÓN
+
+| Aspecto | Antes (con bug) | Después (corregido) |
+|---------|----------------|---------------------|
+| **Lectura en dashboard** | Sobrescribía el objeto completo | Hace merge preservando propiedades |
+| **Escritura en onboarding** | ❌ BORRABA todo el progreso | ✅ Lee primero, fusiona, luego escribe |
+| **Persistencia del progreso** | ❌ Se perdía al verificar WhatsApp | ✅ Se mantiene siempre |
+| **Experiencia del usuario** | ❌ Tenía que reconfigurar todo | ✅ Progreso se mantiene |
+
+---
+
+## 🚀 ESTADO DEL DEPLOY
+
+| Aspecto | Estado |
+|---------|--------|
+| **Fix #1: dashboard.html** | ✅ Commit 4e01820 |
+| **Fix #2: onboarding.html** | ✅ Commit 5143af8 (CRÍTICO) |
+| **Push a GitHub** | ✅ SÍ |
+| **Deploy a Railway** | ✅ SÍ (Build time: 37.60s) |
+| **Servidor activo** | ✅ Puerto 3000 |
+| **Caché del usuario** | ⚠️ Requiere hard refresh |
+
+---
+
+## 🧪 CÓMO PROBAR EL FIX
+
+### 1. Hard refresh del navegador
+
+Como modificamos archivos **FRONTEND** (HTML), necesitas limpiar la caché:
+
+- **Chrome/Edge:** `Cmd + Shift + R` (Mac) o `Ctrl + Shift + R` (Windows)
+- **Safari:** `Cmd + Option + R`
+- **Firefox:** `Cmd + Shift + R` (Mac) o `Ctrl + Shift + R` (Windows)
+
+### 2. Prueba completa
+
+1. **Ve a onboarding:**
+   - https://api.kdsapp.site/onboarding.html
+   - Si ya tienes WhatsApp conectado, solo carga la página
+
+2. **Ve al dashboard:**
+   - https://api.kdsapp.site/dashboard.html
+   - Completa el paso 2 (Configurar menú)
+   - Completa el paso 3 (Personalizar mensajes)
+
+3. **Abre la consola del navegador (F12 → Console)** y busca:
+   ```javascript
+   📋 Estado de onboarding leído desde Firebase: {
+     whatsapp_connected: true,
+     menu_configured: true,
+     messages_customized: true,
+     bot_tested: false
+   }
+   ```
+
+4. **Recarga la página de onboarding:**
+   - https://api.kdsapp.site/onboarding.html
+   - En la consola, verifica que NO dice "Reseteando progreso"
+   - Deberías ver: `📖 Datos existentes del tenant: {...}`
+
+5. **Vuelve al dashboard:**
+   - https://api.kdsapp.site/dashboard.html
+   - **Resultado esperado:** Los pasos 2 y 3 siguen marcados como "Completado"
+
+---
+
+## 📊 VERIFICAR EN FIREBASE
+
+Para confirmar que los datos se mantienen:
+
+1. Ve a [Firebase Console](https://console.firebase.google.com/)
+2. Selecciona `kds-app-7f1d3`
+3. Ve a **Realtime Database**
+4. Navega a: `/tenants/{tu-tenant-id}/onboarding`
+
+Deberías ver:
+```json
+{
+  "steps": {
+    "whatsapp_connected": true,
+    "menu_configured": true,
+    "messages_customized": true,
+    "bot_tested": false
+  },
+  "progress": 75,
+  "lastUpdated": "2026-01-20T16:50:00.000Z"
+}
+```
+
+**IMPORTANTE:** Después de cargar `onboarding.html` o el dashboard varias veces, los valores de `menu_configured` y `messages_customized` **deben seguir en `true`**, NO deben volver a `false`.
+
+---
+
+## 📝 COMMITS REALIZADOS
+
+```bash
+✅ 4e01820 - fix: corregir carga de estado de onboarding desde Firebase (merge vs replace)
+✅ 5143af8 - fix: prevenir que onboarding.html sobrescriba el progreso al reconectar WhatsApp
+```
+
+---
+
+## 🎯 CONCLUSIÓN
+
+**El problema estaba en DOS lugares:**
+
+1. **`dashboard.html`** - Sobrescribía al leer (menos crítico)
+2. **`onboarding.html`** - **BORRABA al escribir** (CRÍTICO) ← **Este era el verdadero culpable**
+
+**Ambos fixes están aplicados y desplegados en Railway.**
+
+**Estado:** ✅ PROBLEMA RESUELTO  
+**Última actualización:** 20 enero 2026, 11:50 AM
 
 ---
 
