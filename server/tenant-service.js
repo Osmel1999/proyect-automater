@@ -36,57 +36,98 @@ class TenantService {
         throw new Error('Datos de WhatsApp incompletos');
       }
       
-      // Generar ID único para el tenant
-      const tenantId = `tenant_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      // Generar ID único para el tenant (o usar el phoneNumberId si ya existe)
+      // Primero verificar si ya existe un tenant con este phoneNumberId
+      let tenantId;
+      let existingTenant = null;
+      
+      // Buscar tenant existente por phoneNumberId
+      const tenantsSnapshot = await this.tenantsRef.once('value');
+      if (tenantsSnapshot.exists()) {
+        const allTenants = tenantsSnapshot.val();
+        for (const [tid, t] of Object.entries(allTenants)) {
+          if (t.whatsapp && t.whatsapp.phoneNumberId === whatsappPhoneNumberId) {
+            tenantId = tid;
+            existingTenant = t;
+            console.log(`📌 Tenant existente encontrado: ${tenantId}`);
+            break;
+          }
+        }
+      }
+      
+      // Si no existe, generar nuevo ID
+      if (!tenantId) {
+        tenantId = `tenant${Date.now()}${Math.random().toString(36).substr(2, 9)}`;
+        console.log(`🆕 Creando nuevo tenant: ${tenantId}`);
+      }
       
       // Cifrar el access token
       const encryptedToken = encryptionService.encrypt(accessToken);
       
-      // Estructura del tenant
-      const tenant = {
-        tenantId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        status: 'active',
+      // Si el tenant ya existe, solo actualizar campos críticos sin borrar datos existentes
+      if (existingTenant) {
+        const updates = {
+          updatedAt: new Date().toISOString(),
+          status: 'active',
+          'restaurant/name': restaurantName || existingTenant.restaurant?.name || 'Mi Restaurante',
+          'restaurant/ownerEmail': ownerEmail || existingTenant.restaurant?.ownerEmail || null,
+          'whatsapp/businessAccountId': whatsappBusinessAccountId,
+          'whatsapp/phoneNumberId': whatsappPhoneNumberId,
+          'whatsapp/phoneNumber': whatsappPhoneNumber || existingTenant.whatsapp?.phoneNumber || null,
+          'whatsapp/accessToken': encryptedToken,
+          'whatsapp/lastSync': new Date().toISOString()
+        };
         
-        // Información del negocio
-        restaurant: {
-          name: restaurantName || 'Mi Restaurante',
-          ownerEmail: ownerEmail || null
-        },
-        
-        // Configuración de WhatsApp
-        whatsapp: {
-          businessAccountId: whatsappBusinessAccountId,
-          phoneNumberId: whatsappPhoneNumberId,
-          phoneNumber: whatsappPhoneNumber || null,
-          accessToken: encryptedToken, // Token cifrado
-          webhookVerified: false,
-          lastSync: new Date().toISOString()
-        },
-        
-        // Configuración del sistema
-        settings: {
-          timezone: 'America/Mexico_City',
-          language: 'es',
-          currency: 'MXN',
-          autoAcceptOrders: false,
-          notifications: {
-            email: true,
-            whatsapp: true
+        await this.tenantsRef.child(tenantId).update(updates);
+        console.log(`✅ Tenant actualizado (pedidos y datos preservados): ${tenantId}`);
+      } else {
+        // Nuevo tenant: crear estructura completa
+        const tenant = {
+          tenantId,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          status: 'active',
+          
+          // Información del negocio
+          restaurant: {
+            name: restaurantName || 'Mi Restaurante',
+            ownerEmail: ownerEmail || null
+          },
+          
+          // Configuración de WhatsApp
+          whatsapp: {
+            businessAccountId: whatsappBusinessAccountId,
+            phoneNumberId: whatsappPhoneNumberId,
+            phoneNumber: whatsappPhoneNumber || null,
+            accessToken: encryptedToken,
+            webhookVerified: false,
+            lastSync: new Date().toISOString()
+          },
+          
+          // Configuración del sistema
+          settings: {
+            timezone: 'America/Mexico_City',
+            language: 'es',
+            currency: 'MXN',
+            autoAcceptOrders: false,
+            notifications: {
+              email: true,
+              whatsapp: true
+            }
+          },
+          
+          // Estadísticas
+          stats: {
+            totalOrders: 0,
+            ordersToday: 0,
+            lastOrderAt: null
           }
-        },
+        };
         
-        // Estadísticas
-        stats: {
-          totalOrders: 0,
-          ordersToday: 0,
-          lastOrderAt: null
-        }
-      };
-      
-      // Guardar en Firebase
-      await this.tenantsRef.child(tenantId).set(tenant);
+        // Guardar en Firebase
+        await this.tenantsRef.child(tenantId).set(tenant);
+        console.log(`✅ Tenant creado exitosamente: ${tenantId}`);
+      }
       
       console.log(`✅ Tenant creado exitosamente: ${tenantId}`);
       console.log(`   📱 WhatsApp Phone Number ID: ${whatsappPhoneNumberId}`);
