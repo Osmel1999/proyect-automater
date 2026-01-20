@@ -832,30 +832,41 @@
           const userEmail = localStorage.getItem('userEmail');
           const businessName = localStorage.getItem('businessName') || 'Mi Restaurante';
 
-          await firebase.database().ref(`tenants/${this.tenantId}`).set({
+          // ✅ FIX: Leer datos existentes primero para no sobreescribir el progreso
+          const tenantRef = firebase.database().ref(`tenants/${this.tenantId}`);
+          const snapshot = await tenantRef.once('value');
+          const existingData = snapshot.val() || {};
+          
+          console.log('📖 Datos existentes del tenant:', existingData);
+
+          // Fusionar datos existentes con los nuevos
+          const updatedData = {
             userId: userId,
             email: userEmail,
             restaurant: {
+              ...(existingData.restaurant || {}),  // Preservar datos existentes
               name: businessName,
               phone: status.phoneNumber || '',
               whatsappConnected: true,
               connectedAt: new Date().toISOString()
             },
             onboarding: {
+              ...(existingData.onboarding || {}),  // Preservar progreso existente
               steps: {
-                whatsapp_connected: true,
-                menu_configured: false,
-                messages_customized: false,
-                bot_tested: false
+                // Preservar pasos completados previamente
+                ...(existingData.onboarding?.steps || {}),
+                whatsapp_connected: true  // Solo actualizar este paso
               },
-              currentStep: 'menu',
-              startedAt: new Date().toISOString()
+              currentStep: existingData.onboarding?.currentStep || 'menu',
+              startedAt: existingData.onboarding?.startedAt || new Date().toISOString(),
+              lastUpdated: new Date().toISOString()
             },
-            createdAt: new Date().toISOString(),
+            createdAt: existingData.createdAt || new Date().toISOString(),
             updatedAt: new Date().toISOString()
-          });
+          };
 
-          console.log('✅ Tenant guardado en Firebase');
+          await tenantRef.set(updatedData);
+          console.log('✅ Tenant actualizado en Firebase (sin perder progreso):', updatedData);
         } catch (error) {
           console.error('❌ Error guardando tenant:', error);
         }
