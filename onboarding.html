@@ -827,7 +827,7 @@
 
         // Crear/actualizar tenant en Firebase
         try {
-          console.log('📝 Guardando tenant en Firebase...');
+          console.log('� [FIX v2.0] Guardando tenant SIN sobrescribir progreso...');
           const userId = localStorage.getItem('currentUserId');
           const userEmail = localStorage.getItem('userEmail');
           const businessName = localStorage.getItem('businessName') || 'Mi Restaurante';
@@ -838,6 +838,7 @@
           const existingData = snapshot.val() || {};
           
           console.log('📖 Datos existentes del tenant:', existingData);
+          console.log('🔍 Progreso actual antes de actualizar:', existingData.onboarding?.steps);
 
           // Fusionar datos existentes con los nuevos
           const updatedData = {

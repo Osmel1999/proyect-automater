@@ -95,6 +95,18 @@ app.use((req, res, next) => {
   next();
 });
 
+// ✅ FIX: Middleware para evitar caché en archivos HTML
+app.use((req, res, next) => {
+  if (req.path.endsWith('.html')) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
+    console.log(`🚫 [Cache] Deshabilitando caché para: ${req.path}`);
+  }
+  next();
+});
+
 // Servir archivos estáticos del KDS Frontend
 app.use(express.static(path.join(__dirname, '..')));
 
