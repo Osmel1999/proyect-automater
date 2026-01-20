@@ -127,6 +127,18 @@
             margin-bottom: 0.5rem;
         }
 
+        .option-badge {
+            background: #ff4757;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 5px;
+            display: none;
+        }
+
         .option-description {
             color: #718096;
             font-size: 0.95rem;
@@ -290,6 +302,21 @@
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
         }
+
+        /* Onboarding Badge */
+        .onboarding-badge {
+            display: none;
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #2d3748;
+            padding: 0.5rem 1rem;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
     </style>
 </head>
 <body>
@@ -321,6 +348,7 @@
                     <div class="lock-icon">🔒</div>
                     <div class="option-icon">⚙️</div>
                     <div class="option-title">Dashboard</div>
+                    <div id="onboardingBadge" class="option-badge">25% completado</div>
                     <div class="option-description">
                         Configurar menú, mensajes y bot de WhatsApp
                     </div>
@@ -372,8 +400,35 @@
         const currentUserId = localStorage.getItem('currentUserId');
         const currentTenantId = localStorage.getItem('currentTenantId');
 
+        // Initialize Firebase early for status checks
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+
         if (!currentUserId) {
             window.location.href = '/auth.html';
+        }
+
+        // Check onboarding status and update UI
+        async function checkOnboardingStatus() {
+            if (!currentTenantId) return;
+            
+            try {
+                const snapshot = await firebase.database().ref(`tenants/${currentTenantId}/onboarding`).once('value');
+                const onboarding = snapshot.val();
+                
+                const onboardingBadge = document.getElementById('onboardingBadge');
+                
+                if (!onboarding || onboarding.progress < 100) {
+                    console.log('⚠️ Onboarding incompleto:', onboarding?.progress || 0);
+                    onboardingBadge.style.display = 'inline-block';
+                    onboardingBadge.textContent = `${onboarding?.progress || 0}% completado`;
+                } else {
+                    onboardingBadge.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error checking onboarding status:', error);
+            }
         }
 
         // Load user data
@@ -382,6 +437,9 @@
 
         document.getElementById('userName').textContent = userName;
         document.getElementById('businessName').textContent = businessName;
+
+        // Run onboarding check
+        checkOnboardingStatus();
 
         // PIN Modal functionality
         const pinModal = document.getElementById('pinModal');
@@ -453,7 +511,20 @@
                 if (hashedPin === userData.pin) {
                     // PIN correct, redirect to dashboard
                     closePinModal();
-                    window.location.href = `/dashboard.html?tenant=${currentTenantId}`;
+                    
+                    // Check if we should go to onboarding first if progress < 100%
+                    const snapshot = await firebase.database().ref(`tenants/${currentTenantId}/onboarding`).once('value');
+                    const onboarding = snapshot.val();
+                    
+                    if (!onboarding || onboarding.progress < 100) {
+                        if (confirm('Aún no has completado el onboarding. ¿Deseas ir al asistente de configuración o entrar directamente al Dashboard?')) {
+                            window.location.href = '/onboarding.html';
+                        } else {
+                            window.location.href = `/dashboard.html?tenant=${currentTenantId}`;
+                        }
+                    } else {
+                        window.location.href = `/dashboard.html?tenant=${currentTenantId}`;
+                    }
                 } else {
                     // PIN incorrect
                     pinError.classList.add('show');

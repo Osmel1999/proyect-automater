@@ -610,12 +610,12 @@
                     businessName
                 });
 
-                showAlert('¡Cuenta creada exitosamente! Redirigiendo al onboarding...', 'success');
+                showAlert('¡Cuenta creada exitosamente! Redirigiendo al inicio...', 'success');
 
-                // Redirect to onboarding after 1.5 seconds (dar tiempo a que se guarde localStorage)
+                // Redirect to select after 1.5 seconds (dar tiempo a que se guarde localStorage)
                 setTimeout(() => {
-                    console.log('🔄 Redirigiendo a onboarding con tenantId:', localStorage.getItem('tenantId'));
-                    window.location.href = '/onboarding.html';
+                    console.log('🔄 Redirigiendo a select con tenantId:', localStorage.getItem('tenantId'));
+                    window.location.href = '/select.html';
                 }, 1500);
 
             } catch (error) {
