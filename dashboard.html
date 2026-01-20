@@ -1280,8 +1280,14 @@
         document.getElementById('tenant-name').textContent = tenantData.restaurant?.name || 'Mi Restaurante';
 
         // Load onboarding state
-        if (tenantData.onboarding) {
-          onboardingState = tenantData.onboarding.steps || onboardingState;
+        if (tenantData.onboarding && tenantData.onboarding.steps) {
+          // ✅ FIX: Fusionar con los valores por defecto para no perder propiedades
+          onboardingState = {
+            ...onboardingState,
+            ...tenantData.onboarding.steps
+          };
+          
+          console.log('📋 Estado de onboarding leído desde Firebase:', onboardingState);
           
           // PRIORIDAD: Usar el progreso guardado en Firebase si existe
           if (typeof tenantData.onboarding.progress === 'number') {
