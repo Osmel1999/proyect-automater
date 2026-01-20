@@ -1384,25 +1384,42 @@
 
     // Update steps UI
     function updateStepsUI() {
+      console.log('🔄 updateStepsUI() llamado con estado:', onboardingState);
+      
       // Step 2: Menu
       const step2 = document.getElementById('step-2');
       if (onboardingState.menu_configured) {
         step2.classList.add('completed');
-        step2.querySelector('.step-action').innerHTML = '<span class="step-status">Completado</span>';
+        step2.querySelector('.step-action').innerHTML = '<span class="step-status">✅ Completado</span>';
+        console.log('✅ Step 2 (Menu) marcado como completado');
+      } else {
+        step2.classList.remove('completed');
+        step2.querySelector('.step-action').innerHTML = '<button class="btn-primary" onclick="openMenuModal()">Configurar Menú</button>';
+        console.log('⬜ Step 2 (Menu) marcado como NO completado');
       }
 
       // Step 3: Messages
       const step3 = document.getElementById('step-3');
       if (onboardingState.messages_customized) {
         step3.classList.add('completed');
-        step3.querySelector('.step-action').innerHTML = '<span class="step-status">Completado</span>';
+        step3.querySelector('.step-action').innerHTML = '<span class="step-status">✅ Completado</span>';
+        console.log('✅ Step 3 (Messages) marcado como completado');
+      } else {
+        step3.classList.remove('completed');
+        step3.querySelector('.step-action').innerHTML = '<button class="btn-primary" onclick="openMessagesModal()">Personalizar Mensajes</button>';
+        console.log('⬜ Step 3 (Messages) marcado como NO completado');
       }
 
       // Step 4: Test
       const step4 = document.getElementById('step-4');
       if (onboardingState.bot_tested) {
         step4.classList.add('completed');
-        step4.querySelector('.step-action').innerHTML = '<span class="step-status">Completado</span>';
+        step4.querySelector('.step-action').innerHTML = '<span class="step-status">✅ Completado</span>';
+        console.log('✅ Step 4 (Test) marcado como completado');
+      } else {
+        step4.classList.remove('completed');
+        step4.querySelector('.step-action').innerHTML = '<button class="btn-primary" onclick="openTestBot()">Probar Bot</button>';
+        console.log('⬜ Step 4 (Test) marcado como NO completado');
       }
     }
 
