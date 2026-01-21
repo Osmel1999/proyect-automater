@@ -501,11 +501,28 @@
                 localStorage.setItem('businessName', userData.businessName);
 
                 console.log('✅ Datos guardados en localStorage');
+                
+                // ✅ DEBUG: Verificar localStorage antes de redirección
+                console.log('📊 localStorage verificado:', {
+                    currentUserId: localStorage.getItem('currentUserId'),
+                    currentTenantId: localStorage.getItem('currentTenantId'),
+                    tenantId: localStorage.getItem('tenantId'),
+                    userEmail: localStorage.getItem('userEmail'),
+                    userName: localStorage.getItem('userName'),
+                    businessName: localStorage.getItem('businessName')
+                });
 
                 // ✅ FIX: Siempre redirigir a select.html después del login
                 // El usuario decide a dónde ir (KDS o Dashboard)
                 console.log('🔄 Login exitoso, redirigiendo a select...');
-                window.location.href = '/select.html';
+                console.log('🎯 URL de redirección:', '/select.html');
+                console.log('⏰ Timestamp:', new Date().toISOString());
+                
+                // Agregar un delay muy pequeño para asegurar que localStorage se guarde
+                setTimeout(() => {
+                    console.log('🚀 Ejecutando redirección AHORA...');
+                    window.location.href = '/select.html';
+                }, 100);
 
             } catch (error) {
                 console.error('❌ Error al iniciar sesión:', error);
