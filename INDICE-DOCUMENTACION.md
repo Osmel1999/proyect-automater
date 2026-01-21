@@ -1,29 +1,83 @@
-# 📚 ÍNDICE DE DOCUMENTACIÓN - Sistema de Restauración de Sesiones
+# 📚 ÍNDICE DE DOCUMENTACIÓN - KDS WebApp
 
 **Proyecto:** KDS + WhatsApp Multi-Tenant SaaS  
-**Fecha:** 20 de enero de 2026  
-**Estado:** 🟢 OPERACIONAL EN PRODUCCIÓN
+**Fecha:** 21 de enero de 2026  
+**Estado:** � EN DEPLOY A RAILWAY
 
 ---
 
-## 🎯 DOCUMENTOS PRINCIPALES
+## ⚡ INICIO RÁPIDO - DEPLOY RAILWAY
 
-### 1. **RESUMEN-DEPLOY-FINAL.md** ⭐ [EMPEZAR AQUÍ]
-**Propósito:** Resumen ejecutivo del deploy exitoso  
-**Para quién:** Todos (desarrolladores, PM, stakeholders)  
+### 🚀 Para Deployar AHORA:
+```bash
+./deploy-final.sh
+```
+
+### 📚 Documentación de Deploy:
+1. **README-DEPLOY.md** - Guía rápida de deploy
+2. **SOLUCION-RAILWAY-BUILD.md** - Solución técnica completa error npm ci
+3. **RESUMEN-SOLUCION.md** - Resumen ejecutivo de cambios
+
+---
+
+## 🎯 DOCUMENTOS DE DEPLOY RAILWAY (NUEVOS)
+
+### 1. **README-DEPLOY.md** ⭐ [DEPLOY RÁPIDO]
+**Propósito:** Guía rápida para deploy diario  
+**Para quién:** Desarrolladores que necesitan deployar  
 **Contenido:**
-- ✅ Estado del deploy
+- 🚀 TL;DR - Deploy en 1 comando
+- 📋 Scripts disponibles
+- 🔧 Troubleshooting básico
+- ✅ Verificación post-deploy
+
+**📖 [Leer README-DEPLOY.md](./README-DEPLOY.md)**
+
+---
+
+### 2. **SOLUCION-RAILWAY-BUILD.md** 🔧 [SOLUCIÓN TÉCNICA]
+**Propósito:** Documentación técnica completa del error de build  
+**Para quién:** Desarrolladores que encuentran problemas  
+**Contenido:**
+- 🔴 Análisis del problema npm ci
+- 🎯 Causa raíz identificada
+- ✅ Soluciones implementadas
+- 📊 Verificación y diagnóstico
+- 🔗 Referencias técnicas
+
+**📖 [Leer SOLUCION-RAILWAY-BUILD.md](./SOLUCION-RAILWAY-BUILD.md)**
+
+---
+
+### 3. **RESUMEN-SOLUCION.md** 📝 [RESUMEN EJECUTIVO]
+**Propósito:** Overview rápido de cambios  
+**Para quién:** Todos  
+**Contenido:**
+- ✅ Cambios implementados
+- 🚀 Cómo deployar
+- 📊 Verificación
+- ⚡ Próximo paso
+
+**📖 [Leer RESUMEN-SOLUCION.md](./RESUMEN-SOLUCION.md)**
+
+---
+
+## 🎯 DOCUMENTOS PRINCIPALES (LEGACY)
+
+### 4. **RESUMEN-DEPLOY-FINAL.md** [DEPLOY ANTERIOR]
+**Propósito:** Resumen ejecutivo del deploy anterior exitoso  
+**Para quién:** Referencia histórica  
+**Contenido:**
+- ✅ Estado del deploy anterior
 - ✅ Funcionalidad implementada
 - ✅ Evidencia de éxito
-- ✅ Métricas actuales
-- ✅ Próximos pasos
 
 **📖 [Leer RESUMEN-DEPLOY-FINAL.md](./RESUMEN-DEPLOY-FINAL.md)**
 
 ---
 
-### 2. **IMPLEMENTACION-COMPLETADA.md** 🛠️ [DETALLES TÉCNICOS]
-**Propósito:** Documentación técnica completa de la implementación  
+### 5. **IMPLEMENTACION-COMPLETADA.md** 🛠️ [DETALLES TÉCNICOS BACKEND]
+**Propósito:** Documentación técnica completa del backend  
 **Para quién:** Desarrolladores backend  
 **Contenido:**
 - 📝 Archivos creados/modificados

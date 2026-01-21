@@ -11,12 +11,22 @@ const EventEmitter = require('node:events');
 
 const logger = pino({ level: 'info' });
 
-// Connection Manager para actualizar estado de conexión
-let connectionManager = null;
-try {
-  connectionManager = require('./connection-manager');
-} catch (error) {
-  logger.warn('Connection Manager no disponible:', error.message);
+// Remove top-level require to avoid circular dependency
+// let connectionManager = null;
+// try {
+//   connectionManager = require('./connection-manager');
+// } catch (error) {
+//   logger.warn('Connection Manager no disponible:', error.message);
+// }
+
+// Helper to get connectionManager lazily
+function getConnectionManager() {
+  try {
+    return require('./connection-manager');
+  } catch (error) {
+    logger.warn('Connection Manager no disponible lazily:', error.message);
+    return null;
+  }
 }
 
 // Baileys es ESM, se carga dinámicamente
@@ -135,23 +145,100 @@ class SessionManager extends EventEmitter {
 
       // Guardar sesión
       this.sessions.set(tenantId, socket);
-      this.sessionStates.set(tenantId, { 
-        connected: false, 
+      this.sessionStates.set(tenantId, {
+        connected: false,
         qr: null,
-        lastSeen: null,
-        phoneNumber: null
+        lastSeen: new Date()
       });
 
-      // Event: Actualización de credenciales
+      // Actualizar connection manager
+      const connManager = getConnectionManager();
+      if (connManager) {
+        connManager.updateConnectionState(tenantId, false);
+      }
+
+      // Escuchar eventos de conexión
+      sock.ev.on('connection.update', async (update) => {
+        const { connection, lastDisconnect, qr } = update;
+
+        // Actualizar estado con QR
+        if (qr) {
+          logger.info(`[${tenantId}] QR Code generado`);
+          const state = this.sessionStates.get(tenantId);
+          state.qr = qr;
+          this.sessionStates.set(tenantId, state);
+          this.emit('qr', tenantId, qr);
+        }
+
+        // Manejar cambios de conexión
+        if (connection === 'close') {
+          // Cargar Baileys para obtener DisconnectReason
+          const { DisconnectReason } = await loadBaileys();
+          
+          const shouldReconnect = (lastDisconnect?.error instanceof Boom)
+            ? lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut
+            : true;
+
+          logger.info(`[${tenantId}] Conexión cerrada. Reconectar: ${shouldReconnect}`);
+
+          if (shouldReconnect) {
+            logger.info(`[${tenantId}] Intentando reconectar...`);
+            setTimeout(() => {
+              this.initSession(tenantId);
+            }, 3000);
+          } else {
+            logger.info(`[${tenantId}] Sesión cerrada permanentemente (logout)`);
+            await this.closeSession(tenantId);
+            this.emit('logged-out', tenantId);
+          }
+
+          // Actualizar estado solo si aún existe
+          const state = this.sessionStates.get(tenantId);
+          if (state) {
+            state.connected = false;
+            this.sessionStates.set(tenantId, state);
+          }
+          this.emit('disconnected', tenantId);
+
+        } else if (connection === 'open') {
+          logger.info(`[${tenantId}] Conexión establecida exitosamente`);
+
+          // Obtener información del número
+          const socket = this.sessions.get(tenantId);
+          let phoneNumber = null;
+          
+          if (socket?.user?.id) {
+            phoneNumber = socket.user.id.split(':')[0] || null;
+            logger.info(`[${tenantId}] Número de teléfono: ${phoneNumber}`);
+          } else {
+            logger.warn(`[${tenantId}] Socket o user info no disponible aún, será actualizado después`);
+          }
+
+          // Actualizar estado solo si existe
+          const state = this.sessionStates.get(tenantId);
+          if (state) {
+            state.connected = true;
+            state.qr = null;
+            state.lastSeen = new Date();
+            state.phoneNumber = phoneNumber;
+            this.sessionStates.set(tenantId, state);
+          }
+
+          // Actualizar estado en connection-manager
+          const connManager = getConnectionManager();
+          if (connManager) {
+            connManager.updateConnectionState(tenantId, true);
+          }
+
+          this.emit('connected', tenantId, phoneNumber);
+        }
+      });
+
+      // Guardar credenciales cuando se actualicen
       socket.ev.on('creds.update', async () => {
         logger.info(`[${tenantId}] Credenciales actualizadas, guardando...`);
         await saveCreds();
         this.emit('creds-updated', tenantId);
-      });
-
-      // Event: Actualización de conexión
-      socket.ev.on('connection.update', async (update) => {
-        await this.handleConnectionUpdate(tenantId, update);
       });
 
       // Event: Mensajes recibidos
@@ -244,8 +331,9 @@ class SessionManager extends EventEmitter {
       }
 
       // Actualizar estado en connection-manager
-      if (connectionManager) {
-        connectionManager.updateConnectionState(tenantId, true);
+      const connManager = getConnectionManager();
+      if (connManager) {
+        connManager.updateConnectionState(tenantId, true);
       }
 
       this.emit('connected', tenantId, phoneNumber);

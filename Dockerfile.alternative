@@ -3,13 +3,15 @@ FROM node:18-alpine
 # Set working directory
 WORKDIR /app
 
-# Copy package files (ensure package-lock.json is included)
-COPY package.json package-lock.json ./
+# Copy package files explicitly
+COPY package.json ./
+COPY package-lock.json ./
 
-# Verify package-lock.json exists and install dependencies
+# Alternative: Use npm install instead of npm ci if lockfile has issues
+# This is more forgiving but less strict about versions
 RUN ls -la && \
-    if [ ! -f package-lock.json ]; then echo "ERROR: package-lock.json not found!" && exit 1; fi && \
-    npm ci --only=production && \
+    echo "📦 Installing dependencies with npm install..." && \
+    npm install --production --no-optional && \
     npm cache clean --force
 
 # Copy all application files

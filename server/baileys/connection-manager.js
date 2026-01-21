@@ -298,10 +298,22 @@ function startSessionHealthMonitor() {
 
       try {
         const sessionManager = getSessionManager();
-        // Obtener todas las sesiones activas
-        const activeSessions = sessionManager.getAllSessions ? 
-          sessionManager.getAllSessions() : 
-          Array.from(sessionManager.sessions.keys());
+        
+        // Safety check if sessionManager is not ready yet due to circular dependency or other issues
+        if (!sessionManager || !sessionManager.sessions) {
+           logger.warn('[Heartbeat] ⚠️ SessionManager not fully initialized yet.');
+           return;
+        }
+
+        // Obtener todas las sesiones activas - PREFER activeSessions method
+        let activeSessions = [];
+        if (typeof sessionManager.getActiveSessions === 'function') {
+            activeSessions = sessionManager.getActiveSessions();
+        } else if (typeof sessionManager.getAllSessions === 'function') {
+           activeSessions = sessionManager.getAllSessions();
+        } else if (sessionManager.sessions) {
+           activeSessions = Array.from(sessionManager.sessions.keys());
+        }
 
         if (activeSessions.length === 0) {
           logger.debug('[Heartbeat] 📝 No hay sesiones activas que verificar');
@@ -326,14 +338,15 @@ function startSessionHealthMonitor() {
             }
 
             // Verificar estado del WebSocket
-            const wsState = sock.ws?.readyState;
+            // FIX: Access safely to ws safely
+            const wsState = sock.ws ? sock.ws.readyState : null;
             const isHealthy = wsState === 1; // 1 = OPEN
 
             if (isHealthy) {
               logger.debug(`[Heartbeat] ✅ [${tenantId}] Sesión saludable (WS:OPEN)`);
               healthyCount++;
             } else {
-              logger.warn(`[Heartbeat] ⚠️ [${tenantId}] Sesión no saludable (WS:${wsState || 'undefined'})`);
+              logger.warn(`[Heartbeat] ⚠️ [${tenantId}] Sesión no saludable (WS:${wsState !== null ? wsState : 'undefined'})`);
               unhealthyCount++;
 
               // Intentar reconectar
