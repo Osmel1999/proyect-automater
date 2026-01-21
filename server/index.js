@@ -257,7 +257,7 @@ app.get('/api/whatsapp/callback-legacy', async (req, res) => {
       code: code?.substring(0, 30) + '...'
     });
     const frontendUrl = process.env.FRONTEND_URL || 'https://kdsapp.site';
-    res.redirect(`${frontendUrl}/onboarding-2.html?error=oauth_failed`);
+    res.redirect(`${frontendUrl}/whatsapp-connect.html?error=oauth_failed`);
   }
 });
 
