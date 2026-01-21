@@ -1,5 +1,8 @@
 FROM node:20-alpine
 
+# Install bash (required by some scripts)
+RUN apk add --no-cache bash
+
 # Set working directory
 WORKDIR /app
 
