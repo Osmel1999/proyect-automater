@@ -1213,14 +1213,14 @@
     }
 
     /**
-     * Redirige al onboarding para conectar WhatsApp
+     * Redirige a la página de conexión de WhatsApp
      */
     function connectWhatsApp() {
-      window.location.href = `/onboarding?tenant=${tenantId}`;
+      window.location.href = `/whatsapp-connect?tenant=${tenantId}`;
     }
 
     /**
-     * Desconecta WhatsApp y redirige al onboarding para reconectar
+     * Desconecta WhatsApp y redirige a la página de conexión para reconectar
      */
     async function disconnectWhatsApp() {
       if (!confirm('¿Estás seguro de que deseas desconectar WhatsApp?\n\nEsto cerrará la sesión actual y necesitarás escanear un nuevo código QR para reconectar.')) {
@@ -1245,13 +1245,13 @@
         const data = await response.json();
 
         if (data.success) {
-          alert('✅ WhatsApp desconectado correctamente.\n\nAhora serás redirigido al onboarding para reconectar.');
+          alert('✅ WhatsApp desconectado correctamente.\n\nAhora serás redirigido a la página de conexión para reconectar.');
           
           // Actualizar estado en Firebase
           await firebase.database().ref(`tenants/${tenantId}/onboarding/steps/whatsapp_connected`).set(false);
           
-          // Redirigir al onboarding
-          window.location.href = `/onboarding?tenant=${tenantId}`;
+          // Redirigir a la página de conexión de WhatsApp
+          window.location.href = `/whatsapp-connect?tenant=${tenantId}`;
         } else {
           throw new Error(data.error || 'Error al desconectar');
         }

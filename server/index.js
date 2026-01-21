@@ -80,7 +80,7 @@ app.use((req, res, next) => {
 });
 
 // Middleware para rutas limpias (sin .html)
-// Permite acceder a /onboarding en lugar de /onboarding.html
+// Permite acceder a /whatsapp-connect en lugar de /whatsapp-connect.html
 app.use((req, res, next) => {
   // Si la ruta no tiene extensión y no es una ruta de API
   if (!req.path.includes('.') && !req.path.startsWith('/api/')) {
@@ -386,7 +386,7 @@ app.get('/api/whatsapp/callback', async (req, res) => {
   } catch (error) {
     console.error('❌ Error en callback de OAuth:', error.response?.data || error.message);
     const frontendUrl = process.env.FRONTEND_URL || 'https://kdsapp.site';
-    res.redirect(`${frontendUrl}/onboarding.html?error=oauth_failed`);
+    res.redirect(`${frontendUrl}/whatsapp-connect.html?error=oauth_failed`);
   }
 });
 
@@ -952,7 +952,7 @@ async function startServer() {
         console.log('');
         console.log('━'.repeat(50));
         console.log('🎯 URLs Importantes:');
-        console.log(`   🎯 Onboarding: http://localhost:${PORT}/onboarding.html`);
+        console.log(`   🎯 Conectar WhatsApp: http://localhost:${PORT}/whatsapp-connect.html`);
         console.log(`   📊 KDS Dashboard: http://localhost:${PORT}/kds.html`);
         console.log(`   🏠 Landing Page: http://localhost:${PORT}/landing.html`);
         console.log('');

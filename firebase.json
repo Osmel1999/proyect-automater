@@ -23,8 +23,8 @@
         "destination": "/landing.html"
       },
       {
-        "source": "/onboarding",
-        "destination": "/onboarding.html"
+        "source": "/whatsapp-connect",
+        "destination": "/whatsapp-connect.html"
       },
       {
         "source": "/onboarding-success",
