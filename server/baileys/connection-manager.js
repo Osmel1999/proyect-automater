@@ -5,9 +5,15 @@
 
 const pino = require('pino');
 const storage = require('./storage');
-const sessionManager = require('./session-manager');
+// Circular dependency fix: load session-manager lazily
+// const sessionManager = require('./session-manager'); 
 
 const logger = pino({ level: 'info' });
+
+// Helper to get sessionManager instance lazily
+function getSessionManager() {
+  return require('./session-manager');
+}
 
 class ConnectionManager {
   constructor() {
@@ -41,6 +47,7 @@ class ConnectionManager {
     }
 
     // Si no hay estado local, verificar session-manager
+    const sessionManager = getSessionManager();
     const session = sessionManager.getSession(tenantId);
     const connected = session !== null && session !== undefined;
     
@@ -113,7 +120,7 @@ class ConnectionManager {
       logger.info(`[${tenantId}] 🔄 Iniciando reconexión con credenciales...`);
       
       // Usar sessionManager para reconectar
-      await sessionManager.initSession(tenantId);
+      await getSessionManager().initSession(tenantId);
       
       // Esperar un momento para que se conecte
       await new Promise(resolve => setTimeout(resolve, 5000));
@@ -290,6 +297,7 @@ function startSessionHealthMonitor() {
       logger.info(`[${timestamp}] [Heartbeat] 🩺 Verificando salud de sesiones...`);
 
       try {
+        const sessionManager = getSessionManager();
         // Obtener todas las sesiones activas
         const activeSessions = sessionManager.getAllSessions ? 
           sessionManager.getAllSessions() : 
