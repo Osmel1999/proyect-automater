@@ -827,47 +827,71 @@
 
         // Crear/actualizar tenant en Firebase
         try {
-          console.log('� [FIX v2.0] Guardando tenant SIN sobrescribir progreso...');
+          console.log('📦 [FIX v3.0] Actualizando tenant (preservando datos existentes)...');
           const userId = localStorage.getItem('currentUserId');
           const userEmail = localStorage.getItem('userEmail');
           const businessName = localStorage.getItem('businessName') || 'Mi Restaurante';
 
-          // ✅ FIX: Leer datos existentes primero para no sobreescribir el progreso
+          // ✅ FIX: Leer datos existentes primero para no sobreescribir
           const tenantRef = firebase.database().ref(`tenants/${this.tenantId}`);
           const snapshot = await tenantRef.once('value');
-          const existingData = snapshot.val() || {};
+          const existingData = snapshot.val();
           
           console.log('📖 Datos existentes del tenant:', existingData);
-          console.log('🔍 Progreso actual antes de actualizar:', existingData.onboarding?.steps);
 
-          // Fusionar datos existentes con los nuevos
-          const updatedData = {
-            userId: userId,
-            email: userEmail,
-            restaurant: {
-              ...(existingData.restaurant || {}),  // Preservar datos existentes
-              name: businessName,
-              phone: status.phoneNumber || '',
-              whatsappConnected: true,
-              connectedAt: new Date().toISOString()
-            },
-            onboarding: {
-              ...(existingData.onboarding || {}),  // Preservar progreso existente
-              steps: {
-                // Preservar pasos completados previamente
-                ...(existingData.onboarding?.steps || {}),
-                whatsapp_connected: true  // Solo actualizar este paso
+          // Si el tenant NO existe, algo está mal (debió crearse en registro)
+          if (!existingData) {
+            console.warn('⚠️ Tenant no existe, creándolo ahora (caso legacy)...');
+            await tenantRef.set({
+              userId: userId,
+              email: userEmail,
+              restaurant: {
+                name: businessName,
+                phone: status.phoneNumber || '',
+                whatsappConnected: true,
+                connectedAt: new Date().toISOString()
               },
-              currentStep: existingData.onboarding?.currentStep || 'menu',
-              startedAt: existingData.onboarding?.startedAt || new Date().toISOString(),
-              lastUpdated: new Date().toISOString()
-            },
-            createdAt: existingData.createdAt || new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          };
+              onboarding: {
+                steps: {
+                  whatsapp_connected: true,
+                  menu_configured: false,
+                  messages_configured: false,
+                  test_completed: false
+                },
+                progress: 25,
+                currentStep: 'menu',
+                startedAt: new Date().toISOString(),
+                lastUpdated: new Date().toISOString()
+              },
+              menu: { categories: [], items: [] },
+              messages: {
+                welcome: '¡Hola! 👋 Bienvenido a ' + businessName,
+                orderConfirm: 'Perfecto, tu pedido ha sido confirmado. ✅',
+                goodbye: '¡Gracias por tu pedido! 😊'
+              },
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            });
+            console.log('✅ Tenant creado en onboarding (caso legacy)');
+            return;
+          }
 
-          await tenantRef.set(updatedData);
-          console.log('✅ Tenant actualizado en Firebase (sin perder progreso):', updatedData);
+          // ✅ MEJOR PRÁCTICA: Usar update() para actualizar solo campos específicos
+          // Esto garantiza que NO se sobrescriban datos como menu, messages, etc.
+          await tenantRef.update({
+            'restaurant/phone': status.phoneNumber || '',
+            'restaurant/whatsappConnected': true,
+            'restaurant/connectedAt': new Date().toISOString(),
+            'onboarding/steps/whatsapp_connected': true,
+            'onboarding/lastUpdated': new Date().toISOString(),
+            'updatedAt': new Date().toISOString()
+          });
+
+          console.log('✅ Tenant actualizado con update() - Datos preservados:', {
+            menu: existingData.menu ? 'preservado' : 'no existe',
+            messages: existingData.messages ? 'preservado' : 'no existe',
+            onboarding: existingData.onboarding ? 'actualizado parcialmente' : 'creado'
+          });
         } catch (error) {
           console.error('❌ Error guardando tenant:', error);
         }
