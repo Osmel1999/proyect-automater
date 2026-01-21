@@ -4,7 +4,7 @@
  * Soporta múltiples restaurantes (tenants) con datos aislados
  */
 
-const menu = require('./menu');
+const menuService = require('./menu-service');
 const firebaseService = require('./firebase-service');
 const tenantService = require('./tenant-service');
 const { parsearPedido, generarMensajeConfirmacion } = require('./pedido-parser');
@@ -78,32 +78,14 @@ setInterval(limpiarSesionesInactivas, 10 * 60 * 1000);
  */
 async function obtenerMenuTenant(tenantId) {
   try {
-    const menuSnapshot = await firebaseService.database.ref(`tenants/${tenantId}/menu/items`).once('value');
-    const menuItems = menuSnapshot.val();
-    
-    if (!menuItems || Object.keys(menuItems).length === 0) {
-      // Fallback: usar menú hardcodeado
-      console.log(`⚠️  Tenant ${tenantId} no tiene menú en Firebase, usando menú hardcodeado`);
-      return menu.obtenerTodos();
-    }
-    
-    // Convertir objeto de Firebase a array en formato del parser
-    const items = Object.values(menuItems)
-      .filter(item => item.available !== false)
-      .map((item, index) => ({
-        numero: item.numero || item.number || String(index + 1),
-        nombre: item.name || item.nombre || 'Sin nombre',
-        precio: item.price || item.precio || 0,
-        descripcion: item.description || item.descripcion || '',
-        categoria: item.category || item.categoria || 'Otros'
-      }));
-    
+    // Usar el nuevo menu-service
+    const items = await menuService.obtenerTodos(tenantId);
     console.log(`✅ Menú del tenant ${tenantId} cargado: ${items.length} items`);
     return items;
   } catch (error) {
     console.error(`❌ Error obteniendo menú del tenant ${tenantId}:`, error);
-    // Fallback: usar menú hardcodeado
-    return menu.obtenerTodos();
+    // Fallback: usar menú de ejemplo
+    return menuService.obtenerMenuEjemplo();
   }
 }
 
@@ -416,7 +398,7 @@ function mostrarAyuda() {
 /**
  * Agrega un item al carrito
  */
-function agregarAlCarrito(sesion, texto) {
+async function agregarAlCarrito(sesion, texto) {
   // Extraer número del item
   let numero;
   
@@ -435,7 +417,7 @@ function agregarAlCarrito(sesion, texto) {
     numero = match[1];
   }
   
-  const item = menu.obtenerItem(numero);
+  const item = await menuService.obtenerItem(sesion.tenantId, numero);
   
   if (!item) {
     return `❌ *Item #${numero} no encontrado*\n\n` +

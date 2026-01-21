@@ -12,7 +12,10 @@
       "CHECKLIST-*.md",
       "GUIA-*.md",
       "server/**",
-      "*.sh"
+      "*.sh",
+      "archive_*/**",
+      "backup_*/**",
+      "login.html"
     ],
     "rewrites": [
       {
