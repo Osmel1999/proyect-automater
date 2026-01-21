@@ -158,7 +158,7 @@ class SessionManager extends EventEmitter {
       }
 
       // Escuchar eventos de conexión
-      sock.ev.on('connection.update', async (update) => {
+      socket.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update;
 
         // Actualizar estado con QR
