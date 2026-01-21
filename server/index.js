@@ -954,7 +954,7 @@ async function startServer() {
         console.log('🎯 URLs Importantes:');
         console.log(`   🎯 Conectar WhatsApp: http://localhost:${PORT}/whatsapp-connect.html`);
         console.log(`   📊 KDS Dashboard: http://localhost:${PORT}/kds.html`);
-        console.log(`   🏠 Landing Page: http://localhost:${PORT}/landing.html`);
+        console.log(`   🏠 Home Page: http://localhost:${PORT}/index.html`);
         console.log('');
         console.log('📱 Configuración de Webhook en Meta:');
         console.log(`   Callback URL: ${process.env.BASE_URL || 'https://tu-dominio.com'}/webhook/whatsapp`);
