@@ -509,22 +509,10 @@
                 const hashedPin = await hashPin(pin);
 
                 if (hashedPin === userData.pin) {
-                    // PIN correct, redirect to dashboard
+                    // PIN correct, redirect to dashboard directly
+                    // NEVER redirect to onboarding from here - onboarding is only for initial setup
                     closePinModal();
-                    
-                    // Check if we should go to onboarding first if progress < 100%
-                    const snapshot = await firebase.database().ref(`tenants/${currentTenantId}/onboarding`).once('value');
-                    const onboarding = snapshot.val();
-                    
-                    if (!onboarding || onboarding.progress < 100) {
-                        if (confirm('Aún no has completado el onboarding. ¿Deseas ir al asistente de configuración o entrar directamente al Dashboard?')) {
-                            window.location.href = '/onboarding.html';
-                        } else {
-                            window.location.href = `/dashboard.html?tenant=${currentTenantId}`;
-                        }
-                    } else {
-                        window.location.href = `/dashboard.html?tenant=${currentTenantId}`;
-                    }
+                    window.location.href = `/dashboard.html?tenant=${currentTenantId}`;
                 } else {
                     // PIN incorrect
                     pinError.classList.add('show');
