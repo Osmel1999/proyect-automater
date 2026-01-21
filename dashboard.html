@@ -1394,7 +1394,7 @@
         console.log('✅ Step 2 (Menu) marcado como completado');
       } else {
         step2.classList.remove('completed');
-        step2.querySelector('.step-action').innerHTML = '<button class="btn-primary" onclick="openMenuModal()">Configurar Menú</button>';
+        step2.querySelector('.step-action').innerHTML = '<button class="btn-primary" onclick="openMenuConfig()">Configurar Menú</button>';
         console.log('⬜ Step 2 (Menu) marcado como NO completado');
       }
 
@@ -1406,7 +1406,7 @@
         console.log('✅ Step 3 (Messages) marcado como completado');
       } else {
         step3.classList.remove('completed');
-        step3.querySelector('.step-action').innerHTML = '<button class="btn-primary" onclick="openMessagesModal()">Personalizar Mensajes</button>';
+        step3.querySelector('.step-action').innerHTML = '<button class="btn-primary" onclick="openMessagesConfig()">Personalizar Mensajes</button>';
         console.log('⬜ Step 3 (Messages) marcado como NO completado');
       }
 
