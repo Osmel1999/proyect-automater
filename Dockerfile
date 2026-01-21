@@ -18,6 +18,14 @@ RUN ls -la && \
 # Copy all application files
 COPY . .
 
+# Remove frontend files (served by Firebase Hosting at kdsapp.site)
+# Railway only serves backend API at api.kdsapp.site
+RUN rm -f *.html 2>/dev/null || true && \
+    rm -rf assets/ 2>/dev/null || true && \
+    rm -rf archive_*/ 2>/dev/null || true && \
+    rm -rf backup_*/ 2>/dev/null || true && \
+    echo "✅ Frontend files removed - backend only"
+
 # Create sessions directory if needed
 RUN mkdir -p sessions
 

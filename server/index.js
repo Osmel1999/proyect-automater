@@ -107,8 +107,12 @@ app.use((req, res, next) => {
   next();
 });
 
-// Servir archivos estáticos del KDS Frontend
-app.use(express.static(path.join(__dirname, '..')));
+// ====================================
+// NOTA: Frontend servido por Firebase Hosting (kdsapp.site)
+// Railway solo sirve API backend (api.kdsapp.site)
+// ====================================
+// NO servir archivos estáticos - frontend está en Firebase
+// app.use(express.static(path.join(__dirname, '..')));
 
 // ====================================
 // RUTAS DE API - WHATSAPP BUSINESS API (Multi-tenant)
