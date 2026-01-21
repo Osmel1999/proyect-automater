@@ -1,0 +1,44 @@
+# Node modules
+node_modules/
+npm-debug.log
+
+# Git
+.git/
+.gitignore
+
+# Sessions
+sessions/*
+!sessions/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test files
+test-*.sh
+*.test.js
+
+# Documentation
+*.md
+!README.md
+
+# Backups
+*-backup-*
+backup_*/
+archive_*/
+.git-backup-*
+
+# Environment
+.env.local
+.env.*.local
+
+# Railway
+railway-*.txt
