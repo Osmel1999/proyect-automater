@@ -193,8 +193,16 @@ async function processMessage(tenantId, from, texto) {
            'Escribe *menu* para empezar de nuevo.';
   }
   
-  // Confirmar pedido
-  if (texto === 'confirmar' || texto === 'si' || texto === 'ok' || texto === 'listo') {
+  // Confirmar pedido - Reconocer lenguaje natural para confirmación
+  const confirmacionesNaturales = [
+    'confirmar', 'si', 'sí', 'ok', 'listo', 'correcto', 
+    'dale', 'okay', 'va', 'claro', 'afirmativo', 'sale',
+    'oki', 'okey', 'sep', 'yes', 'yep', 'ya', 'vale',
+    'perfecto', 'exacto', 'eso', 'así es', 'por supuesto',
+    'confirmo', 'confirm', 'está bien', 'esta bien'
+  ];
+  
+  if (confirmacionesNaturales.includes(texto)) {
     // Si hay pedido pendiente de confirmación, agregarlo al carrito
     if (sesion.esperandoConfirmacion && sesion.pedidoPendiente) {
       sesion.pedidoPendiente.forEach(item => {
@@ -448,9 +456,6 @@ function verCarrito(sesion) {
            'Escribe *menu* para ver el menú y empezar a ordenar.';
   }
   
-  let mensaje = '🛒 *TU PEDIDO ACTUAL*\n\n';
-  let total = 0;
-  
   // Agrupar items repetidos
   const itemsAgrupados = {};
   sesion.carrito.forEach(item => {
@@ -461,22 +466,51 @@ function verCarrito(sesion) {
     itemsAgrupados[key].cantidad += 1;
   });
   
-  // Mostrar items
-  Object.values(itemsAgrupados).forEach(item => {
+  // Construir lista natural de items
+  const items = Object.values(itemsAgrupados);
+  let listaItems = '';
+  const numItems = items.length;
+  
+  items.forEach((item, index) => {
+    let descripcionItem = '';
+    const nombreItem = item.nombre.toLowerCase();
+    
+    if (item.cantidad === 1) {
+      // Singular: "una hamburguesa"
+      descripcionItem = `una ${nombreItem}`;
+    } else if (item.cantidad === 2) {
+      // Dos items: verificar si ya termina en 's' o si necesita pluralización
+      const nombrePlural = nombreItem.endsWith('s') ? nombreItem : `${nombreItem}s`;
+      descripcionItem = `dos ${nombrePlural}`;
+    } else {
+      // Más de 2: "3 hamburguesas"
+      const nombrePlural = nombreItem.endsWith('s') ? nombreItem : `${nombreItem}s`;
+      descripcionItem = `${item.cantidad} ${nombrePlural}`;
+    }
+    
+    if (index === 0) {
+      listaItems += descripcionItem;
+    } else if (index === numItems - 1) {
+      listaItems += ` y ${descripcionItem}`;
+    } else {
+      listaItems += `, ${descripcionItem}`;
+    }
+  });
+  
+  let mensaje = `Perfecto, llevas en tu pedido:\n\n`;
+  mensaje += `${listaItems}\n\n`;
+  
+  mensaje += '*Detalle:*\n';
+  let total = 0;
+  items.forEach(item => {
     const subtotal = item.precio * item.cantidad;
-    mensaje += `• ${item.cantidad}x ${item.nombre}\n`;
-    mensaje += `  $${formatearPrecio(item.precio)} c/u = $${formatearPrecio(subtotal)}\n\n`;
+    mensaje += `• ${item.cantidad}x ${item.nombre} - $${formatearPrecio(subtotal)}\n`;
     total += subtotal;
   });
   
-  mensaje += '━'.repeat(30) + '\n';
-  mensaje += `💰 *TOTAL: $${formatearPrecio(total)}*\n`;
-  mensaje += '━'.repeat(30) + '\n\n';
-  mensaje += '¿Confirmas tu pedido?\n\n';
-  mensaje += '• *confirmar* - Enviar pedido a la cocina\n';
-  mensaje += '• *cancelar* - Cancelar todo\n';
-  mensaje += '• *eliminar* - Quitar último item\n';
-  mensaje += '• *[número]* - Agregar más items';
+  mensaje += `\n💰 Total: $${formatearPrecio(total)}\n\n`;
+  mensaje += '¿Está todo correcto?\n\n';
+  mensaje += 'Responde *sí* para confirmar o *cancelar* si quieres modificar algo.';
   
   return mensaje;
 }
@@ -538,18 +572,14 @@ async function confirmarPedido(sesion) {
     // Limpiar carrito
     sesion.carrito = [];
     
-    // Respuesta de confirmación
-    let mensaje = '🎉 *¡PEDIDO CONFIRMADO!*\n\n';
-    mensaje += `🏪 ${restaurantName}\n`;
+    // Respuesta de confirmación más natural y humana
+    let mensaje = '🎉 *¡Listo! Tu pedido está confirmado*\n\n';
     mensaje += `📋 Número de pedido: #${numeroHex}\n`;
-    mensaje += `💰 Total: $${formatearPrecio(total)}\n`;
-    mensaje += `📱 Cliente: ${sesion.telefono}\n\n`;
-    mensaje += '━'.repeat(30) + '\n\n';
-    mensaje += '✅ Tu pedido fue enviado a la cocina\n';
-    mensaje += 'Te notificaremos cuando esté listo.\n\n';
+    mensaje += `💰 Total: $${formatearPrecio(total)}\n\n`;
+    mensaje += `Ya lo enviamos a la cocina de ${restaurantName}.\n`;
+    mensaje += 'Te avisaremos cuando esté listo para recoger.\n\n';
     mensaje += '🕒 Tiempo estimado: 15-20 minutos\n\n';
-    mensaje += '¿Quieres hacer otro pedido?\n';
-    mensaje += 'Escribe *menu* para empezar.';
+    mensaje += '¿Quieres pedir algo más? Escribe *menu* cuando quieras.';
     
     return mensaje;
     

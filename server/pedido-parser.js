@@ -396,28 +396,59 @@ function generarMensajeConfirmacion(resultado) {
     return mensaje;
   }
   
-  let mensaje = '✅ *Entendí tu pedido:*\n\n';
+  // Construir lista de items en lenguaje natural
+  let listaItems = '';
+  const numItems = resultado.items.length;
   
-  let total = 0;
   resultado.items.forEach((item, index) => {
-    const subtotal = item.precio * item.cantidad;
-    total += subtotal;
-    mensaje += `${index + 1}. ${item.cantidad}x ${item.nombre}\n`;
-    mensaje += `   $${formatearPrecio(item.precio)} c/u = $${formatearPrecio(subtotal)}\n\n`;
+    // Construir descripción del item de forma natural
+    let descripcionItem = '';
+    const nombreItem = item.nombre.toLowerCase();
+    
+    if (item.cantidad === 1) {
+      // Singular: "una hamburguesa"
+      descripcionItem = `una ${nombreItem}`;
+    } else if (item.cantidad === 2) {
+      // Dos items: verificar si ya termina en 's' o si necesita pluralización
+      const nombrePlural = nombreItem.endsWith('s') ? nombreItem : `${nombreItem}s`;
+      descripcionItem = `dos ${nombrePlural}`;
+    } else {
+      // Más de 2: "3 hamburguesas"
+      const nombrePlural = nombreItem.endsWith('s') ? nombreItem : `${nombreItem}s`;
+      descripcionItem = `${item.cantidad} ${nombrePlural}`;
+    }
+    
+    // Agregar item con conectores naturales
+    if (index === 0) {
+      listaItems += descripcionItem;
+    } else if (index === numItems - 1) {
+      listaItems += ` y ${descripcionItem}`;
+    } else {
+      listaItems += `, ${descripcionItem}`;
+    }
   });
   
-  mensaje += '━'.repeat(30) + '\n\n';
-  mensaje += `💰 *Total: $${formatearPrecio(total)}*\n\n`;
+  // Mensaje más humano y natural
+  let mensaje = `Perfecto, te confirmo tu pedido:\n\n`;
+  mensaje += `${listaItems}, ¿correcto?\n\n`;
+  
+  // Detalles del pedido (opcional pero útil)
+  mensaje += '*Detalle:*\n';
+  let total = 0;
+  resultado.items.forEach((item) => {
+    const subtotal = item.precio * item.cantidad;
+    total += subtotal;
+    mensaje += `• ${item.cantidad}x ${item.nombre} - $${formatearPrecio(subtotal)}\n`;
+  });
+  
+  mensaje += `\n💰 Total: $${formatearPrecio(total)}\n\n`;
   
   if (resultado.errores.length > 0) {
     mensaje += `⚠️ No encontré: ${resultado.errores.join(', ')}\n\n`;
   }
   
-  mensaje += '¿Está correcto tu pedido?\n\n';
-  mensaje += 'Responde:\n';
-  mensaje += '• *confirmar* - Para confirmar el pedido\n';
-  mensaje += '• *agregar* + tu pedido - Para agregar más items\n';
-  mensaje += '• *cancelar* - Para cancelar y empezar de nuevo';
+  // Llamado a la acción más natural
+  mensaje += 'Responde *sí* para confirmar o *cancelar* si quieres modificar algo.';
   
   return mensaje;
 }
