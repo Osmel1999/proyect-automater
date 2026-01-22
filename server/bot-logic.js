@@ -227,6 +227,11 @@ async function processMessage(tenantId, from, texto) {
     return await procesarDireccion(sesion, textoOriginal);
   }
   
+  // Si está esperando teléfono, validar y guardar
+  if (sesion.esperandoTelefono) {
+    return await procesarTelefono(sesion, textoOriginal);
+  }
+  
   // Confirmar pedido - Reconocer lenguaje natural para confirmación
   if (CONFIRMACIONES_NATURALES.includes(texto)) {
     // Si hay pedido pendiente de confirmación, agregarlo al carrito
@@ -566,6 +571,7 @@ async function confirmarPedido(sesion) {
       tenantId: sesion.tenantId, // ✨ Aislamiento multi-tenant
       cliente: sesion.telefono,
       telefono: sesion.telefono,
+      telefonoContacto: sesion.telefonoContacto || sesion.telefono, // ✨ Teléfono de contacto para avisos
       direccion: sesion.direccion || 'No especificada', // ✨ Dirección de entrega
       items: Object.values(itemsAgrupados),
       total: total,
@@ -585,18 +591,24 @@ async function confirmarPedido(sesion) {
     // Incrementar estadísticas del tenant
     await tenantService.incrementOrderStats(sesion.tenantId);
     
-    // Limpiar carrito y dirección
+    // Limpiar carrito, dirección y teléfono
     sesion.carrito = [];
     const direccionEntrega = sesion.direccion;
+    const telefonoContacto = sesion.telefonoContacto;
     sesion.direccion = null;
+    sesion.telefonoContacto = null;
+    
+    // Formatear teléfono para mostrar: 300 123 4567
+    const telefonoFormateado = telefonoContacto.replace(/(\d{3})(\d{3})(\d{4})/, '$1 $2 $3');
     
     // Respuesta de confirmación más natural y humana
     let mensaje = '🎉 *¡Listo! Tu pedido está confirmado*\n\n';
     mensaje += `📋 Número de pedido: #${numeroHex}\n`;
     mensaje += `📍 Dirección: ${direccionEntrega}\n`;
+    mensaje += `📱 Teléfono de contacto: ${telefonoFormateado}\n`;
     mensaje += `💰 Total: $${formatearPrecio(total)}\n\n`;
     mensaje += `Ya lo enviamos a la cocina de ${restaurantName}.\n`;
-    mensaje += 'Te avisaremos cuando el domiciliario esté en camino. 🛵\n\n';
+    mensaje += 'Te llamaremos al número que nos diste cuando el domiciliario esté en camino. 🛵\n\n';
     mensaje += '🕒 Tiempo estimado: 30-40 minutos\n\n';
     mensaje += '¿Quieres pedir algo más? Escribe *menu* cuando quieras.';
     
@@ -674,11 +686,58 @@ async function procesarDireccion(sesion, direccion) {
            '¿Cuál es tu dirección? 🏠';
   }
   
-  // Guardar dirección
+  // Guardar dirección y solicitar teléfono
   sesion.direccion = direccionLimpia;
   sesion.esperandoDireccion = false;
   
-  // Confirmar pedido con dirección
+  // Solicitar número de teléfono
+  return solicitarTelefono(sesion);
+}
+
+/**
+ * Solicita el número de teléfono de contacto al cliente
+ */
+function solicitarTelefono(sesion) {
+  sesion.esperandoTelefono = true;
+  
+  let mensaje = '📱 *¡Genial! Ahora necesitamos tu número de contacto*\n\n';
+  mensaje += 'Por favor envíanos un número de teléfono al cual podamos llamarte para avisar cuando el pedido llegue.\n\n';
+  mensaje += '📝 *Formato:* 10 dígitos (puede incluir espacios o guiones)\n';
+  mensaje += '*Ejemplos:*\n';
+  mensaje += '• 3001234567\n';
+  mensaje += '• 300 123 4567\n';
+  mensaje += '• 300-123-4567\n\n';
+  mensaje += '¿Cuál es tu número de contacto? ☎️';
+  
+  return mensaje;
+}
+
+/**
+ * Valida y procesa el teléfono de contacto ingresado
+ */
+async function procesarTelefono(sesion, telefono) {
+  // Limpiar teléfono: remover espacios, guiones, paréntesis
+  const telefonoLimpio = telefono.replaceAll(/[\s\-()]/g, '');
+  
+  // Validación: debe tener 10 dígitos y solo números
+  const soloNumeros = /^\d+$/.test(telefonoLimpio);
+  const longitudCorrecta = telefonoLimpio.length === 10;
+  
+  if (!soloNumeros || !longitudCorrecta) {
+    return '⚠️ *Número de teléfono no válido*\n\n' +
+           'Por favor envía un número de teléfono válido de 10 dígitos.\n\n' +
+           '📝 *Ejemplos válidos:*\n' +
+           '• 3001234567\n' +
+           '• 300 123 4567\n' +
+           '• 300-123-4567\n\n' +
+           '¿Cuál es tu número de contacto? ☎️';
+  }
+  
+  // Guardar teléfono y confirmar pedido
+  sesion.telefonoContacto = telefonoLimpio;
+  sesion.esperandoTelefono = false;
+  
+  // Ahora sí confirmar el pedido con dirección y teléfono
   return await confirmarPedido(sesion);
 }
 
