@@ -1,44 +1,80 @@
-# Node modules
+# Node modules (se instalan en el build)
 node_modules/
 npm-debug.log
+package-lock.json.bak
 
 # Git
 .git/
 .gitignore
+.github/
 
-# Sessions
+# Sessions (se crean en runtime)
 sessions/*
 !sessions/.gitkeep
 
 # Logs
 *.log
 logs/
+server.log
 
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
 
 # OS
 .DS_Store
 Thumbs.db
+.AppleDouble
+.LSOverride
 
-# Test files
+# Test files (no necesarios en producción)
 test-*.sh
+test-*.js
+test-*.cjs
 *.test.js
+*.spec.js
+__tests__/
 
-# Documentation
+# Documentation (no necesaria en runtime)
 *.md
-!README.md
+docs/
+propuesta/
 
-# Backups
+# Backups y archivos temporales
 *-backup-*
+*-OLD-*
+*.backup
 backup_*/
 archive_*/
 .git-backup-*
 
-# Environment
+# Frontend files (servidos por Firebase)
+*.html
+assets/
+styles.css
+
+# Scripts de desarrollo
+*.sh
+!start.sh
+
+# Environment files (usar Railway env vars)
+.env
 .env.local
 .env.*.local
 
 # Railway
 railway-*.txt
+railway.toml
+
+# Firebase
+.firebase/
+.firebaserc
+firebase.json
+database.rules.json
+
+# Otros archivos innecesarios
+*.txt
+!package.json
+!README.md

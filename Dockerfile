@@ -6,31 +6,23 @@ RUN apk add --no-cache bash
 # Set working directory
 WORKDIR /app
 
-# Copy package files (ensure package-lock.json is included)
+# Copy package files first (better layer caching)
 COPY package.json package-lock.json ./
 
-# Verify package-lock.json exists and install dependencies
-RUN ls -la && \
-    if [ ! -f package-lock.json ]; then echo "ERROR: package-lock.json not found!" && exit 1; fi && \
-    npm ci --only=production && \
+# Install dependencies (only production)
+RUN npm ci --only=production --ignore-scripts && \
     npm cache clean --force
 
-# Copy all application files
-COPY . .
+# Copy only backend files (dockerignore handles exclusions)
+# This copies server/, config.js, dual-config.js, and other needed files
+COPY server/ ./server/
+COPY config.js dual-config.js ./
 
-# Remove frontend files (served by Firebase Hosting at kdsapp.site)
-# Railway only serves backend API at api.kdsapp.site
-RUN rm -f *.html 2>/dev/null || true && \
-    rm -rf assets/ 2>/dev/null || true && \
-    rm -rf archive_*/ 2>/dev/null || true && \
-    rm -rf backup_*/ 2>/dev/null || true && \
-    echo "✅ Frontend files removed - backend only"
-
-# Create sessions directory if needed
+# Create sessions directory
 RUN mkdir -p sessions
 
 # Expose port
 EXPOSE 3000
 
-# Start application (no health check to avoid Railway timeout)
+# Start application
 CMD ["node", "server/index.js"]
