@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Selecciona una Opción - KDS App</title>
+    <!-- Version: 2.0.0 - 2026-01-22-fix-progress-message -->
     <style>
         * {
             margin: 0;
@@ -348,7 +349,7 @@
                     <div class="lock-icon">🔒</div>
                     <div class="option-icon">⚙️</div>
                     <div class="option-title">Dashboard</div>
-                    <div id="onboardingBadge" class="option-badge">25% completado</div>
+                    <div id="onboardingBadge" class="option-badge">Completar configuración</div>
                     <div class="option-description">
                         Configurar menú, mensajes y bot de WhatsApp
                     </div>
@@ -414,15 +415,30 @@
             if (!currentTenantId) return;
             
             try {
-                const snapshot = await firebase.database().ref(`tenants/${currentTenantId}/onboarding`).once('value');
-                const onboarding = snapshot.val();
+                const snapshot = await firebase.database().ref(`tenants/${currentTenantId}/onboarding/steps`).once('value');
+                const steps = snapshot.val() || {};
+                
+                // Solo verificar los 3 pasos críticos (igual que en dashboard.html)
+                const whatsappConnected = steps.whatsapp_connected || false;
+                const menuConfigured = steps.menu_configured || false;
+                const messagesCustomized = steps.messages_customized || false;
+                
+                // Contar pasos completados
+                const criticalSteps = [whatsappConnected, menuConfigured, messagesCustomized];
+                const completedSteps = criticalSteps.filter(s => s === true).length;
+                const allComplete = completedSteps === 3;
+                
+                console.log(`🔍 Estado del onboarding:
+                  - WhatsApp: ${whatsappConnected}
+                  - Menú: ${menuConfigured}
+                  - Mensajes: ${messagesCustomized}
+                  - Completo: ${allComplete}`);
                 
                 const onboardingBadge = document.getElementById('onboardingBadge');
                 
-                if (!onboarding || onboarding.progress < 100) {
-                    console.log('⚠️ Onboarding incompleto:', onboarding?.progress || 0);
+                if (!allComplete) {
                     onboardingBadge.style.display = 'inline-block';
-                    onboardingBadge.textContent = `${onboarding?.progress || 0}% completado`;
+                    onboardingBadge.textContent = 'Completar configuración';
                 } else {
                     onboardingBadge.style.display = 'none';
                 }

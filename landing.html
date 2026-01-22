@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KDS - Sistema de Pedidos WhatsApp para Restaurantes</title>
+    <meta name="description" content="Sistema automatizado de pedidos por WhatsApp para restaurantes. Aumenta tus ventas, reduce errores y mejora la experiencia de tus clientes.">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            color: white;
+            padding: 0.3rem 0;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        nav {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo img {
+            height: 70px;
+            width: auto;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            transition: opacity 0.3s;
+        }
+
+        .nav-links a:hover {
+            opacity: 0.8;
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            color: white;
+            padding: 8rem 2rem 6rem;
+            text-align: center;
+            margin-top: 60px;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            animation: fadeInUp 0.8s;
+        }
+
+        .hero p {
+            font-size: 1.3rem;
+            margin-bottom: 2rem;
+            opacity: 0.95;
+            animation: fadeInUp 0.8s 0.2s both;
+        }
+
+        .cta-button {
+            background: white;
+            color: #2563eb;
+            padding: 1rem 2.5rem;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: transform 0.3s, box-shadow 0.3s;
+            animation: fadeInUp 0.8s 0.4s both;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        /* Features Section */
+        .features {
+            padding: 5rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 3rem;
+            color: #333;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #2563eb;
+        }
+
+        /* How It Works */
+        .how-it-works {
+            background: #f8f9fa;
+            padding: 5rem 2rem;
+        }
+
+        .steps {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+        }
+
+        .step {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .step-number {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin: 0 auto 1rem;
+        }
+
+        /* Benefits */
+        .benefits {
+            padding: 5rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .benefit-item {
+            display: flex;
+            gap: 1rem;
+            align-items: start;
+        }
+
+        .benefit-icon {
+            font-size: 2rem;
+            color: #2563eb;
+        }
+
+        /* Pricing */
+        .pricing {
+            background: #f8f9fa;
+            padding: 5rem 2rem;
+        }
+
+        .pricing-cards {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+        }
+
+        .pricing-card {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .pricing-card.featured {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .price {
+            font-size: 3rem;
+            font-weight: bold;
+            margin: 1rem 0;
+        }
+
+        .price-features {
+            list-style: none;
+            margin: 2rem 0;
+            text-align: left;
+        }
+
+        .price-features li {
+            padding: 0.5rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Contact */
+        .contact {
+            padding: 5rem 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .contact-info {
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Footer */
+        footer {
+            background: #2d3748;
+            color: white;
+            padding: 3rem 2rem 1rem;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .footer-section h3 {
+            margin-bottom: 1rem;
+            color: #2563eb;
+        }
+
+        .footer-section ul {
+            list-style: none;
+        }
+
+        .footer-section a {
+            color: #cbd5e0;
+            text-decoration: none;
+            display: block;
+            padding: 0.3rem 0;
+        }
+
+        .footer-section a:hover {
+            color: white;
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 1px solid #4a5568;
+            color: #cbd5e0;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .hero p {
+                font-size: 1.1rem;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .section-title {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <nav>
+            <div class="logo">
+                <picture>
+                    <source srcset="assets/images/kds-logo.webp" type="image/webp">
+                    <img src="assets/images/kds-logo.png" alt="KDS Logo" width="70" height="70">
+                </picture>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#features">Características</a></li>
+                <li><a href="#how-it-works">Cómo Funciona</a></li>
+                <li><a href="#pricing">Precios</a></li>
+                <li><a href="#contact">Contacto</a></li>
+                <li><a href="/auth.html" style="background: white; color: #2563eb; padding: 0.5rem 1.5rem; border-radius: 25px; font-weight: bold;">🚀 Empezar</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <h1>Sistema de Pedidos por WhatsApp para Restaurantes</h1>
+        <p>Automatiza tus pedidos, reduce errores y aumenta tus ventas hasta 3x</p>
+        <a href="/auth.html" class="cta-button">🚀 Conectar WhatsApp Gratis</a>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="features">
+        <h2 class="section-title">¿Por qué KDS?</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🤖</div>
+                <h3>Automatización Inteligente</h3>
+                <p>Nuestro bot procesa pedidos automáticamente por WhatsApp 24/7, incluso con errores ortográficos comunes.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📱</div>
+                <h3>WhatsApp Business</h3>
+                <p>Usa la plataforma preferida por tus clientes. El 98% de los usuarios ya tiene WhatsApp instalado.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">💰</div>
+                <h3>Reduce Costos</h3>
+                <p>Ahorra hasta 67% en costos de mensajería comparado con sistemas tradicionales.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>Panel de Cocina</h3>
+                <p>Pantalla digital en tiempo real que muestra todos los pedidos pendientes, en preparación y listos.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🎯</div>
+                <h3>97.8% de Precisión</h3>
+                <p>Tecnología de reconocimiento avanzado con tolerancia a errores ortográficos y de tecleo.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <h3>Respuesta Instantánea</h3>
+                <p>Confirmación automática de pedidos en segundos. Tus clientes no esperan.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section id="how-it-works" class="how-it-works">
+        <h2 class="section-title">¿Cómo Funciona?</h2>
+        <div class="steps">
+            <div class="step">
+                <div class="step-number">1</div>
+                <h3>Cliente Ordena</h3>
+                <p>Tu cliente envía un mensaje por WhatsApp: "Quiero 2 hamburguesas y 3 coca colas"</p>
+            </div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <h3>Sistema Procesa</h3>
+                <p>Nuestro bot analiza el pedido automáticamente con inteligencia artificial</p>
+            </div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <h3>Confirma Pedido</h3>
+                <p>El cliente recibe confirmación con detalles y total a pagar</p>
+            </div>
+            <div class="step">
+                <div class="step-number">4</div>
+                <h3>Cocina Recibe</h3>
+                <p>El pedido aparece instantáneamente en la pantalla de cocina</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Benefits -->
+    <section id="benefits" class="benefits">
+        <h2 class="section-title">Beneficios para Tu Negocio</h2>
+        <div class="benefits-grid">
+            <div class="benefit-item">
+                <div class="benefit-icon">✅</div>
+                <div>
+                    <h3>Sin Errores de Pedido</h3>
+                    <p>Confirmación automática elimina malentendidos</p>
+                </div>
+            </div>
+            <div class="benefit-item">
+                <div class="benefit-icon">✅</div>
+                <div>
+                    <h3>Ahorra Personal</h3>
+                    <p>No necesitas contratar a alguien para tomar pedidos</p>
+                </div>
+            </div>
+            <div class="benefit-item">
+                <div class="benefit-icon">✅</div>
+                <div>
+                    <h3>Disponible 24/7</h3>
+                    <p>Recibe pedidos incluso cuando estás cerrado</p>
+                </div>
+            </div>
+            <div class="benefit-item">
+                <div class="benefit-icon">✅</div>
+                <div>
+                    <h3>Mejor Experiencia</h3>
+                    <p>Clientes felices = más ventas y recomendaciones</p>
+                </div>
+            </div>
+            <div class="benefit-item">
+                <div class="benefit-icon">✅</div>
+                <div>
+                    <h3>Fácil de Usar</h3>
+                    <p>Instalación en menos de 1 hora. Sin conocimientos técnicos</p>
+                </div>
+            </div>
+            <div class="benefit-item">
+                <div class="benefit-icon">✅</div>
+                <div>
+                    <h3>Soporte Incluido</h3>
+                    <p>Asistencia técnica y actualizaciones constantes</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing -->
+    <section id="pricing" class="pricing">
+        <h2 class="section-title">Planes y Precios</h2>
+        <div class="pricing-cards">
+            <div class="pricing-card">
+                <h3>Básico</h3>
+                <div class="price">$49<span style="font-size: 1rem;">/mes</span></div>
+                <ul class="price-features">
+                    <li>✓ Bot de WhatsApp</li>
+                    <li>✓ Hasta 500 pedidos/mes</li>
+                    <li>✓ Panel de Cocina</li>
+                    <li>✓ Soporte por email</li>
+                    <li>✓ Actualizaciones gratis</li>
+                </ul>
+                <a href="/auth.html" class="cta-button">🚀 Empezar Gratis</a>
+            </div>
+            
+            <div class="pricing-card featured">
+                <h3>Profesional</h3>
+                <div class="price">$99<span style="font-size: 1rem;">/mes</span></div>
+                <ul class="price-features">
+                    <li>✓ Todo lo del plan Básico</li>
+                    <li>✓ Pedidos ilimitados</li>
+                    <li>✓ Múltiples sucursales</li>
+                    <li>✓ Estadísticas avanzadas</li>
+                    <li>✓ Soporte prioritario 24/7</li>
+                    <li>✓ Personalización del menú</li>
+                </ul>
+                <a href="/auth.html" class="cta-button">🚀 Empezar Gratis</a>
+            </div>
+            
+            <div class="pricing-card">
+                <h3>Empresarial</h3>
+                <div class="price">Custom</div>
+                <ul class="price-features">
+                    <li>✓ Todo lo del plan Profesional</li>
+                    <li>✓ API personalizada</li>
+                    <li>✓ Integraciones custom</li>
+                    <li>✓ Gestor de cuenta dedicado</li>
+                    <li>✓ SLA garantizado</li>
+                    <li>✓ Capacitación in-situ</li>
+                </ul>
+                <a href="#contact" class="cta-button">Contactar</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact -->
+    <section id="contact" class="contact">
+        <h2 class="section-title">¿Listo para Aumentar tus Ventas?</h2>
+        <p>Conecta tu WhatsApp Business en menos de 2 minutos</p>
+        <div class="contact-info">
+            <div class="contact-item">
+                <span style="font-size: 1.5rem;">📧</span>
+                <span>info@kingdomdesignpro.com</span>
+            </div>
+            <div class="contact-item">
+                <span style="font-size: 1.5rem;">📱</span>
+                <span>+57 300 803 0859</span>
+            </div>
+        </div>
+        <br><br>
+        <a href="/auth.html" class="cta-button">🚀 Conectar WhatsApp Gratis</a>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3>KDS</h3>
+                <p>Sistema inteligente de pedidos por WhatsApp para restaurantes y cocinas ocultas.</p>
+            </div>
+            <div class="footer-section">
+                <h3>Producto</h3>
+                <ul>
+                    <li><a href="#features">Características</a></li>
+                    <li><a href="#pricing">Precios</a></li>
+                    <li><a href="/terms.html">Términos de Servicio</a></li>
+                    <li><a href="/privacy-policy.html">Política de Privacidad</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Contacto</h3>
+                <ul>
+                    <li><a href="mailto:info@kingdomdesignpro.com">info@kingdomdesignpro.com</a></li>
+                    <li><a href="tel:+573008030859">+57 300 803 0859</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 KDS - Kingdom Design SAS. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+</body>
+</html>

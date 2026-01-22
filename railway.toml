@@ -1,0 +1,11 @@
+# Railway Configuration
+# Este archivo fuerza a Railway a usar nixpacks y ejecutar correctamente
+
+[build]
+builder = "nixpacks"
+buildCommand = "npm install"
+
+[deploy]
+startCommand = "bash start.sh"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
