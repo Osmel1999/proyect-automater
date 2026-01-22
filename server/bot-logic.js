@@ -70,7 +70,9 @@ function obtenerSesion(tenantId, telefono) {
       carrito: [],
       ultimaActividad: Date.now(),
       esperandoConfirmacion: false,
-      pedidoPendiente: null
+      pedidoPendiente: null,
+      esperandoDireccion: false,
+      direccion: null
     });
   }
   
@@ -220,6 +222,11 @@ async function processMessage(tenantId, from, texto) {
            'Escribe *menu* para empezar de nuevo.';
   }
   
+  // Si está esperando dirección, validar y guardar
+  if (sesion.esperandoDireccion) {
+    return await procesarDireccion(sesion, textoOriginal);
+  }
+  
   // Confirmar pedido - Reconocer lenguaje natural para confirmación
   if (CONFIRMACIONES_NATURALES.includes(texto)) {
     // Si hay pedido pendiente de confirmación, agregarlo al carrito
@@ -238,12 +245,14 @@ async function processMessage(tenantId, from, texto) {
       sesion.esperandoConfirmacion = false;
       sesion.pedidoPendiente = null;
       
-      // Enviar directamente a cocina
-      return await confirmarPedido(sesion);
+      // Solicitar dirección antes de confirmar
+      return solicitarDireccion(sesion);
     }
     
-    // Confirmación final del pedido
-    return await confirmarPedido(sesion);
+    // Confirmación final del pedido (también solicita dirección)
+    if (sesion.carrito.length > 0) {
+      return solicitarDireccion(sesion);
+    }
   }
   
   // Eliminar último item
@@ -557,6 +566,7 @@ async function confirmarPedido(sesion) {
       tenantId: sesion.tenantId, // ✨ Aislamiento multi-tenant
       cliente: sesion.telefono,
       telefono: sesion.telefono,
+      direccion: sesion.direccion || 'No especificada', // ✨ Dirección de entrega
       items: Object.values(itemsAgrupados),
       total: total,
       estado: 'pendiente',
@@ -575,16 +585,19 @@ async function confirmarPedido(sesion) {
     // Incrementar estadísticas del tenant
     await tenantService.incrementOrderStats(sesion.tenantId);
     
-    // Limpiar carrito
+    // Limpiar carrito y dirección
     sesion.carrito = [];
+    const direccionEntrega = sesion.direccion;
+    sesion.direccion = null;
     
     // Respuesta de confirmación más natural y humana
     let mensaje = '🎉 *¡Listo! Tu pedido está confirmado*\n\n';
     mensaje += `📋 Número de pedido: #${numeroHex}\n`;
+    mensaje += `📍 Dirección: ${direccionEntrega}\n`;
     mensaje += `💰 Total: $${formatearPrecio(total)}\n\n`;
     mensaje += `Ya lo enviamos a la cocina de ${restaurantName}.\n`;
-    mensaje += 'Te avisaremos cuando esté listo para recoger.\n\n';
-    mensaje += '🕒 Tiempo estimado: 15-20 minutos\n\n';
+    mensaje += 'Te avisaremos cuando el domiciliario esté en camino. 🛵\n\n';
+    mensaje += '🕒 Tiempo estimado: 30-40 minutos\n\n';
     mensaje += '¿Quieres pedir algo más? Escribe *menu* cuando quieras.';
     
     return mensaje;
@@ -622,6 +635,51 @@ function eliminarUltimoItem(sesion) {
   }
   
   return mensaje;
+}
+
+/**
+ * Solicita la dirección de entrega al cliente
+ */
+function solicitarDireccion(sesion) {
+  sesion.esperandoDireccion = true;
+  
+  let mensaje = '📍 *¡Perfecto! Solo necesitamos tu dirección*\n\n';
+  mensaje += 'Por favor envíanos la dirección completa de entrega.\n\n';
+  mensaje += '📝 *Formato:* Calle/Carrera + # + número\n';
+  mensaje += '*Ejemplo:* Calle 80 #12-34\n\n';
+  mensaje += '¿A dónde enviamos tu pedido? 🏠';
+  
+  return mensaje;
+}
+
+/**
+ * Valida y procesa la dirección ingresada
+ */
+async function procesarDireccion(sesion, direccion) {
+  const direccionLimpia = direccion.trim();
+  
+  // Validación simple: debe contener # y al menos un número
+  const tieneNumeral = direccionLimpia.includes('#');
+  const tieneNumeros = /\d/.test(direccionLimpia);
+  const longitudAdecuada = direccionLimpia.length >= 8;
+  
+  if (!tieneNumeral || !tieneNumeros || !longitudAdecuada) {
+    return '⚠️ *Dirección no válida*\n\n' +
+           'Por favor envía la dirección en el formato correcto:\n\n' +
+           '📝 *Ejemplos válidos:*\n' +
+           '• Calle 80 #12-34\n' +
+           '• Carrera 15 #45-67\n' +
+           '• Avenida 68 #23-45\n' +
+           '• Kr 45 #76-115\n\n' +
+           '¿Cuál es tu dirección? 🏠';
+  }
+  
+  // Guardar dirección
+  sesion.direccion = direccionLimpia;
+  sesion.esperandoDireccion = false;
+  
+  // Confirmar pedido con dirección
+  return await confirmarPedido(sesion);
 }
 
 module.exports = {
