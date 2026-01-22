@@ -163,7 +163,7 @@ async function testHumanReadability() {
       log('\n⚠️', 'El mensaje podría ser más natural', colors.yellow);
     }
     
-    console.log('\n' + colors.cyan + '=' .repeat(70) + colors.reset);
+    console.log('\n' + colors.cyan + '='.repeat(70) + colors.reset);
     console.log(colors.cyan + 'MENSAJE GENERADO:' + colors.reset);
     console.log(colors.cyan + '=' .repeat(70) + colors.reset);
     console.log(mensaje);

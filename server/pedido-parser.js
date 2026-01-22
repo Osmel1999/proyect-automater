@@ -21,6 +21,24 @@ function formatearPrecio(precio) {
 }
 
 /**
+ * Crea una descripción natural de un item con cantidad
+ * @param {string} nombreItem - Nombre del item en minúsculas
+ * @param {number} cantidad - Cantidad del item
+ * @returns {string} Descripción natural (ej: "una hamburguesa", "dos pizzas")
+ */
+function descripcionNaturalItem(nombreItem, cantidad) {
+  if (cantidad === 1) {
+    return `una ${nombreItem}`;
+  } else if (cantidad === 2) {
+    const nombrePlural = nombreItem.endsWith('s') ? nombreItem : `${nombreItem}s`;
+    return `dos ${nombrePlural}`;
+  } else {
+    const nombrePlural = nombreItem.endsWith('s') ? nombreItem : `${nombreItem}s`;
+    return `${cantidad} ${nombrePlural}`;
+  }
+}
+
+/**
  * Normaliza texto para comparación
  */
 function normalizarTexto(texto) {
@@ -401,22 +419,8 @@ function generarMensajeConfirmacion(resultado) {
   const numItems = resultado.items.length;
   
   resultado.items.forEach((item, index) => {
-    // Construir descripción del item de forma natural
-    let descripcionItem = '';
     const nombreItem = item.nombre.toLowerCase();
-    
-    if (item.cantidad === 1) {
-      // Singular: "una hamburguesa"
-      descripcionItem = `una ${nombreItem}`;
-    } else if (item.cantidad === 2) {
-      // Dos items: verificar si ya termina en 's' o si necesita pluralización
-      const nombrePlural = nombreItem.endsWith('s') ? nombreItem : `${nombreItem}s`;
-      descripcionItem = `dos ${nombrePlural}`;
-    } else {
-      // Más de 2: "3 hamburguesas"
-      const nombrePlural = nombreItem.endsWith('s') ? nombreItem : `${nombreItem}s`;
-      descripcionItem = `${item.cantidad} ${nombrePlural}`;
-    }
+    const descripcionItem = descripcionNaturalItem(nombreItem, item.cantidad);
     
     // Agregar item con conectores naturales
     if (index === 0) {

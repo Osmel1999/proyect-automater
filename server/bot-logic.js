@@ -13,6 +13,15 @@ const { parsearPedido, generarMensajeConfirmacion } = require('./pedido-parser')
 // Formato: Map<tenantId_telefono, sesion>
 const sesionesUsuarios = new Map();
 
+// Confirmaciones naturales que el bot entiende (constante a nivel de módulo)
+const CONFIRMACIONES_NATURALES = [
+  'confirmar', 'si', 'sí', 'ok', 'listo', 'correcto', 
+  'dale', 'okay', 'va', 'claro', 'afirmativo', 'sale',
+  'oki', 'okey', 'sep', 'yes', 'yep', 'ya', 'vale',
+  'perfecto', 'exacto', 'eso', 'así es', 'por supuesto',
+  'confirmo', 'confirm', 'está bien', 'esta bien'
+];
+
 /**
  * Formatea un precio con separadores de miles
  * @param {number} precio - Precio a formatear
@@ -21,6 +30,24 @@ const sesionesUsuarios = new Map();
 function formatearPrecio(precio) {
   if (!precio || isNaN(precio)) return '0';
   return Number(precio).toLocaleString('es-CO');
+}
+
+/**
+ * Crea una descripción natural de un item con cantidad
+ * @param {string} nombreItem - Nombre del item en minúsculas
+ * @param {number} cantidad - Cantidad del item
+ * @returns {string} Descripción natural (ej: "una hamburguesa", "dos pizzas")
+ */
+function descripcionNaturalItem(nombreItem, cantidad) {
+  if (cantidad === 1) {
+    return `una ${nombreItem}`;
+  } else if (cantidad === 2) {
+    const nombrePlural = nombreItem.endsWith('s') ? nombreItem : `${nombreItem}s`;
+    return `dos ${nombrePlural}`;
+  } else {
+    const nombrePlural = nombreItem.endsWith('s') ? nombreItem : `${nombreItem}s`;
+    return `${cantidad} ${nombrePlural}`;
+  }
 }
 
 /**
@@ -194,15 +221,7 @@ async function processMessage(tenantId, from, texto) {
   }
   
   // Confirmar pedido - Reconocer lenguaje natural para confirmación
-  const confirmacionesNaturales = [
-    'confirmar', 'si', 'sí', 'ok', 'listo', 'correcto', 
-    'dale', 'okay', 'va', 'claro', 'afirmativo', 'sale',
-    'oki', 'okey', 'sep', 'yes', 'yep', 'ya', 'vale',
-    'perfecto', 'exacto', 'eso', 'así es', 'por supuesto',
-    'confirmo', 'confirm', 'está bien', 'esta bien'
-  ];
-  
-  if (confirmacionesNaturales.includes(texto)) {
+  if (CONFIRMACIONES_NATURALES.includes(texto)) {
     // Si hay pedido pendiente de confirmación, agregarlo al carrito
     if (sesion.esperandoConfirmacion && sesion.pedidoPendiente) {
       sesion.pedidoPendiente.forEach(item => {
@@ -472,21 +491,8 @@ function verCarrito(sesion) {
   const numItems = items.length;
   
   items.forEach((item, index) => {
-    let descripcionItem = '';
     const nombreItem = item.nombre.toLowerCase();
-    
-    if (item.cantidad === 1) {
-      // Singular: "una hamburguesa"
-      descripcionItem = `una ${nombreItem}`;
-    } else if (item.cantidad === 2) {
-      // Dos items: verificar si ya termina en 's' o si necesita pluralización
-      const nombrePlural = nombreItem.endsWith('s') ? nombreItem : `${nombreItem}s`;
-      descripcionItem = `dos ${nombrePlural}`;
-    } else {
-      // Más de 2: "3 hamburguesas"
-      const nombrePlural = nombreItem.endsWith('s') ? nombreItem : `${nombreItem}s`;
-      descripcionItem = `${item.cantidad} ${nombrePlural}`;
-    }
+    const descripcionItem = descripcionNaturalItem(nombreItem, item.cantidad);
     
     if (index === 0) {
       listaItems += descripcionItem;
