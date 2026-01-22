@@ -6,6 +6,6 @@ builder = "nixpacks"
 buildCommand = "npm install"
 
 [deploy]
-startCommand = "bash start.sh"
+startCommand = "npm start"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
