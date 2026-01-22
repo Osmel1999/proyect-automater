@@ -165,9 +165,9 @@ async function testHumanReadability() {
     
     console.log('\n' + colors.cyan + '='.repeat(70) + colors.reset);
     console.log(colors.cyan + 'MENSAJE GENERADO:' + colors.reset);
-    console.log(colors.cyan + '=' .repeat(70) + colors.reset);
+    console.log(colors.cyan + '='.repeat(70) + colors.reset);
     console.log(mensaje);
-    console.log(colors.cyan + '=' .repeat(70) + colors.reset);
+    console.log(colors.cyan + '='.repeat(70) + colors.reset);
     
     return true;
     
