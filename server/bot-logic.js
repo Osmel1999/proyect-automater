@@ -8,6 +8,8 @@ const menuService = require('./menu-service');
 const firebaseService = require('./firebase-service');
 const tenantService = require('./tenant-service');
 const { parsearPedido, generarMensajeConfirmacion } = require('./pedido-parser');
+const paymentService = require('./payment-service');
+const paymentConfigService = require('./payments/payment-config-service');
 
 // Almacenamiento en memoria de sesiones de usuario por tenant
 // Formato: Map<tenantId_telefono, sesion>
@@ -72,7 +74,11 @@ function obtenerSesion(tenantId, telefono) {
       esperandoConfirmacion: false,
       pedidoPendiente: null,
       esperandoDireccion: false,
-      direccion: null
+      direccion: null,
+      esperandoTelefono: false,
+      telefonoContacto: null,
+      esperandoMetodoPago: false, // ✨ Nuevo estado
+      metodoPago: null // ✨ 'tarjeta' o 'efectivo'
     });
   }
   
@@ -230,6 +236,11 @@ async function processMessage(tenantId, from, texto) {
   // Si está esperando teléfono, validar y guardar
   if (sesion.esperandoTelefono) {
     return await procesarTelefono(sesion, textoOriginal);
+  }
+  
+  // ✨ NUEVO: Si está esperando método de pago, procesar respuesta
+  if (sesion.esperandoMetodoPago) {
+    return await procesarMetodoPago(sesion, texto, textoOriginal);
   }
   
   // Confirmar pedido - Reconocer lenguaje natural para confirmación
@@ -537,6 +548,8 @@ function verCarrito(sesion) {
 
 /**
  * Confirma y envía el pedido a Firebase (aislado por tenant)
+ * Ahora integra el flujo de pago: guarda el pedido y genera enlace de pago
+ * Solo genera enlace si el cliente eligió "tarjeta"
  */
 async function confirmarPedido(sesion) {
   if (sesion.carrito.length === 0) {
@@ -575,18 +588,237 @@ async function confirmarPedido(sesion) {
       direccion: sesion.direccion || 'No especificada', // ✨ Dirección de entrega
       items: Object.values(itemsAgrupados),
       total: total,
-      estado: 'pendiente',
+      estado: 'pendiente_pago', // ✨ Estado inicial: esperando pago
       timestamp: Date.now(),
       fecha: new Date().toISOString(),
       fuente: 'whatsapp',
-      restaurante: restaurantName
+      restaurante: restaurantName,
+      paymentStatus: 'PENDING', // ✨ Estado de pago
+      metodoPago: sesion.metodoPago || 'tarjeta', // ✨ Método elegido por el cliente
     };
     
     // Guardar en Firebase bajo el path del tenant
     const pedidoRef = firebaseService.database.ref(`tenants/${sesion.tenantId}/pedidos`);
-    await pedidoRef.push(pedido);
+    const pedidoSnapshot = await pedidoRef.push(pedido);
+    const pedidoKey = pedidoSnapshot.key; // Key de Firebase para vincular el pago
     
-    console.log(`✅ Pedido guardado para tenant ${sesion.tenantId}: #${numeroHex}`);
+    console.log(`✅ Pedido guardado para tenant ${sesion.tenantId}: #${numeroHex} (${pedidoKey})`);
+    
+    // ====================================
+    // INTEGRACIÓN DE PAGO (SOLO SI ELIGIÓ TARJETA)
+    // ====================================
+    
+    // 1. Verificar si el cliente eligió pagar con tarjeta
+    console.log(`\n${'='.repeat(70)}`);
+    console.log(`💳 VERIFICANDO MÉTODO DE PAGO`);
+    console.log(`   Método elegido: ${sesion.metodoPago}`);
+    console.log(`   Tenant ID: ${sesion.tenantId}`);
+    console.log(`   Pedido Key: ${pedidoKey}`);
+    console.log(`${'='.repeat(70)}\n`);
+    
+    if (sesion.metodoPago === 'tarjeta') {
+      console.log(`💳 Cliente eligió pagar con tarjeta - Iniciando generación de enlace de pago...`);
+      console.log(`📊 Datos para createPaymentLink:`);
+      console.log(`   - restaurantId (tenantId): ${sesion.tenantId}`);
+      console.log(`   - orderId (pedidoKey): ${pedidoKey}`);
+      console.log(`   - amount: ${total * 100} centavos (${total} COP)`);
+      console.log(`   - customerPhone: ${sesion.telefonoContacto || sesion.telefono}`);
+      console.log(`   - customerName: Cliente ${sesion.telefono}`);
+      
+      // 2. Generar enlace de pago
+      const paymentResult = await paymentService.createPaymentLink({
+        restaurantId: sesion.tenantId,
+        orderId: pedidoKey, // Usar la key de Firebase
+        amount: total * 100, // Convertir a centavos
+        customerPhone: sesion.telefonoContacto || sesion.telefono,
+        customerName: `Cliente ${sesion.telefono}`, // Nombre por defecto
+        customerEmail: `${sesion.telefono}@kdsapp.site`, // Email por defecto
+        orderDetails: {
+          items: Object.values(itemsAgrupados).map(i => ({
+            name: i.nombre,
+            quantity: i.cantidad,
+            price: i.precio,
+          })),
+          address: sesion.direccion,
+          orderNumber: numeroHex,
+        },
+      });
+      
+      console.log(`\n📊 Resultado de createPaymentLink:`);
+      console.log(`   - success: ${paymentResult.success}`);
+      console.log(`   - paymentLink: ${paymentResult.paymentLink || 'NO GENERADO'}`);
+      console.log(`   - error: ${paymentResult.error || 'ninguno'}`);
+      
+      if (!paymentResult.success) {
+        console.error(`\n${'='.repeat(70)}`);
+        console.error(`❌ ERROR GENERANDO ENLACE DE PAGO`);
+        console.error(`   Error: ${paymentResult.error}`);
+        console.error(`   Pedido: #${numeroHex} (${pedidoKey})`);
+        console.error(`   Tenant: ${sesion.tenantId}`);
+        console.error(`${'='.repeat(70)}\n`);
+        
+        // Actualizar estado a "pendiente" (pago fallido, pero pedido guardado)
+        await pedidoRef.child(pedidoKey).update({ 
+          estado: 'pendiente',
+          paymentError: paymentResult.error,
+        });
+        
+        // Aún así, confirmar el pedido sin pago
+        await tenantService.incrementOrderStats(sesion.tenantId);
+        
+        // Limpiar carrito
+        sesion.carrito = [];
+        const direccionEntrega = sesion.direccion;
+        const telefonoContacto = sesion.telefonoContacto;
+        sesion.direccion = null;
+        sesion.telefonoContacto = null;
+        sesion.metodoPago = null;
+        
+        const telefonoFormateado = telefonoContacto.replace(/(\d{3})(\d{3})(\d{4})/, '$1 $2 $3');
+        
+        // Mensaje de error pero pedido confirmado
+        let mensaje = '🎉 *Tu pedido está confirmado*\n\n';
+        mensaje += `📋 Número de pedido: #${numeroHex}\n`;
+        mensaje += `📍 Dirección: ${direccionEntrega}\n`;
+        mensaje += `📱 Teléfono de contacto: ${telefonoFormateado}\n`;
+        mensaje += `💰 Total: $${formatearPrecio(total)}\n\n`;
+        mensaje += '⚠️ _Hubo un problema generando el enlace de pago, pero tu pedido fue recibido._\n';
+        mensaje += `Puedes pagar en efectivo al recibir tu pedido.\n\n`;
+        mensaje += `Ya lo enviamos a la cocina de ${restaurantName}. 🛵\n`;
+        mensaje += '🕒 Tiempo estimado: 30-40 minutos';
+        
+        return mensaje;
+      }
+      
+      // 3. Enlace de pago generado exitosamente
+      console.log(`✅ Enlace de pago generado: ${paymentResult.paymentLink}`);
+      
+      // Actualizar pedido con información del pago
+      await pedidoRef.child(pedidoKey).update({
+        paymentLink: paymentResult.paymentLink,
+        paymentTransactionId: paymentResult.transactionId,
+        paymentReference: paymentResult.reference,
+      });
+      
+      // Incrementar estadísticas del tenant
+      await tenantService.incrementOrderStats(sesion.tenantId);
+      
+      // Limpiar carrito, dirección y teléfono
+      sesion.carrito = [];
+      const direccionEntrega = sesion.direccion;
+      const telefonoContacto = sesion.telefonoContacto;
+      sesion.direccion = null;
+      sesion.telefonoContacto = null;
+      sesion.metodoPago = null;
+      
+      // Formatear teléfono para mostrar: 300 123 4567
+      const telefonoFormateado = telefonoContacto.replace(/(\d{3})(\d{3})(\d{4})/, '$1 $2 $3');
+      
+      // Respuesta de confirmación con enlace de pago
+      let mensaje = '🎉 *¡Tu pedido está casi listo!*\n\n';
+      mensaje += `📋 Número de pedido: #${numeroHex}\n`;
+      mensaje += `📍 Dirección: ${direccionEntrega}\n`;
+      mensaje += `📱 Teléfono de contacto: ${telefonoFormateado}\n`;
+      mensaje += `💰 Total a pagar: $${formatearPrecio(total)}\n\n`;
+      mensaje += '━'.repeat(30) + '\n\n';
+      mensaje += '💳 *PAGO SEGURO EN LÍNEA*\n\n';
+      mensaje += '👉 *Haz clic aquí para pagar ahora:*\n';
+      mensaje += `${paymentResult.paymentLink}\n\n`;
+      mensaje += '✅ Puedes pagar con tarjeta de crédito/débito, PSE o Nequi\n';
+      mensaje += '🔒 Pago 100% seguro y encriptado\n\n';
+      mensaje += '━'.repeat(30) + '\n\n';
+      mensaje += `Una vez confirmes el pago, ${restaurantName} empezará a preparar tu pedido.\n\n`;
+      mensaje += '🕒 Tiempo estimado: 30-40 minutos\n\n';
+      mensaje += '_Te avisaremos cuando esté listo para entrega_ 🛵';
+      
+      return mensaje;
+    }
+    
+    // Si no eligió tarjeta, no debería llegar aquí (debería usar confirmarPedidoEfectivo)
+    // Pero por si acaso, usar flujo tradicional
+    console.log(`ℹ️  Método de pago no especificado o diferente de tarjeta - Flujo tradicional`);
+    return await confirmarPedidoEfectivo(sesion, pedidoKey, numeroHex, itemsAgrupados);
+    
+  } catch (error) {
+    console.error('❌ Error confirmando pedido:', error);
+    
+    return '⚠️ *Error al procesar tu pedido*\n\n' +
+           'Hubo un problema al guardar tu pedido.\n' +
+           'Por favor intenta de nuevo en un momento.\n\n' +
+           'Si el problema persiste, contacta a soporte.';
+  }
+}
+
+/**
+ * ✨ NUEVO: Confirma pedido con pago en efectivo/transferencia (sin enlace de pago)
+ */
+async function confirmarPedidoEfectivo(sesion, pedidoKey = null, numeroHex = null, itemsAgrupados = null) {
+  if (sesion.carrito.length === 0) {
+    return '❌ *Tu carrito está vacío*\n\n' +
+           'Escribe *menu* para ver el menú y empezar a ordenar.';
+  }
+  
+  try {
+    // Obtener información del tenant
+    const tenant = await tenantService.getTenantById(sesion.tenantId);
+    const restaurantName = tenant.restaurant?.name || 'Restaurante';
+    
+    // Calcular total
+    const total = sesion.carrito.reduce((sum, item) => sum + item.precio, 0);
+    
+    // Si no se pasaron itemsAgrupados, generarlos
+    if (!itemsAgrupados) {
+      itemsAgrupados = {};
+      sesion.carrito.forEach(item => {
+        const key = item.numero;
+        if (!itemsAgrupados[key]) {
+          itemsAgrupados[key] = { ...item, cantidad: 0 };
+        }
+        itemsAgrupados[key].cantidad += 1;
+      });
+    }
+    
+    // Si no se pasó numeroHex, generarlo
+    if (!numeroHex) {
+      numeroHex = Date.now().toString(16).slice(-6).toUpperCase();
+    }
+    
+    const pedidoRef = firebaseService.database.ref(`tenants/${sesion.tenantId}/pedidos`);
+    
+    // Si no se pasó pedidoKey, crear el pedido ahora
+    if (!pedidoKey) {
+      const pedido = {
+        id: numeroHex,
+        tenantId: sesion.tenantId,
+        cliente: sesion.telefono,
+        telefono: sesion.telefono,
+        telefonoContacto: sesion.telefonoContacto || sesion.telefono,
+        direccion: sesion.direccion || 'No especificada',
+        items: Object.values(itemsAgrupados),
+        total: total,
+        estado: 'pendiente', // ✨ Estado: pendiente (sin pago)
+        timestamp: Date.now(),
+        fecha: new Date().toISOString(),
+        fuente: 'whatsapp',
+        restaurante: restaurantName,
+        paymentStatus: 'CASH', // ✨ Pago en efectivo
+        metodoPago: sesion.metodoPago || 'efectivo',
+      };
+      
+      const pedidoSnapshot = await pedidoRef.push(pedido);
+      pedidoKey = pedidoSnapshot.key;
+      
+      console.log(`✅ Pedido guardado (efectivo) para tenant ${sesion.tenantId}: #${numeroHex} (${pedidoKey})`);
+    } else {
+      // Si ya existe el pedido, solo actualizar el estado
+      await pedidoRef.child(pedidoKey).update({ 
+        estado: 'pendiente',
+        paymentStatus: 'CASH',
+        metodoPago: sesion.metodoPago || 'efectivo',
+      });
+      
+      console.log(`✅ Pedido actualizado a efectivo: #${numeroHex} (${pedidoKey})`);
+    }
     
     // Incrementar estadísticas del tenant
     await tenantService.incrementOrderStats(sesion.tenantId);
@@ -597,17 +829,24 @@ async function confirmarPedido(sesion) {
     const telefonoContacto = sesion.telefonoContacto;
     sesion.direccion = null;
     sesion.telefonoContacto = null;
+    sesion.metodoPago = null;
     
     // Formatear teléfono para mostrar: 300 123 4567
     const telefonoFormateado = telefonoContacto.replace(/(\d{3})(\d{3})(\d{4})/, '$1 $2 $3');
     
-    // Respuesta de confirmación más natural y humana
+    // Respuesta de confirmación para pago en efectivo/transferencia
     let mensaje = '🎉 *¡Listo! Tu pedido está confirmado*\n\n';
     mensaje += `📋 Número de pedido: #${numeroHex}\n`;
     mensaje += `📍 Dirección: ${direccionEntrega}\n`;
     mensaje += `📱 Teléfono de contacto: ${telefonoFormateado}\n`;
-    mensaje += `💰 Total: $${formatearPrecio(total)}\n\n`;
-    mensaje += `Ya lo enviamos a la cocina de ${restaurantName}.\n`;
+    mensaje += `💰 Total: $${formatearPrecio(total)}\n`;
+    mensaje += `💵 Forma de pago: *${sesion.metodoPago === 'efectivo' ? 'Efectivo' : 'Efectivo/Transferencia'}*\n\n`;
+    mensaje += '━'.repeat(30) + '\n\n';
+    mensaje += `Ya lo enviamos a la cocina de ${restaurantName}. 👨‍🍳\n\n`;
+    mensaje += '💵 *Pago:*\n';
+    mensaje += '• Puedes pagar en efectivo al domiciliario\n';
+    mensaje += '• O si prefieres transferencia, pregunta los datos al domiciliario\n\n';
+    mensaje += '━'.repeat(30) + '\n\n';
     mensaje += 'Te llamaremos al número que nos diste cuando el domiciliario esté en camino. 🛵\n\n';
     mensaje += '🕒 Tiempo estimado: 30-40 minutos\n\n';
     mensaje += '¿Quieres pedir algo más? Escribe *menu* cuando quieras.';
@@ -615,7 +854,7 @@ async function confirmarPedido(sesion) {
     return mensaje;
     
   } catch (error) {
-    console.error('❌ Error confirmando pedido:', error);
+    console.error('❌ Error confirmando pedido en efectivo:', error);
     
     return '⚠️ *Error al procesar tu pedido*\n\n' +
            'Hubo un problema al guardar tu pedido.\n' +
@@ -733,12 +972,92 @@ async function procesarTelefono(sesion, telefono) {
            '¿Cuál es tu número de contacto? ☎️';
   }
   
-  // Guardar teléfono y confirmar pedido
+  // Guardar teléfono
   sesion.telefonoContacto = telefonoLimpio;
   sesion.esperandoTelefono = false;
   
-  // Ahora sí confirmar el pedido con dirección y teléfono
-  return await confirmarPedido(sesion);
+  // ✨ NUEVO: Verificar si el restaurante tiene pagos configurados usando el nuevo servicio
+  const gatewayConfig = await paymentConfigService.getConfig(sesion.tenantId, false);
+  
+  // Si NO tiene gateway configurado o no está habilitado, ir directo a confirmar (flujo tradicional)
+  if (!gatewayConfig || !gatewayConfig.enabled || !gatewayConfig.hasCredentials) {
+    return await confirmarPedido(sesion);
+  }
+  
+  // Si tiene gateway configurado, preguntar método de pago
+  return solicitarMetodoPago(sesion);
+}
+
+/**
+ * ✨ NUEVO: Solicita al cliente cómo desea pagar
+ */
+function solicitarMetodoPago(sesion) {
+  sesion.esperandoMetodoPago = true;
+  
+  // Calcular total del carrito para mostrarlo
+  const total = sesion.carrito.reduce((sum, item) => sum + item.precio, 0);
+  
+  let mensaje = '💳 *¿Cómo deseas pagar tu pedido?*\n\n';
+  mensaje += `💰 Total a pagar: *$${formatearPrecio(total)}*\n\n`;
+  mensaje += '📱 Selecciona una opción:\n\n';
+  mensaje += '1️⃣ *Tarjeta* - Pago seguro en línea\n';
+  mensaje += '   • Tarjeta de crédito/débito\n';
+  mensaje += '   • PSE (transferencia bancaria)\n';
+  mensaje += '   • Nequi\n';
+  mensaje += '   🔒 100% seguro y encriptado\n\n';
+  mensaje += '2️⃣ *Efectivo/Transferencia* - Al recibir\n';
+  mensaje += '   • Paga en efectivo al domiciliario\n';
+  mensaje += '   • O confirma tu transferencia después\n\n';
+  mensaje += '━'.repeat(30) + '\n\n';
+  mensaje += 'Responde *tarjeta* o *efectivo* para continuar.';
+  
+  return mensaje;
+}
+
+/**
+ * ✨ NUEVO: Procesa la respuesta sobre el método de pago
+ */
+async function procesarMetodoPago(sesion, texto, textoOriginal) {
+  // Normalizar respuesta
+  const respuesta = texto.toLowerCase().trim();
+  
+  // Opciones válidas para tarjeta
+  const opcionesTarjeta = [
+    'tarjeta', '1', 'tarjetas', 'credito', 'crédito', 'debito', 
+    'débito', 'pse', 'nequi', 'online', 'en linea', 'en línea',
+    'pago en linea', 'pago en línea', 'pago online'
+  ];
+  
+  // Opciones válidas para efectivo
+  const opcionesEfectivo = [
+    'efectivo', '2', 'cash', 'transferencia', 'contraentrega',
+    'al recibir', 'cuando llegue', 'en efectivo'
+  ];
+  
+  // Verificar si eligió tarjeta
+  if (opcionesTarjeta.some(opt => respuesta.includes(opt))) {
+    sesion.metodoPago = 'tarjeta';
+    sesion.esperandoMetodoPago = false;
+    
+    // Confirmar pedido CON generación de enlace de pago
+    return await confirmarPedido(sesion);
+  }
+  
+  // Verificar si eligió efectivo
+  if (opcionesEfectivo.some(opt => respuesta.includes(opt))) {
+    sesion.metodoPago = 'efectivo';
+    sesion.esperandoMetodoPago = false;
+    
+    // Confirmar pedido SIN generación de enlace (flujo tradicional)
+    return await confirmarPedidoEfectivo(sesion);
+  }
+  
+  // No entendió la respuesta
+  return '❓ *No entendí tu respuesta*\n\n' +
+         'Por favor indica cómo deseas pagar:\n\n' +
+         '• Responde *tarjeta* para pago en línea\n' +
+         '• Responde *efectivo* para pago al recibir\n\n' +
+         '¿Cómo deseas pagar? 💳';
 }
 
 module.exports = {
