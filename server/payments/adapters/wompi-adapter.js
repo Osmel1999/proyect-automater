@@ -96,8 +96,9 @@ class WompiAdapter {
       const restaurantId = metadata.restaurantId || '';
       const orderId = metadata.orderId || reference;
       
-      const redirectUrlBase = redirectUrl || `${process.env.BASE_URL || 'http://localhost:3000'}/payment-success.html`;
-      const redirectUrlWithParams = `${redirectUrlBase}?order=${encodeURIComponent(orderId)}&amount=${finalAmountInCents / 100}&phone=${encodeURIComponent(phone)}&restaurant=${encodeURIComponent(restaurantId)}`;
+      // 🔥 URL de Firebase Hosting (frontend)
+      const redirectUrlBase = redirectUrl || 'https://kdsapp.site/payment-success.html';
+      const redirectUrlWithParams = `${redirectUrlBase}?orderId=${encodeURIComponent(orderId)}&amount=${finalAmountInCents}&phone=${encodeURIComponent(phone)}&restaurantId=${encodeURIComponent(restaurantId)}`;
 
       console.log(`🔗 Redirect URL: ${redirectUrlWithParams}`);
 
