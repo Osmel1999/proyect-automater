@@ -306,8 +306,8 @@ Esto es más complejo y puede causar confusión al usuario. La solución actual 
 - [x] `baileys-controller.js` limpia stores
 - [x] Logs mejorados para debugging
 - [x] Documentación actualizada
-- [ ] Deploy a Railway
-- [ ] Prueba end-to-end en producción
+- [x] Deploy a Railway
+- [ ] Prueba end-to-end en producción (pendiente: usuario debe probar)
 
 ## 🎯 Resultado Esperado
 

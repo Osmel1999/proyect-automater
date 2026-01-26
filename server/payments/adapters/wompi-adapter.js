@@ -91,6 +91,16 @@ class WompiAdapter {
       console.log(`   Amount: ${finalAmountInCents} centavos (${finalAmountInCents / 100} ${currency})`);
       console.log(`   Email: ${email}`);
 
+      // Construir la URL de redirect con parámetros
+      const phone = customerPhone || customerData?.phoneNumber || '';
+      const restaurantId = metadata.restaurantId || '';
+      const orderId = metadata.orderId || reference;
+      
+      const redirectUrlBase = redirectUrl || `${process.env.BASE_URL || 'http://localhost:3000'}/payment-success.html`;
+      const redirectUrlWithParams = `${redirectUrlBase}?order=${encodeURIComponent(orderId)}&amount=${finalAmountInCents / 100}&phone=${encodeURIComponent(phone)}&restaurant=${encodeURIComponent(restaurantId)}`;
+
+      console.log(`🔗 Redirect URL: ${redirectUrlWithParams}`);
+
       // Construir el payload para Wompi
       const payload = {
         name: description || `Pedido ${reference}`,
@@ -99,10 +109,10 @@ class WompiAdapter {
         collect_shipping: false, // No recolectar dirección de envío
         amount_in_cents: finalAmountInCents,
         currency: currency,
-        redirect_url: redirectUrl || `${process.env.BASE_URL || 'http://localhost:3000'}/payment/success`,
+        redirect_url: redirectUrlWithParams,
         customer_data: {
           email: email,
-          phone_number: customerPhone || customerData?.phoneNumber || '',
+          phone_number: phone,
           full_name: customerData?.fullName || metadata.customerName || 'Cliente'
         }
       };
