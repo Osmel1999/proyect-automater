@@ -8,6 +8,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const axios = require('axios');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 console.log('🚀 Iniciando servidor KDS WhatsApp SaaS...');
@@ -28,12 +29,6 @@ console.log('  ✅ tenant-service cargado');
 
 const encryptionService = require('./encryption-service');
 console.log('  ✅ encryption-service cargado');
-
-// Baileys Services para restauración de sesiones
-const { hydrateLocalSessionFromFirestore } = require('./baileys/session-hydrator');
-const sessionManager = require('./baileys/session-manager');
-const firebaseService = require('./firebase-service');
-console.log('  ✅ baileys session services cargados');
 
 const app = express();
 const server = http.createServer(app);
@@ -80,7 +75,7 @@ app.use((req, res, next) => {
 });
 
 // Middleware para rutas limpias (sin .html)
-// Permite acceder a /whatsapp-connect en lugar de /whatsapp-connect.html
+// Permite acceder a /onboarding en lugar de /onboarding.html
 app.use((req, res, next) => {
   // Si la ruta no tiene extensión y no es una ruta de API
   if (!req.path.includes('.') && !req.path.startsWith('/api/')) {
@@ -95,24 +90,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// ✅ FIX: Middleware para evitar caché en archivos HTML
-app.use((req, res, next) => {
-  if (req.path.endsWith('.html')) {
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-    res.setHeader('Surrogate-Control', 'no-store');
-    console.log(`🚫 [Cache] Deshabilitando caché para: ${req.path}`);
-  }
-  next();
-});
-
-// ====================================
-// NOTA: Frontend servido por Firebase Hosting (kdsapp.site)
-// Railway solo sirve API backend (api.kdsapp.site)
-// ====================================
-// NO servir archivos estáticos - frontend está en Firebase
-// app.use(express.static(path.join(__dirname, '..')));
+// Servir archivos estáticos del KDS Frontend
+app.use(express.static(path.join(__dirname, '..')));
 
 // ====================================
 // RUTAS DE API - WHATSAPP BUSINESS API (Multi-tenant)
@@ -257,7 +236,7 @@ app.get('/api/whatsapp/callback-legacy', async (req, res) => {
       code: code?.substring(0, 30) + '...'
     });
     const frontendUrl = process.env.FRONTEND_URL || 'https://kdsapp.site';
-    res.redirect(`${frontendUrl}/whatsapp-connect.html?error=oauth_failed`);
+    res.redirect(`${frontendUrl}/onboarding-2.html?error=oauth_failed`);
   }
 });
 
@@ -386,7 +365,7 @@ app.get('/api/whatsapp/callback', async (req, res) => {
   } catch (error) {
     console.error('❌ Error en callback de OAuth:', error.response?.data || error.message);
     const frontendUrl = process.env.FRONTEND_URL || 'https://kdsapp.site';
-    res.redirect(`${frontendUrl}/whatsapp-connect.html?error=oauth_failed`);
+    res.redirect(`${frontendUrl}/onboarding.html?error=oauth_failed`);
   }
 });
 
@@ -635,9 +614,38 @@ const baileysRoutes = require('./routes/baileys-routes');
 app.use('/api/baileys', baileysRoutes);
 console.log('✅ Rutas de Baileys registradas en /api/baileys');
 
+// ====================================
+// RUTAS DE API - PAGOS (Multi-Gateway)
+// ====================================
+
+// Rate limiter para webhooks de pago (prevenir ataques)
+const webhookRateLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minuto
+  max: 100, // Máximo 100 requests por minuto por IP
+  message: 'Demasiados requests de webhook, intenta de nuevo más tarde',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limiter para endpoints de prueba
+const testRateLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutos
+  max: 10, // Máximo 10 requests por 5 minutos
+  message: 'Demasiados requests de prueba, intenta de nuevo más tarde',
+});
+
+const paymentRoutes = require('./routes/payments');
+app.use('/api/payments', webhookRateLimiter, paymentRoutes);
+console.log('✅ Rutas de pagos registradas en /api/payments');
+
+// ====================================
+// INICIALIZAR BOT LOGIC CON BAILEYS
+// ====================================
+
 // Inicializar Bot Logic con Baileys
 const baileys = require('./baileys');
 const botLogic = require('./bot-logic');
+const firebaseService = require('./firebase-service');
 const eventHandlers = baileys.getEventHandlers();
 
 console.log('🤖 Inicializando Bot Logic con Baileys...');
@@ -651,7 +659,6 @@ eventHandlers.onMessage('*', async (message) => {
     const tenantId = message.tenantId || 'default';
     const from = message.from;
     const text = message.text || '';
-    const messageKey = message.raw?.key; // Extraer el key original del mensaje de Baileys
 
     console.log(`🤖 Bot procesando mensaje de ${from} en tenant ${tenantId}`);
     console.log(`🔍 [DEBUG] Llamando a botLogic.processMessage`);
@@ -664,26 +671,19 @@ eventHandlers.onMessage('*', async (message) => {
 
     // Si hay respuesta, enviarla
     if (response) {
-      console.log(`🔍 [DEBUG] Enviando respuesta a ${from} con humanización`);
+      console.log(`🔍 [DEBUG] Enviando respuesta a ${from}`);
       
       // Convertir el texto de respuesta a un objeto de mensaje
       const messageToSend = typeof response === 'string' ? { text: response } : response;
       
       console.log(`🔍 [DEBUG] Mensaje a enviar:`, messageToSend);
       
-      // Enviar con humanización, pasando el messageKey para marcar como leído
-      const result = await baileys.sendMessage(tenantId, from, messageToSend, {
-        messageKey: messageKey, // Pasar el key del mensaje recibido
-        humanize: true // Activar humanización explícitamente
-      });
+      const result = await baileys.sendMessage(tenantId, from, messageToSend);
       
       console.log(`🔍 [DEBUG] Resultado de sendMessage:`, result);
       
       if (result && result.success) {
-        console.log(`✅ Respuesta enviada a ${from}${result.humanized ? ' (humanizado)' : ''}`);
-        if (result.stats) {
-          console.log(`📊 Stats humanización: read=${result.stats.readDelay}ms, think=${result.stats.thinkingDelay}ms, type=${result.stats.typingDuration}ms`);
-        }
+        console.log(`✅ Respuesta enviada a ${from}`);
         return true; // Retornar true para indicar que se procesó correctamente
       } else {
         console.error(`❌ Error enviando respuesta:`, result);
@@ -746,241 +746,52 @@ app.use((err, req, res, next) => {
 });
 
 // ====================================
-// RESTAURACIÓN DE SESIONES WHATSAPP
+// INICIO DEL SERVIDOR
 // ====================================
 
-/**
- * Restaura todas las sesiones WhatsApp activas desde Firestore al arrancar
- * Esto permite sobrevivir a Railway sleep y cold starts sin perder sesiones
- */
-async function restoreAllSessions() {
-  const timestamp = new Date().toISOString();
+server.listen(PORT, () => {
+  console.log('━'.repeat(50));
+  console.log('🚀 SERVIDOR BACKEND KDS + WHATSAPP SAAS');
+  console.log('━'.repeat(50));
+  console.log(`📡 Servidor corriendo en puerto: ${PORT}`);
+  console.log(`🌐 URL local: http://localhost:${PORT}`);
+  console.log(`🏢 Modo: Multi-tenant SaaS`);
+  console.log(`🔌 WebSocket: Habilitado (Socket.IO)`);
+  console.log('');
+  console.log('🔧 Servicios configurados:');
+  console.log(`   🔥 Firebase: ${process.env.FIREBASE_PROJECT_ID ? '✅ ' + process.env.FIREBASE_PROJECT_ID : '❌ No configurado'}`);
+  console.log(`   📱 WhatsApp API: ${process.env.WHATSAPP_APP_ID ? '✅ App ID ' + process.env.WHATSAPP_APP_ID : '❌ No configurado'}`);
+  console.log(`   � Cifrado: ${process.env.ENCRYPTION_KEY ? '✅ Configurado' : '❌ No configurado'}`);
   console.log('');
   console.log('━'.repeat(50));
-  console.log(`[${timestamp}] 💧 RESTAURANDO SESIONES WHATSAPP`);
+  console.log('📝 Endpoints - WhatsApp Business API:');
+  console.log('   GET  /api/whatsapp/callback    - OAuth callback (Embedded Signup)');
+  console.log('   POST /webhook/whatsapp         - Webhook de mensajes');
+  console.log('   GET  /webhook/whatsapp         - Verificación de webhook');
+  console.log('');
+  console.log('📝 Endpoints - Tenants:');
+  console.log('   GET  /api/tenant/:tenantId     - Información de tenant');
+  console.log('   GET  /api/tenants              - Listar todos los tenants');
+  console.log('');
+  console.log('📝 Endpoints - Pagos (Multi-Gateway):');
+  console.log('   POST /api/payments/webhook/:restaurantId/:gateway - Webhook de pago');
+  console.log('   GET  /api/payments/status/:transactionId          - Estado de transacción');
+  console.log('   POST /api/payments/test                           - Probar gateway');
+  console.log('');
+  console.log('📝 Endpoints - Sistema:');
+  console.log('   GET  /health                   - Health check');
+  console.log('   GET  /api/stats                - Estadísticas globales');
+  console.log('');
   console.log('━'.repeat(50));
-
-  try {
-    // Obtener todos los tenants desde Firebase Realtime Database
-    const db = firebaseService.database;
-    const tenantsRef = db.ref('tenants');
-    const snapshot = await tenantsRef.once('value');
-    const tenants = snapshot.val();
-
-    if (!tenants) {
-      console.log('📝 No hay tenants registrados, omitiendo restauración');
-      console.log('━'.repeat(50));
-      return { restored: 0, failed: 0, total: 0 };
-    }
-
-    const tenantIds = Object.keys(tenants);
-    console.log(`📊 Total de tenants encontrados: ${tenantIds.length}`);
-
-    // Filtrar solo los que tienen WhatsApp conectado
-    const activeTenantsData = tenantIds.map(id => ({
-      id,
-      whatsappConnected: tenants[id]?.restaurant?.whatsappConnected || false
-    }));
-
-    const activeTenants = activeTenantsData.filter(t => t.whatsappConnected);
-    console.log(`🔌 Tenants con WhatsApp conectado: ${activeTenants.length}`);
-
-    if (activeTenants.length === 0) {
-      console.log('✅ No hay sesiones activas que restaurar');
-      console.log('━'.repeat(50));
-      return { restored: 0, failed: 0, total: 0 };
-    }
-
-    console.log('');
-    console.log('🔄 Iniciando proceso de restauración...');
-    console.log('');
-
-    const results = {
-      restored: 0,
-      failed: 0,
-      total: activeTenants.length
-    };
-
-    // Restaurar sesiones en lotes de 5 para no saturar
-    const batchSize = 5;
-    for (let i = 0; i < activeTenants.length; i += batchSize) {
-      const batch = activeTenants.slice(i, i + batchSize);
-      const batchNum = Math.floor(i / batchSize) + 1;
-      const totalBatches = Math.ceil(activeTenants.length / batchSize);
-
-      console.log(`📦 Procesando lote ${batchNum}/${totalBatches} (${batch.length} sesiones)...`);
-
-      const batchPromises = batch.map(async (tenant) => {
-        const tenantId = tenant.id;
-        const startTime = Date.now();
-
-        try {
-          console.log(`   [${tenantId}] Iniciando restauración...`);
-
-          // 1. Hidratar archivos locales desde Firestore
-          const hydrated = await hydrateLocalSessionFromFirestore(tenantId);
-
-          if (!hydrated) {
-            console.log(`   [${tenantId}] ⚠️ No se pudo hidratar (sin credenciales en Firestore)`);
-            
-            // Marcar como desconectado
-            await db.ref(`tenants/${tenantId}/restaurant`).update({
-              whatsappConnected: false,
-              whatsappStatus: 'disconnected',
-              lastError: 'No credentials in Firestore'
-            });
-
-            results.failed++;
-            return;
-          }
-
-          // 2. Iniciar sesión WhatsApp
-          await sessionManager.initSession(tenantId);
-
-          const duration = Date.now() - startTime;
-          console.log(`   [${tenantId}] ✅ Sesión restaurada (${duration}ms)`);
-          results.restored++;
-
-        } catch (error) {
-          const duration = Date.now() - startTime;
-          console.error(`   [${tenantId}] ❌ Error restaurando (${duration}ms):`, error.message);
-
-          // Marcar como desconectado en Firebase
-          try {
-            await db.ref(`tenants/${tenantId}/restaurant`).update({
-              whatsappConnected: false,
-              whatsappStatus: 'error',
-              lastError: error.message,
-              lastErrorAt: new Date().toISOString()
-            });
-          } catch (dbError) {
-            console.error(`   [${tenantId}] ❌ Error actualizando estado en DB:`, dbError.message);
-          }
-
-          results.failed++;
-        }
-      });
-
-      await Promise.allSettled(batchPromises);
-
-      // Pequeño delay entre lotes
-      if (i + batchSize < activeTenants.length) {
-        console.log('   ⏳ Esperando 2s antes del siguiente lote...');
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      }
-    }
-
-    console.log('');
-    console.log('━'.repeat(50));
-    console.log('📊 RESUMEN DE RESTAURACIÓN:');
-    console.log(`   ✅ Exitosas: ${results.restored}/${results.total}`);
-    console.log(`   ❌ Fallidas:  ${results.failed}/${results.total}`);
-    console.log(`   📈 Tasa éxito: ${Math.round((results.restored / results.total) * 100)}%`);
-    console.log('━'.repeat(50));
-    console.log('');
-
-    return results;
-
-  } catch (error) {
-    console.error('');
-    console.error('❌ ERROR FATAL EN RESTAURACIÓN DE SESIONES:', error);
-    console.error('Stack:', error.stack);
-    console.error('━'.repeat(50));
-    console.error('');
-    
-    // No lanzar el error para no impedir que el servidor arranque
-    return { restored: 0, failed: 0, total: 0, fatalError: error.message };
-  }
-}
-
-// ====================================
-// INICIO DEL SERVIDOR (con restauración de sesiones)
-// ====================================
-
-/**
- * Secuencia de arranque:
- * 1. Restaurar sesiones WhatsApp desde Firestore
- * 2. Iniciar servidor HTTP
- * 3. Mostrar información de configuración
- */
-async function startServer() {
-  try {
-    // PASO 1: Restaurar sesiones WhatsApp
-    console.log('🔄 [Startup] Fase 1: Restaurando sesiones WhatsApp...');
-    const restoreResults = await restoreAllSessions();
-    
-    if (restoreResults.fatalError) {
-      console.warn('⚠️ [Startup] Restauración falló, pero servidor continuará');
-    }
-
-    // PASO 2: Iniciar servidor HTTP
-    console.log('🔄 [Startup] Fase 2: Iniciando servidor HTTP...');
-    
-    return new Promise((resolve) => {
-      server.listen(PORT, () => {
-        console.log('');
-        console.log('━'.repeat(50));
-        console.log('🚀 SERVIDOR BACKEND KDS + WHATSAPP SAAS');
-        console.log('━'.repeat(50));
-        console.log(`📡 Servidor corriendo en puerto: ${PORT}`);
-        console.log(`🌐 URL local: http://localhost:${PORT}`);
-        console.log(`🏢 Modo: Multi-tenant SaaS`);
-        console.log(`🔌 WebSocket: Habilitado (Socket.IO)`);
-        console.log('');
-        console.log('🔧 Servicios configurados:');
-        console.log(`   🔥 Firebase: ${process.env.FIREBASE_PROJECT_ID ? '✅ ' + process.env.FIREBASE_PROJECT_ID : '❌ No configurado'}`);
-        console.log(`   📱 WhatsApp API: ${process.env.WHATSAPP_APP_ID ? '✅ App ID ' + process.env.WHATSAPP_APP_ID : '❌ No configurado'}`);
-        console.log(`   🔐 Cifrado: ${process.env.ENCRYPTION_KEY ? '✅ Configurado' : '❌ No configurado'}`);
-        console.log('');
-        console.log('💧 Restauración de sesiones:');
-        console.log(`   ✅ Sesiones restauradas: ${restoreResults.restored || 0}`);
-        console.log(`   ❌ Sesiones fallidas: ${restoreResults.failed || 0}`);
-        console.log('');
-        console.log('━'.repeat(50));
-        console.log('📝 Endpoints - WhatsApp Business API:');
-        console.log('   GET  /api/whatsapp/callback    - OAuth callback (Embedded Signup)');
-        console.log('   POST /webhook/whatsapp         - Webhook de mensajes');
-        console.log('   GET  /webhook/whatsapp         - Verificación de webhook');
-        console.log('');
-        console.log('📝 Endpoints - Tenants:');
-        console.log('   GET  /api/tenant/:tenantId     - Información de tenant');
-        console.log('   GET  /api/tenants              - Listar todos los tenants');
-        console.log('');
-        console.log('📝 Endpoints - Sistema:');
-        console.log('   GET  /health                   - Health check');
-        console.log('   GET  /api/stats                - Estadísticas globales');
-        console.log('');
-        console.log('━'.repeat(50));
-        console.log('🎯 URLs Importantes:');
-        console.log(`   🎯 Conectar WhatsApp: http://localhost:${PORT}/whatsapp-connect.html`);
-        console.log(`   📊 KDS Dashboard: http://localhost:${PORT}/kds.html`);
-        console.log(`   🏠 Home Page: http://localhost:${PORT}/index.html`);
-        console.log('');
-        console.log('📱 Configuración de Webhook en Meta:');
-        console.log(`   Callback URL: ${process.env.BASE_URL || 'https://tu-dominio.com'}/webhook/whatsapp`);
-        console.log(`   Verify Token: ${process.env.WHATSAPP_VERIFY_TOKEN || '[CONFIGURAR EN .env]'}`);
-        console.log('━'.repeat(50));
-        console.log('');
-        console.log('✅ [Startup] Servidor completamente inicializado');
-        console.log('');
-        
-        resolve();
-      });
-    });
-
-  } catch (error) {
-    console.error('');
-    console.error('❌ ERROR FATAL AL INICIAR SERVIDOR:', error);
-    console.error('Stack:', error.stack);
-    console.error('');
-    process.exit(1);
-  }
-}
-
-// Ejecutar startup
-startServer().catch(error => {
-  console.error('❌ Error crítico en startup:', error);
-  process.exit(1);
+  console.log('� URLs Importantes:');
+  console.log(`   🎯 Onboarding: http://localhost:${PORT}/onboarding.html`);
+  console.log(`   📊 KDS Dashboard: http://localhost:${PORT}/kds.html`);
+  console.log(`   🏠 Landing Page: http://localhost:${PORT}/landing.html`);
+  console.log('');
+  console.log('📱 Configuración de Webhook en Meta:');
+  console.log(`   Callback URL: ${process.env.BASE_URL || 'https://tu-dominio.com'}/webhook/whatsapp`);
+  console.log(`   Verify Token: ${process.env.WHATSAPP_VERIFY_TOKEN || '[CONFIGURAR EN .env]'}`);
+  console.log('━'.repeat(50));
 });
 
 // Manejo de cierre graceful

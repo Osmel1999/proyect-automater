@@ -175,9 +175,11 @@ class BaileysController {
 
       await baileys.disconnect(tenantId);
 
-      // Limpiar stores
+      // 🔥 FIX: Limpiar stores del controller para forzar estado limpio
       qrStore.delete(tenantId);
       connectionStore.delete(tenantId);
+
+      logger.info(`[${tenantId}] Sesión desconectada, stores limpiados`);
 
       res.json({ 
         success: true,

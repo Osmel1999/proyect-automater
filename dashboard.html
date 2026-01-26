@@ -973,6 +973,321 @@
         grid-template-columns: 1fr;
       }
     }
+
+    /* ============================================
+       ESTILOS PARA CONFIGURACIÓN DE PAGOS
+       ============================================ */
+    
+    .modal-large {
+      max-width: 700px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    /* Toggle Switch */
+    .payment-toggle-section {
+      padding: 20px 0;
+    }
+
+    .toggle-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 60px;
+      height: 30px;
+      background: #e2e8f0;
+      border-radius: 15px;
+      cursor: pointer;
+      transition: 0.3s;
+      flex-shrink: 0;
+    }
+
+    .toggle-switch.active {
+      background: #48bb78;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 24px;
+      height: 24px;
+      background: white;
+      border-radius: 50%;
+      transition: 0.3s;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .toggle-switch.active .toggle-slider {
+      transform: translateX(30px);
+    }
+
+    /* Divider */
+    .divider {
+      height: 1px;
+      background: #e2e8f0;
+      margin: 24px 0;
+    }
+
+    /* Form Section */
+    .form-section {
+      margin-bottom: 24px;
+    }
+
+    .section-subtitle {
+      font-size: 16px;
+      font-weight: 600;
+      color: #2d3748;
+      margin-bottom: 8px;
+    }
+
+    .section-description {
+      font-size: 14px;
+      color: #718096;
+      margin-bottom: 16px;
+    }
+
+    /* Gateway Selector */
+    .gateway-selector {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .gateway-option {
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+      position: relative;
+      background: white;
+    }
+
+    .gateway-option:hover {
+      border-color: #cbd5e0;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .gateway-option.selected {
+      border-color: #667eea;
+      background: #f7faff;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    }
+
+    .gateway-logo {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+
+    .gateway-name {
+      font-weight: 600;
+      color: #2d3748;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .gateway-desc {
+      font-size: 12px;
+      color: #718096;
+    }
+
+    .gateway-check {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 20px;
+      height: 20px;
+      background: #667eea;
+      color: white;
+      border-radius: 50%;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .gateway-option.selected .gateway-check {
+      display: flex;
+    }
+
+    /* Credentials Form */
+    .credentials-form {
+      margin-top: 24px;
+    }
+
+    .payments-config-content {
+      margin-top: 24px;
+    }
+
+    .credential-field {
+      margin-bottom: 16px;
+      position: relative;
+    }
+
+    .form-label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: #2d3748;
+      font-size: 14px;
+    }
+
+    .field-help {
+      font-weight: 400;
+      color: #718096;
+      font-size: 12px;
+      margin-left: 8px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: all 0.2s;
+      font-family: monospace;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .form-input::placeholder {
+      color: #cbd5e0;
+      font-family: monospace;
+    }
+
+    .toggle-password {
+      position: absolute;
+      right: 12px;
+      top: 36px;
+      background: transparent;
+      border: none;
+      color: #718096;
+      cursor: pointer;
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: 0.2s;
+    }
+
+    .toggle-password:hover {
+      background: #f7fafc;
+      color: #2d3748;
+    }
+
+    /* Credential Actions */
+    .credential-actions {
+      margin-top: 16px;
+      display: flex;
+      gap: 12px;
+    }
+
+    /* Status Indicator */
+    .status-indicator {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin: 16px 0;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .status-indicator.success {
+      background: #f0fff4;
+      color: #22543d;
+      border: 1px solid #9ae6b4;
+    }
+
+    .status-indicator.error {
+      background: #fff5f5;
+      color: #742a2a;
+      border: 1px solid #fc8181;
+    }
+
+    .status-indicator.info {
+      background: #ebf8ff;
+      color: #2c5282;
+      border: 1px solid #90cdf4;
+    }
+
+    .status-indicator.warning {
+      background: #fffbeb;
+      color: #78350f;
+      border: 1px solid #fde68a;
+    }
+
+    /* Info Box */
+    .info-box {
+      background: #f7fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 16px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .info-box-warning {
+      background: #fffbeb;
+      border-color: #fde68a;
+    }
+
+    .info-icon {
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    .info-box strong {
+      color: #2d3748;
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .info-box p {
+      color: #4a5568;
+      font-size: 13px;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    /* Disabled state for save button */
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Responsive for payments modal */
+    @media (max-width: 768px) {
+      .gateway-selector {
+        grid-template-columns: 1fr;
+      }
+
+      .toggle-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .toggle-switch {
+        align-self: flex-end;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1177,6 +1492,11 @@
               <h3>Info WhatsApp</h3>
               <p>Ver número y estado de conexión</p>
             </div>
+            <div class="action-card" onclick="openPaymentsConfig()">
+              <div class="action-icon">💳</div>
+              <h3>Configurar Pagos</h3>
+              <p>Activa pagos online y configura tu gateway</p>
+            </div>
           </div>
         </div>
 
@@ -1321,6 +1641,203 @@
       <div class="modal-footer">
         <button class="btn-secondary" onclick="closeTestModal()">Cerrar</button>
         <button class="btn-primary" onclick="markTestCompleted()">Ya probé el bot ✓</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Payments Config -->
+  <div class="modal-overlay" id="payments-modal">
+    <div class="modal modal-large">
+      <div class="modal-header">
+        <h2 class="modal-title">💳 Configuración de Pagos Online</h2>
+        <button class="modal-close" onclick="closePaymentsModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <!-- Toggle Principal -->
+        <div class="payment-toggle-section">
+          <div class="toggle-header">
+            <div>
+              <h3 style="font-size: 16px; font-weight: 600; color: #2d3748; margin-bottom: 4px;">
+                Pagos Online
+              </h3>
+              <p style="font-size: 14px; color: #718096; margin: 0;">
+                Permite que tus clientes paguen con tarjeta directamente desde WhatsApp
+              </p>
+            </div>
+            <div class="toggle-switch" id="payments-toggle" onclick="togglePaymentsEnabled()">
+              <div class="toggle-slider"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Contenedor de configuración (oculto cuando está desactivado) -->
+        <div id="payments-config-content" class="payments-config-content" style="display: none;">
+          
+          <div class="divider"></div>
+
+          <!-- Selector de Gateway -->
+          <div class="form-section">
+            <h3 class="section-subtitle">Selecciona tu Gateway de Pagos</h3>
+            <p class="section-description">
+              Elige el proveedor de pagos con el que ya tienes cuenta
+            </p>
+            
+            <div class="gateway-selector">
+              <div class="gateway-option" data-gateway="wompi" onclick="selectGateway('wompi')">
+                <div class="gateway-logo">🇨🇴</div>
+                <div class="gateway-name">Wompi</div>
+                <div class="gateway-desc">Colombia</div>
+                <div class="gateway-check">✓</div>
+              </div>
+              
+              <div class="gateway-option" data-gateway="bold" onclick="selectGateway('bold')">
+                <div class="gateway-logo">💼</div>
+                <div class="gateway-name">Bold</div>
+                <div class="gateway-desc">Colombia</div>
+                <div class="gateway-check">✓</div>
+              </div>
+              
+              <div class="gateway-option" data-gateway="payu" onclick="selectGateway('payu')">
+                <div class="gateway-logo">🌎</div>
+                <div class="gateway-name">PayU</div>
+                <div class="gateway-desc">Latinoamérica</div>
+                <div class="gateway-check">✓</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Formulario de Credenciales (Wompi) -->
+          <div id="credentials-wompi" class="credentials-form" style="display: none;">
+            <h3 class="section-subtitle">Credenciales de Wompi</h3>
+            <p class="section-description">
+              Ingresa las credenciales de tu cuenta de Wompi
+            </p>
+
+            <div class="credential-field">
+              <label class="form-label" for="wompi-public-key">
+                Public Key (Llave Pública) *
+                <span class="field-help">Empieza con pub_</span>
+              </label>
+              <input 
+                type="text" 
+                id="wompi-public-key" 
+                class="form-input" 
+                placeholder="pub_test_xxxxxxxxxxxxxxxxxx"
+                autocomplete="off"
+              >
+            </div>
+
+            <div class="credential-field">
+              <label class="form-label" for="wompi-private-key">
+                Private Key (Llave Privada) *
+                <span class="field-help">Empieza con prv_</span>
+              </label>
+              <input 
+                type="password" 
+                id="wompi-private-key" 
+                class="form-input" 
+                placeholder="prv_test_xxxxxxxxxxxxxxxxxx"
+                autocomplete="off"
+              >
+              <button type="button" class="toggle-password" onclick="togglePasswordVisibility('wompi-private-key')">
+                👁️ Mostrar
+              </button>
+            </div>
+
+            <div class="credential-field">
+              <label class="form-label" for="wompi-events-secret">
+                Events Secret (Webhook Secret) *
+                <span class="field-help">Empieza con test_events_ o prod_events_</span>
+              </label>
+              <input 
+                type="password" 
+                id="wompi-events-secret" 
+                class="form-input" 
+                placeholder="test_events_xxxxxxxxxxxxxxxxxx"
+                autocomplete="off"
+              >
+              <button type="button" class="toggle-password" onclick="togglePasswordVisibility('wompi-events-secret')">
+                👁️ Mostrar
+              </button>
+            </div>
+
+            <div class="credential-actions">
+              <button class="btn-secondary" onclick="validateCredentials()">
+                🔍 Validar Credenciales
+              </button>
+            </div>
+
+            <div id="validation-result" class="status-indicator" style="display: none;"></div>
+
+            <div class="info-box">
+              <div class="info-icon">ℹ️</div>
+              <div>
+                <strong>¿Cómo obtener estas credenciales?</strong>
+                <p style="margin: 8px 0 0 0; font-size: 14px; line-height: 1.6;">
+                  1. Ingresa a tu cuenta de Wompi<br>
+                  2. Ve a "Configuración" → "Credenciales"<br>
+                  3. Copia las claves y pégalas aquí
+                </p>
+                <a href="#" onclick="openCredentialsGuide(); return false;" style="color: #667eea; font-weight: 500; font-size: 14px;">
+                  📖 Ver guía detallada paso a paso
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Formulario de Credenciales (Bold) -->
+          <div id="credentials-bold" class="credentials-form" style="display: none;">
+            <h3 class="section-subtitle">Credenciales de Bold</h3>
+            <p class="section-description">
+              Ingresa las credenciales de tu cuenta de Bold
+            </p>
+
+            <div class="info-box info-box-warning">
+              <div class="info-icon">⚠️</div>
+              <div>
+                <strong>Próximamente</strong>
+                <p style="margin: 8px 0 0 0; font-size: 14px;">
+                  La integración con Bold estará disponible pronto.
+                  Por ahora, puedes usar Wompi o PayU.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Formulario de Credenciales (PayU) -->
+          <div id="credentials-payu" class="credentials-form" style="display: none;">
+            <h3 class="section-subtitle">Credenciales de PayU</h3>
+            <p class="section-description">
+              Ingresa las credenciales de tu cuenta de PayU
+            </p>
+
+            <div class="info-box info-box-warning">
+              <div class="info-icon">⚠️</div>
+              <div>
+                <strong>Próximamente</strong>
+                <p style="margin: 8px 0 0 0; font-size: 14px;">
+                  La integración con PayU estará disponible pronto.
+                  Por ahora, puedes usar Wompi.
+                </p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closePaymentsModal()">Cancelar</button>
+        <button 
+          class="btn-primary" 
+          id="save-payments-btn" 
+          onclick="savePaymentConfig()"
+          disabled
+        >
+          ✅ Guardar Configuración
+        </button>
       </div>
     </div>
   </div>
@@ -1978,6 +2495,477 @@
     function viewWhatsAppInfo() {
       const phone = tenantData.whatsapp?.phoneNumber || 'No disponible';
       alert(`📱 Tu número de WhatsApp Business:\n\n${phone}\n\nComparte este número con tus clientes para que puedan hacer pedidos.`);
+    }
+
+    // ====================================
+    // PAYMENTS CONFIGURATION FUNCTIONS
+    // ====================================
+
+    let paymentsConfig = {
+      enabled: false,
+      provider: null,
+      credentials: {},
+      validated: false
+    };
+
+    /**
+     * Abre el modal de configuración de pagos
+     */
+    async function openPaymentsConfig() {
+      // Cargar configuración actual desde Firebase
+      await loadPaymentsConfig();
+      
+      // Mostrar modal
+      document.getElementById('payments-modal').classList.add('active');
+      
+      // Actualizar UI según la configuración cargada
+      updatePaymentsUI();
+    }
+
+    /**
+     * Cierra el modal de configuración de pagos
+     */
+    function closePaymentsModal() {
+      document.getElementById('payments-modal').classList.remove('active');
+    }
+
+    /**
+     * Carga la configuración de pagos desde el backend
+     */
+    async function loadPaymentsConfig() {
+      try {
+        console.log('🔄 Cargando configuración de pagos para:', currentTenantId);
+        
+        const apiUrl = window.API_BASE_URL || 'https://api.kdsapp.site';
+        const response = await fetch(`${apiUrl}/api/payments/get-config/${currentTenantId}?includeCredentials=true`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        // Manejar 404 (no hay configuración previa)
+        if (response.status === 404) {
+          console.log('💳 No hay configuración de pagos previa (404)');
+          paymentsConfig = {
+            enabled: false,
+            provider: null,
+            credentials: {},
+            validated: false
+          };
+          return;
+        }
+        
+        const result = await response.json();
+        
+        if (result.success && result.config) {
+          paymentsConfig = {
+            enabled: result.config.enabled || false,
+            provider: result.config.gateway || null,
+            credentials: result.config.credentials || {},
+            validated: true, // Si existe config, asumimos que fue validada
+            validatedAt: result.config.updatedAt || null
+          };
+          
+          console.log('✅ Configuración de pagos cargada:', {
+            enabled: paymentsConfig.enabled,
+            provider: paymentsConfig.provider,
+            hasCredentials: !!paymentsConfig.credentials?.publicKey
+          });
+        } else {
+          // Configuración por defecto (no hay config guardada)
+          paymentsConfig = {
+            enabled: false,
+            provider: null,
+            credentials: {},
+            validated: false
+          };
+          
+          console.log('💳 No hay configuración de pagos previa (sin config)');
+        }
+      } catch (error) {
+        console.error('❌ Error cargando configuración de pagos:', error);
+        
+        // Configuración por defecto en caso de error
+        paymentsConfig = {
+          enabled: false,
+          provider: null,
+          credentials: {},
+          validated: false
+        };
+        
+        console.log('💳 Usando configuración por defecto (error)');
+      }
+    }
+
+    /**
+     * Actualiza la UI del modal según la configuración
+     */
+    function updatePaymentsUI() {
+      const toggle = document.getElementById('payments-toggle');
+      const content = document.getElementById('payments-config-content');
+      const saveBtn = document.getElementById('save-payments-btn');
+      const validationResult = document.getElementById('validation-result');
+      
+      console.log('🎨 Actualizando UI de pagos:', {
+        enabled: paymentsConfig.enabled,
+        provider: paymentsConfig.provider,
+        hasCredentials: !!paymentsConfig.credentials?.publicKey
+      });
+      
+      // Actualizar toggle
+      if (paymentsConfig.enabled) {
+        toggle.classList.add('active');
+        content.style.display = 'block';
+      } else {
+        toggle.classList.remove('active');
+        content.style.display = 'none';
+      }
+      
+      // Seleccionar gateway si hay uno configurado
+      if (paymentsConfig.provider) {
+        selectGateway(paymentsConfig.provider);
+        
+        // Pre-llenar credenciales cuando ya están configuradas
+        if (paymentsConfig.provider === 'wompi' && paymentsConfig.credentials) {
+          if (paymentsConfig.credentials.publicKey) {
+            document.getElementById('wompi-public-key').value = paymentsConfig.credentials.publicKey;
+          }
+          if (paymentsConfig.credentials.privateKey) {
+            document.getElementById('wompi-private-key').value = paymentsConfig.credentials.privateKey;
+          }
+          if (paymentsConfig.credentials.eventsSecret) {
+            document.getElementById('wompi-events-secret').value = paymentsConfig.credentials.eventsSecret;
+          }
+          
+          console.log('✅ Credenciales pre-llenadas');
+          
+          // Mostrar mensaje de configuración existente
+          if (paymentsConfig.enabled && paymentsConfig.validated) {
+            validationResult.textContent = '✅ Configuración activa y funcionando correctamente';
+            validationResult.className = 'status-indicator success';
+            validationResult.style.display = 'flex';
+            
+            // Habilitar botón de guardar para permitir cambios (activar/desactivar)
+            saveBtn.disabled = false;
+            saveBtn.textContent = '💾 Guardar Cambios';
+          } else if (!paymentsConfig.enabled && paymentsConfig.validated) {
+            // Tiene configuración pero está desactivada
+            validationResult.textContent = '💡 Configuración guardada (desactivada). Activa el toggle para habilitar pagos.';
+            validationResult.className = 'status-indicator info';
+            validationResult.style.display = 'flex';
+            
+            // Permitir guardar para reactivar
+            saveBtn.disabled = false;
+            saveBtn.textContent = '✅ Activar Pagos';
+          }
+        }
+      }
+      
+      // Habilitar/deshabilitar botón de guardar según estado
+      if (!paymentsConfig.provider) {
+        // No hay provider, no se puede guardar
+        saveBtn.disabled = true;
+        saveBtn.textContent = '✅ Guardar Configuración';
+      } else if (!paymentsConfig.enabled && !paymentsConfig.validated) {
+        // Provider seleccionado pero no validado y está desactivado
+        saveBtn.disabled = true;
+        saveBtn.textContent = '✅ Guardar Configuración';
+      }
+    }
+
+    /**
+     * Toggle de activación de pagos
+     */
+    function togglePaymentsEnabled() {
+      const newState = !paymentsConfig.enabled;
+      const toggle = document.getElementById('payments-toggle');
+      const content = document.getElementById('payments-config-content');
+      const saveBtn = document.getElementById('save-payments-btn');
+      const validationResult = document.getElementById('validation-result');
+      
+      console.log('🔄 Toggle pagos:', newState ? 'ACTIVADO' : 'DESACTIVADO');
+      
+      // Si está desactivando y ya hay configuración
+      if (!newState && paymentsConfig.provider && paymentsConfig.validated) {
+        const confirmMessage = '¿Deseas desactivar los pagos online?\n\n' +
+          'Los clientes solo podrán pagar en efectivo o transferencia.\n\n' +
+          'La configuración se guardará y podrás reactivarla después.';
+          
+        if (!confirm(confirmMessage)) {
+          console.log('❌ Usuario canceló desactivación');
+          return; // Cancelar cambio
+        }
+      }
+      
+      // Aplicar cambio
+      paymentsConfig.enabled = newState;
+      
+      if (paymentsConfig.enabled) {
+        // ACTIVANDO
+        toggle.classList.add('active');
+        content.style.display = 'block';
+        
+        // Habilitar guardar si ya tiene gateway y credenciales validadas
+        if (paymentsConfig.provider && paymentsConfig.validated) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = '✅ Activar Pagos';
+          
+          validationResult.textContent = '💡 Listo para activar. Click en "Activar Pagos" para confirmar.';
+          validationResult.className = 'status-indicator info';
+          validationResult.style.display = 'flex';
+        } else {
+          // Necesita seleccionar gateway y validar
+          saveBtn.disabled = true;
+          saveBtn.textContent = '✅ Guardar Configuración';
+          
+          if (validationResult.textContent.includes('desactivar')) {
+            validationResult.style.display = 'none';
+          }
+        }
+      } else {
+        // DESACTIVANDO
+        toggle.classList.remove('active');
+        content.style.display = 'none';
+        
+        // Si hay configuración previa, permitir guardar para desactivar
+        if (paymentsConfig.provider && paymentsConfig.validated) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = '💾 Desactivar Pagos';
+          
+          validationResult.textContent = '💡 Al guardar, los pagos online se desactivarán (configuración se conserva)';
+          validationResult.className = 'status-indicator info';
+          validationResult.style.display = 'flex';
+        } else {
+          saveBtn.disabled = true;
+          saveBtn.textContent = '✅ Guardar Configuración';
+          validationResult.style.display = 'none';
+        }
+      }
+    }
+
+    /**
+     * Selecciona un gateway de pago
+     */
+    function selectGateway(gateway) {
+      // Remover selección anterior
+      document.querySelectorAll('.gateway-option').forEach(opt => {
+        opt.classList.remove('selected');
+      });
+      
+      // Ocultar todos los formularios de credenciales
+      document.querySelectorAll('.credentials-form').forEach(form => {
+        form.style.display = 'none';
+      });
+      
+      // Seleccionar nuevo gateway
+      const option = document.querySelector(`.gateway-option[data-gateway="${gateway}"]`);
+      if (option) {
+        option.classList.add('selected');
+        paymentsConfig.provider = gateway;
+        
+        // Mostrar formulario correspondiente
+        const form = document.getElementById(`credentials-${gateway}`);
+        if (form) {
+          form.style.display = 'block';
+        }
+        
+        console.log(`✅ Gateway seleccionado: ${gateway}`);
+      }
+    }
+
+    /**
+     * Alterna visibilidad de contraseña
+     */
+    function togglePasswordVisibility(inputId) {
+      const input = document.getElementById(inputId);
+      const button = input.nextElementSibling;
+      
+      if (input.type === 'password') {
+        input.type = 'text';
+        button.textContent = '🙈 Ocultar';
+      } else {
+        input.type = 'password';
+        button.textContent = '👁️ Mostrar';
+      }
+    }
+
+    /**
+     * Valida las credenciales con el gateway
+     */
+    async function validateCredentials() {
+      const validationResult = document.getElementById('validation-result');
+      const saveBtn = document.getElementById('save-payments-btn');
+      
+      // Limpiar resultado anterior
+      validationResult.style.display = 'none';
+      validationResult.className = 'status-indicator';
+      
+      try {
+        // Obtener credenciales según el provider
+        let credentials = {};
+        
+        if (paymentsConfig.provider === 'wompi') {
+          const publicKey = document.getElementById('wompi-public-key').value.trim();
+          const privateKey = document.getElementById('wompi-private-key').value.trim();
+          const eventsSecret = document.getElementById('wompi-events-secret').value.trim();
+          
+          if (!publicKey || !privateKey || !eventsSecret) {
+            validationResult.textContent = '⚠️ Por favor completa todos los campos';
+            validationResult.className = 'status-indicator warning';
+            validationResult.style.display = 'flex';
+            return;
+          }
+          
+          credentials = { publicKey, privateKey, eventsSecret };
+        } else {
+          validationResult.textContent = '⚠️ Este gateway aún no está disponible';
+          validationResult.className = 'status-indicator warning';
+          validationResult.style.display = 'flex';
+          return;
+        }
+        
+        // Mostrar indicador de carga
+        validationResult.textContent = '🔄 Validando credenciales...';
+        validationResult.className = 'status-indicator info';
+        validationResult.style.display = 'flex';
+        
+        // Llamar al endpoint de validación
+        const apiUrl = window.API_BASE_URL || 'https://api.kdsapp.site';
+        const response = await fetch(`${apiUrl}/api/payments/validate-credentials`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            provider: paymentsConfig.provider,
+            credentials: credentials
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          // Credenciales válidas
+          validationResult.textContent = '✅ Credenciales válidas y funcionando correctamente';
+          validationResult.className = 'status-indicator success';
+          validationResult.style.display = 'flex';
+          
+          // Guardar credenciales en memoria
+          paymentsConfig.credentials = credentials;
+          paymentsConfig.validated = true;
+          paymentsConfig.validatedAt = Date.now();
+          
+          // Habilitar botón de guardar
+          saveBtn.disabled = false;
+          
+          console.log('✅ Credenciales validadas exitosamente');
+        } else {
+          // Credenciales inválidas
+          validationResult.textContent = `❌ Credenciales inválidas: ${result.error || 'Error desconocido'}`;
+          validationResult.className = 'status-indicator error';
+          validationResult.style.display = 'flex';
+          
+          // Deshabilitar botón de guardar
+          saveBtn.disabled = true;
+          
+          console.error('❌ Validación fallida:', result.error);
+        }
+        
+      } catch (error) {
+        console.error('❌ Error validando credenciales:', error);
+        
+        validationResult.textContent = `❌ Error al validar: ${error.message}`;
+        validationResult.className = 'status-indicator error';
+        validationResult.style.display = 'flex';
+        
+        saveBtn.disabled = true;
+      }
+    }
+
+    /**
+     * Guarda la configuración de pagos en Firebase
+     */
+    async function savePaymentConfig() {
+      try {
+        // Validar que todo esté completo
+        if (paymentsConfig.enabled && !paymentsConfig.provider) {
+          alert('Por favor selecciona un gateway de pago');
+          return;
+        }
+        
+        if (paymentsConfig.enabled && !paymentsConfig.validated) {
+          alert('Por favor valida las credenciales antes de guardar');
+          return;
+        }
+        
+        // Mostrar indicador de carga
+        const saveBtn = document.getElementById('save-payments-btn');
+        const originalText = saveBtn.textContent;
+        saveBtn.textContent = '⏳ Guardando...';
+        saveBtn.disabled = true;
+        
+        // Preparar datos para guardar
+        const configToSave = {
+          tenantId: tenantId,
+          enabled: paymentsConfig.enabled,
+          gateway: paymentsConfig.provider,
+          credentials: paymentsConfig.credentials
+        };
+        
+        console.log('📤 Guardando configuración de pagos...', {
+          tenantId: tenantId,
+          enabled: paymentsConfig.enabled,
+          gateway: paymentsConfig.provider
+        });
+        
+        // Guardar usando el nuevo endpoint del backend
+        const apiUrl = window.API_BASE_URL || 'https://api.kdsapp.site';
+        const response = await fetch(`${apiUrl}/api/payments/save-config`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(configToSave)
+        });
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+          throw new Error(result.error || 'Error al guardar la configuración');
+        }
+        
+        console.log('✅ Configuración de pagos guardada:', result.config);
+        
+        // Mensaje de éxito
+        alert('✅ Configuración guardada exitosamente\n\n' +
+              (paymentsConfig.enabled 
+                ? '🎉 Los pagos online están activados!\n\nTus clientes ahora podrán elegir si pagar con tarjeta o en efectivo al recibir su pedido.' 
+                : '💵 Los pagos online están desactivados.\n\nTus clientes solo podrán pagar en efectivo al recibir su pedido.'));
+        
+        // Cerrar modal
+        closePaymentsModal();
+        
+        // Recargar datos del tenant
+        await loadTenantData();
+        
+      } catch (error) {
+        console.error('❌ Error guardando configuración:', error);
+        alert('❌ Error al guardar la configuración:\n\n' + error.message + '\n\nPor favor intenta de nuevo.');
+        
+        // Restaurar botón
+        const saveBtn = document.getElementById('save-payments-btn');
+        saveBtn.textContent = originalText;
+        saveBtn.disabled = false;
+      }
+    }
+
+    /**
+     * Abre la guía de cómo obtener credenciales
+     */
+    function openCredentialsGuide() {
+      // Abrir en nueva pestaña la guía de credenciales
+      window.open('https://docs.wompi.co/docs/es/configuracion', '_blank');
     }
 
     // ====================================

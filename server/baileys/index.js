@@ -222,8 +222,13 @@ class BaileysService {
    */
   async disconnect(tenantId) {
     try {
-      await sessionManager.disconnect(tenantId);
+      logger.info(`[${tenantId}] Iniciando desconexión completa...`);
+      
+      // 🔥 FIX: Usar auth-handler que ahora elimina credenciales
+      await authHandler.disconnect(tenantId);
       antiBanService.cleanup(tenantId);
+      
+      logger.info(`[${tenantId}] Desconexión completa exitosa`);
       return { success: true };
     } catch (error) {
       logger.error(`[${tenantId}] Error desconectando:`, error);

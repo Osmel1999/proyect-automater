@@ -407,7 +407,11 @@ class SessionManager extends EventEmitter {
       if (socket) {
         await socket.end();
         this.sessions.delete(tenantId);
-        logger.info(`[${tenantId}] Sesión desconectada (credenciales preservadas)`);
+        
+        // 🔥 FIX: Limpiar estado de conexión para forzar nuevo QR
+        this.sessionStates.delete(tenantId);
+        
+        logger.info(`[${tenantId}] Sesión desconectada (credenciales preservadas, estado limpiado)`);
       }
     } catch (error) {
       logger.error(`[${tenantId}] Error al desconectar sesión:`, error);

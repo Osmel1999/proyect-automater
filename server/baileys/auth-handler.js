@@ -215,14 +215,23 @@ class AuthHandler {
 
   /**
    * Desconecta temporalmente un tenant (mantiene credenciales)
+   * 🔥 ACTUALIZACIÓN: Ahora elimina credenciales para forzar nuevo QR
    * @param {string} tenantId - ID del tenant
    */
   async disconnect(tenantId) {
     try {
-      logger.info(`[${tenantId}] Desconectando temporalmente...`);
+      logger.info(`[${tenantId}] Desconectando y eliminando credenciales...`);
+      
+      // Desconectar sesión activa
       await sessionManager.disconnectSession(tenantId);
+      
+      // 🔥 FIX: Eliminar credenciales para forzar nuevo QR
+      await storage.deleteSessionData(tenantId);
+      
+      // Limpiar timeout de QR
       this.clearQRTimeout(tenantId);
-      logger.info(`[${tenantId}] Desconexión exitosa`);
+      
+      logger.info(`[${tenantId}] Desconexión completa (sesión y credenciales eliminadas)`);
       return true;
     } catch (error) {
       logger.error(`[${tenantId}] Error al desconectar:`, error);
