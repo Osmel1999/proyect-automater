@@ -125,13 +125,16 @@ class WompiAdapter {
 
       const data = response.data.data;
 
+      // Wompi no retorna el permalink directamente, hay que construirlo
+      // Formato: https://checkout.wompi.co/l/{payment_link_id}
+      const checkoutUrl = `https://checkout.wompi.co/l/${data.id}`;
+
       console.log(`✅ Payment link creado exitosamente`);
       console.log(`   ID: ${data.id}`);
-      console.log(`   URL: ${data.permalink}`);
-      console.log(`   Data completo:`, JSON.stringify(data, null, 2));
+      console.log(`   Checkout URL: ${checkoutUrl}`);
 
       return {
-        paymentUrl: data.permalink,
+        paymentUrl: checkoutUrl,
         transactionId: data.id,
         checkoutId: data.id,
         expiresAt: data.expires_at
