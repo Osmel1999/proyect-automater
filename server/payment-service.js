@@ -234,15 +234,17 @@ class PaymentService {
         event.data
       );
 
-      // 6. Notificar al cliente según el resultado
-      await this._notifyCustomer(transaction, event.status);
-
-      // 7. Actualizar el pedido en Firebase (si es aprobado)
+      // 6. Si el pago fue aprobado, CREAR el pedido en KDS
       if (event.status === 'APPROVED') {
+        console.log(`✅ [processWebhook] Pago aprobado, creando pedido en KDS...`);
+        await this._createOrderInKDS(transaction);
         await this._updateOrderPaymentStatus(transaction.orderId, 'PAID');
       } else if (event.status === 'DECLINED' || event.status === 'ERROR') {
         await this._updateOrderPaymentStatus(transaction.orderId, 'FAILED');
       }
+
+      // 7. Notificar al cliente según el resultado (DESPUÉS de crear el pedido)
+      await this._notifyCustomer(transaction, event.status);
 
       console.log(`✅ Webhook procesado exitosamente: ${event.status}`);
       
@@ -421,6 +423,61 @@ class PaymentService {
   }
 
   /**
+   * Crea el pedido en el sistema KDS del restaurante
+   * @private
+   */
+  async _createOrderInKDS(transaction) {
+    try {
+      console.log(`\n🍽️ [_createOrderInKDS] Creando pedido en KDS...`);
+      console.log(`   Pedido: ${transaction.orderId}`);
+      console.log(`   Restaurante: ${transaction.restaurantId}`);
+      
+      // Obtener datos completos del pedido de Firebase (si existen)
+      const orderSnapshot = await this.db.ref(`orders/${transaction.orderId}`).once('value');
+      const existingOrder = orderSnapshot.val();
+      
+      // Construir objeto del pedido para KDS
+      const kdsOrder = {
+        id: transaction.orderId,
+        restaurantId: transaction.restaurantId,
+        orderNumber: transaction.orderId.split('_')[1] || transaction.orderId.substring(0, 6).toUpperCase(),
+        customerName: transaction.customerName,
+        customerPhone: transaction.customerPhone,
+        total: transaction.amount / 100, // Convertir de centavos a pesos
+        paymentStatus: 'PAID',
+        paymentMethod: transaction.gateway.toUpperCase(),
+        status: 'pending', // Estado inicial en KDS
+        createdAt: Date.now(),
+        paidAt: Date.now(),
+        items: existingOrder?.items || [],
+        deliveryAddress: existingOrder?.deliveryAddress || '',
+        contactPhone: existingOrder?.contactPhone || transaction.customerPhone,
+        notes: existingOrder?.notes || '',
+        metadata: {
+          transactionId: transaction.transactionId,
+          paymentReference: transaction.reference,
+          gateway: transaction.gateway
+        }
+      };
+      
+      // Guardar en la ruta de órdenes del restaurante para KDS
+      await this.db.ref(`restaurants/${transaction.restaurantId}/orders/${transaction.orderId}`).set(kdsOrder);
+      
+      // También actualizar en la ruta global de órdenes
+      await this.db.ref(`orders/${transaction.orderId}`).update({
+        ...kdsOrder,
+        updatedAt: Date.now()
+      });
+      
+      console.log(`✅ [_createOrderInKDS] Pedido creado exitosamente en KDS`);
+      
+    } catch (error) {
+      console.error('❌ [_createOrderInKDS] Error creando pedido en KDS:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Actualiza el estado de pago de un pedido
    * @private
    */
@@ -438,23 +495,98 @@ class PaymentService {
    */
   async _notifyCustomer(transaction, status) {
     try {
-      // TODO: Integrar con el bot de WhatsApp para enviar mensajes
-      // Por ahora solo logueamos
-      const messages = {
-        APPROVED: `✅ ¡Pago aprobado! Tu pedido #${transaction.orderId} ha sido confirmado.`,
-        PENDING: `⏳ Tu pago está siendo procesado. Te notificaremos cuando se confirme.`,
-        DECLINED: `❌ El pago fue rechazado. Por favor, intenta con otro método de pago.`,
-        ERROR: `❌ Hubo un error procesando tu pago. Por favor, contacta al restaurante.`,
-      };
-
-      const message = messages[status] || 'Estado de pago actualizado.';
-      console.log(`📲 Notificación para ${transaction.customerPhone}: ${message}`);
+      console.log(`\n📲 [_notifyCustomer] Enviando notificación para ${transaction.customerPhone}`);
+      console.log(`   Estado: ${status}`);
+      console.log(`   Pedido: ${transaction.orderId}`);
+      console.log(`   Restaurante: ${transaction.restaurantId}`);
       
-      // Aquí se integrará con el sistema de mensajería de WhatsApp
-      // await whatsappService.sendMessage(transaction.customerPhone, message);
+      // Importar el servicio de Baileys
+      const baileys = require('./baileys');
+      
+      // Verificar si el restaurante está conectado a WhatsApp
+      const isConnected = await baileys.isConnected(transaction.restaurantId);
+      
+      if (!isConnected) {
+        console.warn(`⚠️ [_notifyCustomer] Restaurante ${transaction.restaurantId} no está conectado a WhatsApp`);
+        return;
+      }
+      
+      // Construir mensaje según el estado
+      let message = '';
+      
+      if (status === 'APPROVED') {
+        // Obtener detalles del pedido de Firebase
+        const orderSnapshot = await this.db.ref(`orders/${transaction.orderId}`).once('value');
+        const order = orderSnapshot.val();
+        
+        const totalCOP = (transaction.amount / 100).toLocaleString('es-CO');
+        
+        message = `🎉 *¡Pago confirmado exitosamente!*\n\n`;
+        message += `✅ Tu pago de *$${totalCOP}* ha sido procesado correctamente.\n\n`;
+        message += `📋 *Detalles de tu pedido:*\n`;
+        message += `━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+        message += `🔢 Número de pedido: *#${transaction.orderId}*\n`;
+        message += `💰 Total pagado: *$${totalCOP}*\n`;
+        message += `🕒 Tiempo estimado: *30-40 minutos*\n`;
+        
+        if (order && order.deliveryAddress) {
+          message += `📍 Dirección de entrega: ${order.deliveryAddress}\n`;
+        }
+        
+        if (order && order.contactPhone) {
+          message += `📱 Teléfono de contacto: ${order.contactPhone}\n`;
+        }
+        
+        message += `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+        message += `👨‍🍳 *Tu pedido está siendo preparado*\n\n`;
+        message += `Te avisaremos cuando esté listo para entrega. 🛵\n\n`;
+        message += `_¡Gracias por tu compra!_ 🙏`;
+        
+      } else if (status === 'PENDING') {
+        message = `⏳ *Pago en proceso*\n\n`;
+        message += `Tu pago está siendo procesado por el banco.\n\n`;
+        message += `Pedido: *#${transaction.orderId}*\n\n`;
+        message += `Te notificaremos cuando se confirme. ⏱️`;
+        
+      } else if (status === 'DECLINED') {
+        message = `❌ *Pago rechazado*\n\n`;
+        message += `Tu pago fue rechazado por el banco.\n\n`;
+        message += `Pedido: *#${transaction.orderId}*\n`;
+        message += `Monto: *$${(transaction.amount / 100).toLocaleString('es-CO')}*\n\n`;
+        message += `Por favor, intenta nuevamente con otro método de pago o contacta a tu banco.\n\n`;
+        message += `¿Necesitas ayuda? Escríbenos "ayuda" 💬`;
+        
+      } else if (status === 'ERROR') {
+        message = `🔴 *Error en el pago*\n\n`;
+        message += `Hubo un error procesando tu pago.\n\n`;
+        message += `Pedido: *#${transaction.orderId}*\n\n`;
+        message += `Por favor, intenta nuevamente o contacta a nuestro soporte.\n\n`;
+        message += `Escribe "ayuda" para asistencia inmediata. 🆘`;
+      }
+      
+      if (!message) {
+        console.warn(`⚠️ [_notifyCustomer] Estado desconocido: ${status}`);
+        return;
+      }
+      
+      console.log(`� [_notifyCustomer] Enviando mensaje por WhatsApp...`);
+      
+      // Enviar mensaje usando Baileys
+      const result = await baileys.sendMessage(
+        transaction.restaurantId,
+        transaction.customerPhone,
+        { text: message },
+        { humanize: true }
+      );
+      
+      if (result.success) {
+        console.log(`✅ [_notifyCustomer] Mensaje enviado exitosamente`);
+      } else {
+        console.error(`❌ [_notifyCustomer] Error enviando mensaje:`, result.error);
+      }
       
     } catch (error) {
-      console.error('Error enviando notificación:', error);
+      console.error('❌ [_notifyCustomer] Error enviando notificación:', error);
     }
   }
 }
