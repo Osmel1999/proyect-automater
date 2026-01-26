@@ -121,11 +121,14 @@ class WompiAdapter {
         }
       );
 
+      console.log(`📊 [WompiAdapter] Respuesta completa de Wompi:`, JSON.stringify(response.data, null, 2));
+
       const data = response.data.data;
 
       console.log(`✅ Payment link creado exitosamente`);
       console.log(`   ID: ${data.id}`);
       console.log(`   URL: ${data.permalink}`);
+      console.log(`   Data completo:`, JSON.stringify(data, null, 2));
 
       return {
         paymentUrl: data.permalink,
