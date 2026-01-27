@@ -324,7 +324,7 @@ class WompiAdapter {
         data: {
           wompiTransactionId: transaction.id, // Guardar explícitamente para claridad
           wompiReference: transaction.reference,
-          paymentLinkId: transaction.reference?.split('_')[1] || null // Extraer el payment link ID si es posible
+          paymentLinkId: transaction.payment_link_id || null // Wompi nos da el payment_link_id directamente
         }
       };
 
