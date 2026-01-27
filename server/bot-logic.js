@@ -617,7 +617,7 @@ async function confirmarPedido(sesion) {
         restaurantId: sesion.tenantId,
         orderId: orderId,
         amount: total * 100, // Convertir a centavos
-        customerPhone: sesion.telefonoContacto || sesion.telefono,
+        customerPhone: sesion.telefono, // 🔥 Número de WhatsApp del chat (para notificaciones)
         customerName: `Cliente ${sesion.telefono}`,
         customerEmail: `${sesion.telefono}@kdsapp.site`,
         orderDetails: {
@@ -627,7 +627,7 @@ async function confirmarPedido(sesion) {
             price: i.precio,
           })),
           deliveryAddress: sesion.direccion,
-          contactPhone: sesion.telefonoContacto,
+          contactPhone: sesion.telefonoContacto, // Teléfono de contacto para entrega
           orderNumber: numeroHex,
         },
       });

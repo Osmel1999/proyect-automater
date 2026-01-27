@@ -142,7 +142,8 @@ class PaymentService {
         gateway: gatewayConfig.gateway,
         reference: paymentData.reference, // Nuestra referencia interna
         amount,
-        customerPhone,
+        customerPhone, // Número de contacto del cliente (para Wompi)
+        whatsappPhone: customerPhone, // 🔥 Número de WhatsApp del chat (para notificaciones)
         customerName,
         status: 'PENDING',
         paymentLink: result.paymentLink,
@@ -648,6 +649,10 @@ class PaymentService {
         return;
       }
       
+      // 🔥 Usar el número de WhatsApp original del chat (no el teléfono de contacto)
+      const whatsappNumber = transaction.whatsappPhone || transaction.customerPhone;
+      console.log(`📱 [_notifyCustomer] Enviando al número de WhatsApp: ${whatsappNumber}`);
+      
       // Obtener información del tenant para nombre del restaurante
       const tenantService = require('./tenant-service');
       const tenant = await tenantService.getTenantById(transaction.restaurantId);
@@ -728,12 +733,12 @@ class PaymentService {
         return;
       }
       
-      console.log(`� [_notifyCustomer] Enviando mensaje por WhatsApp...`);
+      console.log(`📱 [_notifyCustomer] Enviando mensaje por WhatsApp...`);
       
-      // Enviar mensaje usando Baileys
+      // Enviar mensaje usando Baileys al número de WhatsApp del chat
       const result = await baileys.sendMessage(
         transaction.restaurantId,
-        transaction.customerPhone,
+        whatsappNumber, // 🔥 Usar el número de WhatsApp del chat
         { text: message },
         { humanize: true }
       );
