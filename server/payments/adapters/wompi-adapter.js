@@ -103,6 +103,9 @@ class WompiAdapter {
       console.log(`🔗 Redirect URL: ${redirectUrlWithParams}`);
 
       // Construir el payload para Wompi
+      // NOTA: Wompi NO permite establecer un 'reference' personalizado en Payment Links
+      // El 'reference' es autogenerado por Wompi para cada transacción
+      // Para tracking interno, usamos el 'payment_link_id' que Wompi retorna
       const payload = {
         name: description || `Pedido ${reference}`,
         description: description || `Pago de pedido ${reference}`,
@@ -111,7 +114,8 @@ class WompiAdapter {
         amount_in_cents: finalAmountInCents,
         currency: currency,
         redirect_url: redirectUrlWithParams,
-        reference: reference, // 🔥 AGREGAR REFERENCE PERSONALIZADO
+        // ❌ NO incluir 'reference' - Wompi lo ignora en Payment Links
+        // ✅ Wompi autogenera un reference único por cada transacción
         customer_data: {
           email: email,
           phone_number: phone,
@@ -288,6 +292,21 @@ class WompiAdapter {
         throw new Error('Webhook inválido: no contiene datos de transacción');
       }
 
+      // 🔍 DEBUG: Loguear TODA la estructura del transaction object
+      console.log('🔍 [DEBUG] Webhook completo recibido de Wompi:');
+      console.log('   Event Type:', payload.event);
+      console.log('   Transaction ID:', transaction.id);
+      console.log('   Payment Link ID:', transaction.payment_link_id);
+      console.log('   Reference (autogenerado):', transaction.reference);
+      console.log('   Status:', transaction.status);
+      console.log('   Amount:', transaction.amount_in_cents, 'centavos');
+      console.log('   Payment Method:', transaction.payment_method_type);
+      console.log('   Customer Email:', transaction.customer_email);
+      console.log('\n🔍 [DEBUG] Transaction object completo:');
+      console.log(JSON.stringify(transaction, null, 2));
+      console.log('\n🔍 [DEBUG] Campos disponibles en transaction:', Object.keys(transaction));
+      console.log('🔍 [DEBUG] payload.data completo:', JSON.stringify(payload.data, null, 2));
+
       // Normalizar el status de Wompi a nuestro formato estándar
       const statusMap = {
         'APPROVED': 'APPROVED',
@@ -311,20 +330,32 @@ class WompiAdapter {
         paymentMethod = 'Bancolombia QR';
       }
 
+      // 🔥 EXTRAER payment_link_id según documentación oficial de Wompi
+      // Docs: https://docs.wompi.co/docs/colombia/eventos/
+      // El campo 'payment_link_id' está presente en transaction cuando el pago
+      // proviene de un Payment Link, y es 'null' cuando es una transacción directa
+      const paymentLinkId = transaction.payment_link_id 
+        || transaction.payment_link 
+        || payload.data.payment_link_id 
+        || null;
+
+      console.log('🔥 [DEBUG] Payment Link ID extraído:', paymentLinkId);
+      console.log('🔥 [DEBUG] Este ID debe coincidir con el payment_link_id guardado en Firebase al crear el link');
+
       return {
         type: eventType,
         status: normalizedStatus,
-        transactionId: transaction.id, // Este es el ID único de Wompi que usaremos para buscar
-        reference: transaction.reference, // Este es el reference autogenerado por Wompi
+        transactionId: transaction.id, // ID único de esta transacción en Wompi
+        reference: transaction.reference, // Reference autogenerado por Wompi (NO personalizable en Payment Links)
         amount: transaction.amount_in_cents / 100,
         currency: transaction.currency,
         paymentMethod: paymentMethod,
         message: transaction.status_message || '',
         timestamp: new Date(payload.sent_at).getTime(),
         data: {
-          wompiTransactionId: transaction.id, // Guardar explícitamente para claridad
-          wompiReference: transaction.reference,
-          paymentLinkId: transaction.payment_link_id || null // Wompi nos da el payment_link_id directamente
+          wompiTransactionId: transaction.id, // ID único de Wompi para esta transacción
+          wompiReference: transaction.reference, // Reference autogenerado (diferente en cada pago)
+          paymentLinkId: paymentLinkId // ID del Payment Link (el mismo para todos los pagos del mismo link)
         }
       };
 

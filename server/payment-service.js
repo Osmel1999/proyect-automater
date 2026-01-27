@@ -223,9 +223,15 @@ class PaymentService {
       console.log(`📊 Payment Link ID extraído: ${event.data?.paymentLinkId}`);
 
       // 4. Buscar la transacción en Firebase
-      // IMPORTANTE: Wompi envía transaction.id en el webhook, que es diferente del payment link ID
-      // Primero intentamos buscar por el payment link ID que guardamos al crear el link
-      // Si no se encuentra, intentamos buscar por el wompiTransactionId que guardamos en webhooks anteriores
+      // IMPORTANTE según documentación oficial de Wompi:
+      // - payment_link_id: Es el ID del LINK de pago (ej: "3Z0Cfi") - el mismo para todos los pagos
+      // - transaction.id: Es el ID único de cada TRANSACCIÓN (ej: "1234-1610641025-49201")
+      // - reference: Es autogenerado por Wompi para cada transacción (NO personalizable en Payment Links)
+      // 
+      // Estrategia de búsqueda:
+      // 1. Buscar por payment_link_id (lo que guardamos al crear el link)
+      // 2. Si no existe, buscar por wompiTransactionId (si ya se guardó en un webhook previo)
+      // 3. NO buscar por reference porque es autogenerado y diferente en cada pago
       
       let transaction = null;
       
@@ -242,9 +248,10 @@ class PaymentService {
         transaction = await this._getTransactionByWompiTransactionId(event.transactionId);
       }
       
-      // Intento 3: Buscar por reference de Wompi (por si acaso)
+      // Intento 3: Buscar por reference de Wompi (SOLO como último recurso, generalmente no funcionará)
       if (!transaction && event.reference) {
-        console.log(`🔍 Buscando transacción por reference de Wompi: ${event.reference}`);
+        console.log(`⚠️  Buscando por reference como último recurso: ${event.reference}`);
+        console.log(`⚠️  NOTA: El reference es autogenerado por Wompi y es diferente en cada pago`);
         transaction = await this._getTransactionByReference(event.reference);
       }
       

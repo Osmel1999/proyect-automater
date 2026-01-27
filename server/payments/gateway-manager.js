@@ -140,14 +140,17 @@ class GatewayManager {
         currency: event.currency || 'COP',
         paymentMethod: event.paymentMethod,
         message: event.message || '',
-        timestamp: event.timestamp || Date.now()
+        timestamp: event.timestamp || Date.now(),
+        data: event.data || {} // 🔥 INCLUIR el campo data que contiene paymentLinkId
       };
       
       console.log(`📥 Evento de webhook procesado:`, {
         gateway: normalizedEvent.gateway,
         type: normalizedEvent.type,
         status: normalizedEvent.status,
-        reference: normalizedEvent.reference
+        reference: normalizedEvent.reference,
+        hasData: !!normalizedEvent.data,
+        paymentLinkId: normalizedEvent.data?.paymentLinkId
       });
       
       return normalizedEvent;
