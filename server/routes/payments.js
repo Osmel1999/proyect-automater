@@ -43,7 +43,19 @@ router.post('/webhook/:gateway/:restaurantId', async (req, res) => {
     console.log(`${'='.repeat(60)}\n`);
 
     // Log del payload (útil para debugging)
-    console.log('📦 Payload:', JSON.stringify(payload, null, 2));
+    console.log('📦 Payload completo:', JSON.stringify(payload, null, 2));
+    console.log('📦 Headers:', JSON.stringify(headers, null, 2));
+    
+    // 🔍 LOG ESPECÍFICO PARA DEBUG DE PAYMENT_LINK_ID
+    if (payload.data?.transaction) {
+      console.log('\n🔍 [DEBUG CRÍTICO] Datos de la transacción en el webhook:');
+      console.log('   - transaction.id:', payload.data.transaction.id);
+      console.log('   - transaction.reference:', payload.data.transaction.reference);
+      console.log('   - transaction.payment_link_id:', payload.data.transaction.payment_link_id);
+      console.log('   - transaction.payment_link:', payload.data.transaction.payment_link);
+      console.log('   - Campos disponibles en transaction:', Object.keys(payload.data.transaction));
+      console.log('');
+    }
 
     // Procesar el webhook usando el PaymentService
     const result = await paymentService.processWebhook(

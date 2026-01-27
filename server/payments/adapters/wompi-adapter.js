@@ -334,12 +334,31 @@ class WompiAdapter {
       // Docs: https://docs.wompi.co/docs/colombia/eventos/
       // El campo 'payment_link_id' está presente en transaction cuando el pago
       // proviene de un Payment Link, y es 'null' cuando es una transacción directa
-      const paymentLinkId = transaction.payment_link_id 
+      let paymentLinkId = transaction.payment_link_id 
         || transaction.payment_link 
         || payload.data.payment_link_id 
         || null;
 
-      console.log('🔥 [DEBUG] Payment Link ID extraído:', paymentLinkId);
+      // 🔧 FALLBACK: Si payment_link_id no viene en el webhook, extraerlo del reference
+      // Formato del reference de Wompi: {paymentLinkId}_{timestamp}_{random}
+      // Ejemplo: test_PGXmmR_1769539666_OvjSG3wq2
+      if (!paymentLinkId && transaction.reference) {
+        // El paymentLinkId es todo lo que está ANTES del primer underscore + timestamp
+        // Para IDs como "test_PGXmmR", debemos tomar las primeras dos partes
+        const parts = transaction.reference.split('_');
+        
+        // Si el ID empieza con "test_" o "prod_", tomar las dos primeras partes
+        if (parts[0] === 'test' || parts[0] === 'prod') {
+          paymentLinkId = `${parts[0]}_${parts[1]}`;
+          console.log('� [FALLBACK] Payment Link ID extraído del reference:', paymentLinkId);
+        } else {
+          // Si no tiene prefijo, solo tomar la primera parte
+          paymentLinkId = parts[0];
+          console.log('🔧 [FALLBACK] Payment Link ID extraído del reference:', paymentLinkId);
+        }
+      }
+
+      console.log('🔥 [DEBUG] Payment Link ID final:', paymentLinkId);
       console.log('🔥 [DEBUG] Este ID debe coincidir con el payment_link_id guardado en Firebase al crear el link');
 
       return {

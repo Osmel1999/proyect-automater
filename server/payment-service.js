@@ -218,6 +218,8 @@ class PaymentService {
         payload
       );
 
+      console.log(`🔍 [DEBUG CRÍTICO] Evento parseado:`, JSON.stringify(event, null, 2));
+
       console.log(`📊 Evento parseado: ${event.status} - ${event.transactionId}`);
       console.log(`📊 Reference del evento: ${event.reference}`);
       console.log(`📊 Payment Link ID extraído: ${event.data?.paymentLinkId}`);
@@ -236,10 +238,32 @@ class PaymentService {
       let transaction = null;
       
       // Intento 1: Buscar por payment link ID (lo que guardamos como transactionId al crear el link)
+      // ⚠️ IMPORTANTE: event.data.paymentLinkId viene del wompi-adapter parseWebhookEvent()
       const paymentLinkId = event.data?.paymentLinkId;
+      
+      console.log(`🔍 [DEBUG] event.data completo:`, JSON.stringify(event.data, null, 2));
+      console.log(`🔍 [DEBUG] paymentLinkId extraído:`, paymentLinkId);
+      
       if (paymentLinkId) {
         console.log(`🔍 Buscando transacción por payment link ID: ${paymentLinkId}`);
         transaction = await this._getTransactionByPaymentLinkId(paymentLinkId);
+        
+        if (transaction) {
+          console.log(`✅ Transacción encontrada por paymentLinkId`);
+        } else {
+          console.log(`⚠️  No se encontró transacción con paymentLinkId: ${paymentLinkId}`);
+          
+          // ⚠️ Intento alternativo: Buscar directamente por la clave de Firebase
+          // (para transacciones creadas antes del fix que no tienen paymentLinkId)
+          console.log(`🔍 Intentando buscar directamente en Firebase: /transactions/${paymentLinkId}`);
+          transaction = await this._getTransaction(paymentLinkId);
+          
+          if (transaction) {
+            console.log(`✅ Transacción encontrada directamente por clave de Firebase`);
+          }
+        }
+      } else {
+        console.log(`⚠️  event.data.paymentLinkId es null o undefined`);
       }
       
       // Intento 2: Buscar por wompiTransactionId (si ya lo guardamos en un webhook anterior)
@@ -510,6 +534,33 @@ class PaymentService {
   }
 
   /**
+   * Obtiene una transacción por su Transaction ID interno
+   * @private
+   */
+  async _getTransactionByTransactionId(transactionId) {
+    try {
+      console.log(`   🔍 Buscando transacción con transactionId: ${transactionId}`);
+      const snapshot = await this.db.ref('transactions')
+        .orderByChild('transactionId')
+        .equalTo(transactionId)
+        .once('value');
+      
+      const data = snapshot.val();
+      if (!data) {
+        console.log(`   ⚠️  No se encontró transacción con transactionId: ${transactionId}`);
+        return null;
+      }
+      
+      const txId = Object.keys(data)[0];
+      console.log(`   ✅ Transacción encontrada por transactionId: ${txId}`);
+      return { id: txId, ...data[txId] };
+    } catch (error) {
+      console.error('❌ Error obteniendo transacción por transactionId:', error);
+      return null;
+    }
+  }
+
+  /**
    * Actualiza el estado de una transacción
    * @private
    */
@@ -545,33 +596,17 @@ class PaymentService {
         orderNumber: transaction.orderId.split('_')[1] || transaction.orderId.substring(0, 6).toUpperCase(),
         customerName: transaction.customerName,
         customerPhone: transaction.customerPhone,
-        total: transaction.amount / 100, // Convertir de centavos a pesos
+        status: 'pending',
         paymentStatus: 'PAID',
-        paymentMethod: transaction.gateway.toUpperCase(),
-        status: 'pending', // Estado inicial en KDS
         createdAt: Date.now(),
-        paidAt: Date.now(),
         items: existingOrder?.items || [],
-        deliveryAddress: existingOrder?.deliveryAddress || '',
-        contactPhone: existingOrder?.contactPhone || transaction.customerPhone,
-        notes: existingOrder?.notes || '',
-        metadata: {
-          transactionId: transaction.transactionId,
-          paymentReference: transaction.reference,
-          gateway: transaction.gateway
-        }
+        total: transaction.amount,
       };
       
-      // Guardar en la ruta de órdenes del restaurante para KDS
-      await this.db.ref(`restaurants/${transaction.restaurantId}/orders/${transaction.orderId}`).set(kdsOrder);
+      // Guardar en la colección de KDS del restaurante
+      await this.db.ref(`kds/${transaction.restaurantId}/orders/${transaction.orderId}`).set(kdsOrder);
       
-      // También actualizar en la ruta global de órdenes
-      await this.db.ref(`orders/${transaction.orderId}`).update({
-        ...kdsOrder,
-        updatedAt: Date.now()
-      });
-      
-      console.log(`✅ [_createOrderInKDS] Pedido creado exitosamente en KDS`);
+      console.log(`✅ [_createOrderInKDS] Pedido creado en KDS exitosamente`);
       
     } catch (error) {
       console.error('❌ [_createOrderInKDS] Error creando pedido en KDS:', error);
@@ -613,57 +648,79 @@ class PaymentService {
         return;
       }
       
+      // Obtener información del tenant para nombre del restaurante
+      const tenantService = require('./tenant-service');
+      const tenant = await tenantService.getTenantById(transaction.restaurantId);
+      const restaurantName = tenant?.restaurant?.name || 'Restaurante';
+      
+      // Obtener detalles del pedido de Firebase
+      const orderSnapshot = await this.db.ref(`orders/${transaction.orderId}`).once('value');
+      const order = orderSnapshot.val();
+      
+      // Extraer número de pedido corto (hex)
+      const orderParts = transaction.orderId.split('_');
+      const orderNumber = orderParts.length >= 2 ? orderParts[1] : transaction.orderId.slice(-6);
+      
       // Construir mensaje según el estado
       let message = '';
       
       if (status === 'APPROVED') {
-        // Obtener detalles del pedido de Firebase
-        const orderSnapshot = await this.db.ref(`orders/${transaction.orderId}`).once('value');
-        const order = orderSnapshot.val();
-        
+        // 🎉 PAGO APROBADO - Confirmar pedido completo
         const totalCOP = (transaction.amount / 100).toLocaleString('es-CO');
+        const telefonoContacto = order?.telefonoContacto || transaction.customerPhone;
+        const direccion = order?.direccion || 'No especificada';
         
-        message = `🎉 *¡Pago confirmado exitosamente!*\n\n`;
-        message += `✅ Tu pago de *$${totalCOP}* ha sido procesado correctamente.\n\n`;
-        message += `📋 *Detalles de tu pedido:*\n`;
-        message += `━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-        message += `🔢 Número de pedido: *#${transaction.orderId}*\n`;
+        // Formatear teléfono
+        const telefonoFormateado = telefonoContacto.replace(/(\d{3})(\d{3})(\d{4})/, '$1 $2 $3');
+        
+        message = `🎉 *¡Tu pedido está confirmado!*\n\n`;
+        message += `✅ *Pago recibido exitosamente*\n\n`;
+        message += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+        message += `� *Detalles de tu pedido:*\n\n`;
+        message += `� Número de pedido: *#${orderNumber}*\n`;
+        message += `� Dirección: ${direccion}\n`;
+        message += `� Teléfono de contacto: ${telefonoFormateado}\n`;
         message += `💰 Total pagado: *$${totalCOP}*\n`;
-        message += `🕒 Tiempo estimado: *30-40 minutos*\n`;
-        
-        if (order && order.deliveryAddress) {
-          message += `📍 Dirección de entrega: ${order.deliveryAddress}\n`;
-        }
-        
-        if (order && order.contactPhone) {
-          message += `📱 Teléfono de contacto: ${order.contactPhone}\n`;
-        }
-        
-        message += `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-        message += `👨‍🍳 *Tu pedido está siendo preparado*\n\n`;
-        message += `Te avisaremos cuando esté listo para entrega. 🛵\n\n`;
-        message += `_¡Gracias por tu compra!_ 🙏`;
+        message += `� Método de pago: Tarjeta (Pagado)\n\n`;
+        message += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+        message += `👨‍🍳 Ya lo enviamos a la cocina de *${restaurantName}*. 🛵\n\n`;
+        message += `🕒 Tiempo estimado: *30-40 minutos*\n\n`;
+        message += `_Te avisaremos cuando esté listo para entrega_ ✅\n\n`;
+        message += `¡Gracias por tu compra! 🙏`;
         
       } else if (status === 'PENDING') {
         message = `⏳ *Pago en proceso*\n\n`;
         message += `Tu pago está siendo procesado por el banco.\n\n`;
-        message += `Pedido: *#${transaction.orderId}*\n\n`;
+        message += `Pedido: *#${orderNumber}*\n\n`;
         message += `Te notificaremos cuando se confirme. ⏱️`;
         
       } else if (status === 'DECLINED') {
-        message = `❌ *Pago rechazado*\n\n`;
-        message += `Tu pago fue rechazado por el banco.\n\n`;
-        message += `Pedido: *#${transaction.orderId}*\n`;
-        message += `Monto: *$${(transaction.amount / 100).toLocaleString('es-CO')}*\n\n`;
-        message += `Por favor, intenta nuevamente con otro método de pago o contacta a tu banco.\n\n`;
-        message += `¿Necesitas ayuda? Escríbenos "ayuda" 💬`;
+        // ❌ PAGO RECHAZADO
+        message = `❌ *No se pudo completar el pago*\n\n`;
+        message += `Tu pago fue rechazado por el banco o cancelado.\n\n`;
+        message += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+        message += `📋 Pedido: *#${orderNumber}*\n`;
+        message += `💰 Monto: *$${(transaction.amount / 100).toLocaleString('es-CO')}*\n\n`;
+        message += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+        message += `🔄 *¿Quieres intentar nuevamente?*\n\n`;
+        message += `Puedes volver a hacer tu pedido escribiendo:\n`;
+        message += `📝 *menu* - Para ver el menú\n`;
+        message += `🛒 *carrito* - Para ver tu carrito\n\n`;
+        message += `💬 Si necesitas ayuda, escribe *ayuda*`;
         
       } else if (status === 'ERROR') {
-        message = `🔴 *Error en el pago*\n\n`;
-        message += `Hubo un error procesando tu pago.\n\n`;
-        message += `Pedido: *#${transaction.orderId}*\n\n`;
-        message += `Por favor, intenta nuevamente o contacta a nuestro soporte.\n\n`;
-        message += `Escribe "ayuda" para asistencia inmediata. 🆘`;
+        // 🔴 ERROR EN EL PAGO
+        message = `🔴 *Error procesando el pago*\n\n`;
+        message += `Hubo un problema técnico al procesar tu pago.\n\n`;
+        message += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+        message += `📋 Pedido: *#${orderNumber}*\n`;
+        message += `💰 Monto: *$${(transaction.amount / 100).toLocaleString('es-CO')}*\n\n`;
+        message += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+        message += `Por favor, intenta nuevamente en unos minutos.\n\n`;
+        message += `Si el problema persiste:\n`;
+        message += `📝 *menu* - Para hacer un nuevo pedido\n`;
+        message += `💬 *ayuda* - Para asistencia inmediata\n\n`;
+        message += `¡Estamos aquí para ayudarte! 🆘`;
       }
       
       if (!message) {

@@ -1,0 +1,11 @@
+# Nixpacks configuration
+# This tells Railway to use the Dockerfile instead of auto-detection
+
+[phases.setup]
+nixPkgs = []
+
+[phases.build]
+cmds = ["echo 'Using Dockerfile for build'"]
+
+[start]
+cmd = "node server/index.js"

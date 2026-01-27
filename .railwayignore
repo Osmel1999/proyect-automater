@@ -1,0 +1,4 @@
+# Railway ignore file - Force use of Dockerfile
+
+# This file exists to prevent Railway from using Nixpacks
+# and force it to use our Dockerfile instead
