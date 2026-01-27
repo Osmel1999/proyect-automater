@@ -218,20 +218,33 @@ class PaymentService {
       );
 
       console.log(`📊 Evento parseado: ${event.status} - ${event.transactionId}`);
+      console.log(`📊 Reference del evento: ${event.reference}`);
 
-      // 4. Buscar la transacción en Firebase
-      const transaction = await this._getTransactionByReference(event.transactionId);
+      // 4. Buscar la transacción en Firebase por la REFERENCIA (no por transaction ID de Wompi)
+      const transaction = await this._getTransactionByReference(event.reference);
       
       if (!transaction) {
-        console.warn(`⚠️ Transacción ${event.transactionId} no encontrada en Firebase`);
+        console.warn(`⚠️ Transacción con referencia ${event.reference} no encontrada en Firebase`);
+        console.warn(`   Transaction ID de Wompi: ${event.transactionId}`);
         return { success: true, status: 'TRANSACTION_NOT_FOUND' };
       }
 
-      // 5. Actualizar el estado de la transacción
+      console.log(`✅ Transacción encontrada en Firebase:`, {
+        id: transaction.id,
+        reference: transaction.reference,
+        orderId: transaction.orderId
+      });
+
+      // 5. Actualizar el estado de la transacción (incluye el transactionId de Wompi)
       await this._updateTransactionStatus(
         transaction.id,
         event.status,
-        event.data
+        {
+          wompiTransactionId: event.transactionId, // Guardar el ID de Wompi
+          paymentMethod: event.paymentMethod,
+          message: event.message,
+          ...event.data
+        }
       );
 
       // 6. Si el pago fue aprobado, CREAR el pedido en KDS
