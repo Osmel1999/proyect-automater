@@ -659,6 +659,7 @@ eventHandlers.onMessage('*', async (message) => {
     const tenantId = message.tenantId || 'default';
     const from = message.from;
     const text = message.text || '';
+    const messageKey = message.raw?.key; // Extraer messageKey del mensaje original
 
     console.log(`🤖 Bot procesando mensaje de ${from} en tenant ${tenantId}`);
     console.log(`🔍 [DEBUG] Llamando a botLogic.processMessage`);
@@ -668,6 +669,11 @@ eventHandlers.onMessage('*', async (message) => {
     const response = await botLogic.processMessage(tenantId, from, text);
 
     console.log(`🔍 [DEBUG] Respuesta de botLogic.processMessage:`, response);
+    console.log(`🔍 [DEBUG] Tipo de respuesta:`, typeof response);
+    console.log(`🔍 [DEBUG] response truthy?:`, !!response);
+    console.log(`🔍 [DEBUG] response === null?:`, response === null);
+    console.log(`🔍 [DEBUG] response === undefined?:`, response === undefined);
+    console.log(`🔍 [DEBUG] response length:`, response?.length);
 
     // Si hay respuesta, enviarla
     if (response) {
@@ -678,7 +684,16 @@ eventHandlers.onMessage('*', async (message) => {
       
       console.log(`🔍 [DEBUG] Mensaje a enviar:`, messageToSend);
       
-      const result = await baileys.sendMessage(tenantId, from, messageToSend);
+      // Enviar con humanización y messageKey para marcar como leído
+      const result = await baileys.sendMessage(
+        tenantId, 
+        from, 
+        messageToSend, 
+        { 
+          humanize: true,
+          messageKey: messageKey // Pasar messageKey para marcar como leído
+        }
+      );
       
       console.log(`🔍 [DEBUG] Resultado de sendMessage:`, result);
       

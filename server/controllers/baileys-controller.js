@@ -278,19 +278,18 @@ class BaileysController {
 
       // Enviar mensaje
       const message = {
-        to,
         text,
         type,
         mediaUrl,
         caption
       };
 
-      const result = await baileys.sendMessage(tenantId, message);
+      const result = await baileys.sendMessage(tenantId, to, message, { humanize: true });
 
       res.json({ 
         success: true,
-        messageId: result.key?.id,
-        timestamp: result.messageTimestamp
+        messageId: result.messageId,
+        timestamp: result.timestamp
       });
 
     } catch (error) {

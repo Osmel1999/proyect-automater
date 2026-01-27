@@ -165,48 +165,103 @@ class WompiAdapter {
 
   /**
    * Valida la firma de un webhook de Wompi
+   * Según documentación oficial: https://docs.wompi.co/docs/colombia/eventos/
    * @param {Object} payload - Cuerpo del webhook
    * @param {Object} headers - Headers del webhook
    * @returns {Promise<boolean>} True si la firma es válida
    */
   async validateWebhook(payload, headers) {
     try {
-      // Obtener la firma del header
-      const signature = headers['x-signature'] || headers['X-Signature'];
-      const timestamp = headers['x-timestamp'] || headers['X-Timestamp'];
+      console.log('🔐 [WompiAdapter] Validando firma del webhook...');
+      
+      // Obtener la firma del header O del body
+      const headerChecksum = headers['x-event-checksum'] || headers['X-Event-Checksum'];
+      const bodyChecksum = payload.signature?.checksum;
+      const checksum = headerChecksum || bodyChecksum;
 
-      if (!signature) {
-        console.error('❌ Webhook sin firma (header x-signature)');
+      if (!checksum) {
+        console.error('❌ Webhook sin firma (checksum)');
+        console.error('   Headers:', JSON.stringify(headers, null, 2));
+        console.error('   Payload.signature:', payload.signature);
         return false;
       }
 
-      // Construir el string para verificar
-      // Formato: {timestamp}.{body_json}
-      const bodyString = typeof payload === 'string' 
-        ? payload 
-        : JSON.stringify(payload);
+      // Extraer timestamp y properties del webhook
+      const timestamp = payload.timestamp;
+      const properties = payload.signature?.properties || [];
       
-      const signatureString = `${timestamp}.${bodyString}`;
+      if (!timestamp || !properties.length) {
+        console.error('❌ Webhook sin timestamp o properties');
+        console.error('   Timestamp:', timestamp);
+        console.error('   Properties:', properties);
+        return false;
+      }
 
-      // Calcular HMAC SHA256
-      const expectedSignature = crypto
-        .createHmac('sha256', this.eventSecret)
-        .update(signatureString)
-        .digest('hex');
+      console.log('📝 Datos para validación:');
+      console.log('   Checksum recibido:', checksum);
+      console.log('   Timestamp:', timestamp);
+      console.log('   Properties:', properties);
 
-      // Comparar firmas
-      const isValid = signature === expectedSignature;
+      // PASO 1: Concatenar los valores de las properties especificadas
+      let concatenatedValues = '';
+      for (const prop of properties) {
+        // prop es algo como "transaction.id", "transaction.status", etc.
+        const keys = prop.split('.');
+        let value = payload.data;
+        
+        for (const key of keys) {
+          value = value?.[key];
+        }
+        
+        if (value === undefined || value === null) {
+          console.warn(`⚠️  Property ${prop} no encontrada en data`);
+          value = '';
+        }
+        
+        concatenatedValues += String(value);
+        console.log(`   ${prop} = ${value}`);
+      }
 
-      if (!isValid) {
-        console.error('❌ Firma de webhook inválida');
-        console.error(`   Recibida:  ${signature}`);
-        console.error(`   Esperada:  ${expectedSignature}`);
+      console.log('   Valores concatenados:', concatenatedValues);
+
+      // PASO 2: Concatenar timestamp
+      concatenatedValues += String(timestamp);
+      console.log('   + Timestamp:', timestamp);
+
+      // PASO 3: Concatenar Event Secret
+      if (!this.eventSecret) {
+        console.error('❌ Event Secret no configurado');
+        return false;
+      }
+      
+      concatenatedValues += this.eventSecret;
+      console.log('   + Event Secret:', this.eventSecret.substring(0, 10) + '...');
+
+      // PASO 4: Calcular SHA256 (NO HMAC, solo hash)
+      const expectedChecksum = crypto
+        .createHash('sha256')  // ✅ HASH, no HMAC
+        .update(concatenatedValues)
+        .digest('hex')
+        .toUpperCase();  // Wompi usa mayúsculas
+
+      console.log('   Checksum calculado:', expectedChecksum);
+      console.log('   Checksum recibido: ', checksum.toUpperCase());
+
+      // PASO 5: Comparar checksums
+      const isValid = expectedChecksum === checksum.toUpperCase();
+
+      if (isValid) {
+        console.log('✅ Firma válida - Webhook auténtico');
+      } else {
+        console.error('❌ Firma inválida - Posible webhook fraudulento');
+        console.error('   Cadena concatenada:', concatenatedValues.replace(this.eventSecret, '[EVENT_SECRET]'));
       }
 
       return isValid;
 
     } catch (error) {
       console.error('❌ Error validando webhook:', error.message);
+      console.error('   Stack:', error.stack);
       return false;
     }
   }
