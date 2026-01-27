@@ -503,4 +503,70 @@ router.get('/is-enabled/:tenantId', async (req, res) => {
   }
 });
 
+/**
+ * Endpoint para crear enlaces de pago (Testing)
+ * 
+ * URL: POST /api/payments/create-payment-link
+ * 
+ * Body: {
+ *   restaurantId: string,
+ *   orderId: string,
+ *   amount: number,
+ *   customerPhone: string,
+ *   customerName: string,
+ *   customerEmail?: string,
+ *   orderDetails: object
+ * }
+ */
+router.post('/create-payment-link', async (req, res) => {
+  try {
+    const {
+      restaurantId,
+      orderId,
+      amount,
+      customerPhone,
+      customerName,
+      customerEmail,
+      orderDetails
+    } = req.body;
+
+    console.log(`\n${'='.repeat(60)}`);
+    console.log(`💳 CREAR ENLACE DE PAGO`);
+    console.log(`   Restaurante: ${restaurantId}`);
+    console.log(`   Orden: ${orderId}`);
+    console.log(`   Monto: ${amount} centavos`);
+    console.log(`${'='.repeat(60)}\n`);
+
+    // Validar datos requeridos
+    if (!restaurantId || !orderId || !amount || !customerPhone || !customerName) {
+      return res.status(400).json({
+        success: false,
+        error: 'Faltan datos requeridos: restaurantId, orderId, amount, customerPhone, customerName'
+      });
+    }
+
+    // Crear enlace de pago
+    const result = await paymentService.createPaymentLink({
+      restaurantId,
+      orderId,
+      amount,
+      customerPhone,
+      customerName,
+      customerEmail,
+      orderDetails
+    });
+
+    console.log(`✅ Enlace creado exitosamente:`, result);
+
+    res.json(result);
+
+  } catch (error) {
+    console.error(`❌ Error creando enlace de pago:`, error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Error interno del servidor'
+    });
+  }
+});
+
 module.exports = router;
