@@ -211,7 +211,7 @@ class PaymentService {
       }
 
       // 3. Parsear el evento del webhook
-      const event = await this.gatewayManager.parseWebhookEvent(
+      const event = await this.gatewayManager.processWebhookEvent(
         gateway,
         gatewayConfig.credentials,
         payload
