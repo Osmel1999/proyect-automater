@@ -137,9 +137,10 @@ class PaymentService {
       const transactionData = {
         restaurantId,
         orderId,
-        transactionId: result.transactionId,
+        transactionId: result.transactionId, // Este es el payment link ID de Wompi
+        paymentLinkId: result.transactionId, // Guardar explícitamente el payment link ID
         gateway: gatewayConfig.gateway,
-        reference: paymentData.reference,
+        reference: paymentData.reference, // Nuestra referencia interna
         amount,
         customerPhone,
         customerName,
@@ -219,13 +220,40 @@ class PaymentService {
 
       console.log(`📊 Evento parseado: ${event.status} - ${event.transactionId}`);
       console.log(`📊 Reference del evento: ${event.reference}`);
+      console.log(`📊 Payment Link ID extraído: ${event.data?.paymentLinkId}`);
 
-      // 4. Buscar la transacción en Firebase por la REFERENCIA (no por transaction ID de Wompi)
-      const transaction = await this._getTransactionByReference(event.reference);
+      // 4. Buscar la transacción en Firebase
+      // IMPORTANTE: Wompi envía transaction.id en el webhook, que es diferente del payment link ID
+      // Primero intentamos buscar por el payment link ID que guardamos al crear el link
+      // Si no se encuentra, intentamos buscar por el wompiTransactionId que guardamos en webhooks anteriores
+      
+      let transaction = null;
+      
+      // Intento 1: Buscar por payment link ID (lo que guardamos como transactionId al crear el link)
+      const paymentLinkId = event.data?.paymentLinkId;
+      if (paymentLinkId) {
+        console.log(`🔍 Buscando transacción por payment link ID: ${paymentLinkId}`);
+        transaction = await this._getTransactionByPaymentLinkId(paymentLinkId);
+      }
+      
+      // Intento 2: Buscar por wompiTransactionId (si ya lo guardamos en un webhook anterior)
+      if (!transaction) {
+        console.log(`🔍 Buscando transacción por wompiTransactionId: ${event.transactionId}`);
+        transaction = await this._getTransactionByWompiTransactionId(event.transactionId);
+      }
+      
+      // Intento 3: Buscar por reference de Wompi (por si acaso)
+      if (!transaction && event.reference) {
+        console.log(`🔍 Buscando transacción por reference de Wompi: ${event.reference}`);
+        transaction = await this._getTransactionByReference(event.reference);
+      }
       
       if (!transaction) {
-        console.warn(`⚠️ Transacción con referencia ${event.reference} no encontrada en Firebase`);
-        console.warn(`   Transaction ID de Wompi: ${event.transactionId}`);
+        console.warn(`⚠️ Transacción no encontrada en Firebase`);
+        console.warn(`   - Payment Link ID: ${paymentLinkId || 'N/A'}`);
+        console.warn(`   - Wompi Transaction ID: ${event.transactionId}`);
+        console.warn(`   - Reference: ${event.reference}`);
+        console.warn(`   NOTA: Asegúrate de que el link de pago fue generado a través de la app, no directamente desde Wompi`);
         return { success: true, status: 'TRANSACTION_NOT_FOUND' };
       }
 
@@ -416,6 +444,60 @@ class PaymentService {
       return { id: transactionId, ...data[transactionId] };
     } catch (error) {
       console.error('Error obteniendo transacción por referencia:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Obtiene una transacción por su payment link ID (el ID que Wompi retorna al crear el link)
+   * @private
+   */
+  async _getTransactionByPaymentLinkId(paymentLinkId) {
+    try {
+      console.log(`   🔍 Buscando transacción con paymentLinkId: ${paymentLinkId}`);
+      const snapshot = await this.db.ref('transactions')
+        .orderByChild('paymentLinkId')
+        .equalTo(paymentLinkId)
+        .once('value');
+      
+      const data = snapshot.val();
+      if (!data) {
+        console.log(`   ⚠️  No se encontró transacción con paymentLinkId: ${paymentLinkId}`);
+        return null;
+      }
+      
+      const transactionId = Object.keys(data)[0];
+      console.log(`   ✅ Transacción encontrada por paymentLinkId: ${transactionId}`);
+      return { id: transactionId, ...data[transactionId] };
+    } catch (error) {
+      console.error('❌ Error obteniendo transacción por paymentLinkId:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Obtiene una transacción por su Wompi Transaction ID (el ID que Wompi envía en el webhook)
+   * @private
+   */
+  async _getTransactionByWompiTransactionId(wompiTransactionId) {
+    try {
+      console.log(`   🔍 Buscando transacción con wompiTransactionId: ${wompiTransactionId}`);
+      const snapshot = await this.db.ref('transactions')
+        .orderByChild('wompiTransactionId')
+        .equalTo(wompiTransactionId)
+        .once('value');
+      
+      const data = snapshot.val();
+      if (!data) {
+        console.log(`   ⚠️  No se encontró transacción con wompiTransactionId: ${wompiTransactionId}`);
+        return null;
+      }
+      
+      const transactionId = Object.keys(data)[0];
+      console.log(`   ✅ Transacción encontrada por wompiTransactionId: ${transactionId}`);
+      return { id: transactionId, ...data[transactionId] };
+    } catch (error) {
+      console.error('❌ Error obteniendo transacción por wompiTransactionId:', error);
       return null;
     }
   }

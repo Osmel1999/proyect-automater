@@ -314,13 +314,18 @@ class WompiAdapter {
       return {
         type: eventType,
         status: normalizedStatus,
-        transactionId: transaction.id,
-        reference: transaction.reference,
+        transactionId: transaction.id, // Este es el ID único de Wompi que usaremos para buscar
+        reference: transaction.reference, // Este es el reference autogenerado por Wompi
         amount: transaction.amount_in_cents / 100,
         currency: transaction.currency,
         paymentMethod: paymentMethod,
         message: transaction.status_message || '',
-        timestamp: new Date(payload.sent_at).getTime()
+        timestamp: new Date(payload.sent_at).getTime(),
+        data: {
+          wompiTransactionId: transaction.id, // Guardar explícitamente para claridad
+          wompiReference: transaction.reference,
+          paymentLinkId: transaction.reference?.split('_')[1] || null // Extraer el payment link ID si es posible
+        }
       };
 
     } catch (error) {

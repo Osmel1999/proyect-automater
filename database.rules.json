@@ -50,6 +50,12 @@
       ".indexOn": ["timestamp", "status"]
     },
     
+    "transactions": {
+      ".read": true,
+      ".write": true,
+      ".indexOn": ["reference", "paymentLinkId", "wompiTransactionId", "status", "restaurantId"]
+    },
+    
     "_backup_pedidos_legacy": {
       ".read": true,
       ".write": false

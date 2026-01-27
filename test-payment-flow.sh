@@ -10,11 +10,11 @@ RESPONSE=$(curl -s -X POST https://api.kdsapp.site/api/payments/create-payment-l
   -d '{
     "restaurantId": "tenant1769095946220o10i5g9zw",
     "orderId": "TEST_ORDER_'$(date +%s)'",
-    "amount": 25000,
+    "amount": 150000,
     "customerPhone": "+573991111111",
     "customerName": "Test User",
     "orderDetails": {
-      "items": [{"name": "Bandeja Paisa", "quantity": 1, "price": 25000}],
+      "items": [{"name": "Bandeja Paisa", "quantity": 1, "price": 150000}],
       "deliveryAddress": "Calle 123 # 45-67, Medellín"
     }
   }')
