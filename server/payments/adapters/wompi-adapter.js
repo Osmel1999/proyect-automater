@@ -111,6 +111,7 @@ class WompiAdapter {
         amount_in_cents: finalAmountInCents,
         currency: currency,
         redirect_url: redirectUrlWithParams,
+        reference: reference, // 🔥 AGREGAR REFERENCE PERSONALIZADO
         customer_data: {
           email: email,
           phone_number: phone,
