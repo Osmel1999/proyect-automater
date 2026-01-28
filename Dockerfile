@@ -14,9 +14,9 @@ RUN npm ci --only=production --ignore-scripts && \
     npm cache clean --force
 
 # Copy only backend files (dockerignore handles exclusions)
-# This copies server/, config.js, dual-config.js, and other needed files
+# This copies server/ and config.js
 COPY server/ ./server/
-COPY config.js dual-config.js ./
+COPY config.js ./
 
 # Create sessions directory
 RUN mkdir -p sessions
