@@ -14,9 +14,6 @@ require('dotenv').config();
 console.log('🚀 Iniciando servidor KDS WhatsApp SaaS...');
 console.log(`📦 Puerto configurado: ${process.env.PORT || 3000}`);
 
-// Cargar configuración dual
-const dualConfig = require('../dual-config');
-
 // Servicios
 // const twilioHandler = require('./twilio-handler'); // REMOVIDO - Ya no usamos Twilio, ahora WhatsApp Business API
 console.log('📥 Cargando servicios...');
@@ -124,9 +121,7 @@ app.get('/api/whatsapp/callback-legacy', async (req, res) => {
     }
     
     console.log('🔄 CALLBACK LEGACY recibido');
-    console.log(`   Portfolio: ${dualConfig.getConfig('legacy').portfolio.name}`);
-    console.log(`   Portfolio ID: ${dualConfig.getConfig('legacy').portfolio.id}`);
-    console.log(`   App ID: ${dualConfig.getConfig('legacy').facebook.appId}`);
+    console.log(`   App ID: ${process.env.WHATSAPP_APP_ID || 'not-set'}`);
     
     if (mode === 'migrate') {
       console.log('🔄 Cliente migrando número existente (LEGACY)');
@@ -136,9 +131,8 @@ app.get('/api/whatsapp/callback-legacy', async (req, res) => {
     
     console.log(`   Authorization Code: ${code.substring(0, 20)}...`);
     
-    // Usar credenciales legacy
-    const legacyConfig = dualConfig.getConfig('legacy');
-    const appId = legacyConfig.facebook.appId;
+    // Usar credenciales de entorno
+    const appId = process.env.WHATSAPP_APP_ID;
     const appSecret = process.env.WHATSAPP_APP_SECRET_LEGACY || process.env.WHATSAPP_APP_SECRET;
     
     // Intercambiar código por access token
@@ -376,7 +370,6 @@ app.get('/api/whatsapp/callback', async (req, res) => {
 app.post('/webhook/whatsapp-legacy', async (req, res) => {
   try {
     console.log('📩 Webhook LEGACY recibido de WhatsApp Business API');
-    console.log(`   Portfolio: ${dualConfig.getConfig('legacy').portfolio.name}`);
     
     // Procesar webhook (usa el mismo handler, solo cambia el origen)
     await whatsappHandler.processWebhook(req.body, 'legacy');
