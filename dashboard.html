@@ -1176,6 +1176,11 @@
               <h3>Info WhatsApp</h3>
               <p>Ver número y estado de conexión</p>
             </div>
+            <div class="action-card" onclick="openDeliveryTimeConfig()">
+              <div class="action-icon">🕒</div>
+              <h3>Tiempo de Entrega</h3>
+              <p>Configurar tiempo estimado de entrega</p>
+            </div>
           </div>
         </div>
 
@@ -1440,6 +1445,53 @@
       <div class="modal-footer">
         <button class="btn-secondary" onclick="closePaymentModal()">Cancelar</button>
         <button class="btn-primary" onclick="savePaymentConfig()" id="btn-save-payment">Guardar Configuración</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Delivery Time Config -->
+  <div class="modal-overlay" id="delivery-time-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">🕒 Configurar Tiempo de Entrega</h2>
+        <button class="modal-close" onclick="closeDeliveryTimeModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 24px; color: #718096;">
+          Configura el tiempo estimado de entrega que se mostrará a tus clientes al confirmar su pedido.
+        </p>
+
+        <div class="form-group">
+          <label class="form-label">Tiempo Estimado de Entrega</label>
+          <div style="display: flex; gap: 12px; align-items: center;">
+            <input type="number" class="form-input" id="delivery-time-min" placeholder="30" min="10" max="120" style="flex: 1;">
+            <span style="color: #4a5568; font-weight: 500;">-</span>
+            <input type="number" class="form-input" id="delivery-time-max" placeholder="40" min="10" max="120" style="flex: 1;">
+            <span style="color: #4a5568; font-weight: 500;">minutos</span>
+          </div>
+          <div class="form-help">Por ejemplo: 30-40 minutos, 20-30 minutos, etc.</div>
+        </div>
+
+        <div style="background: #f7fafc; padding: 16px; border-radius: 8px; margin-top: 16px;">
+          <p style="font-size: 14px; color: #4a5568; margin-bottom: 8px;">
+            <strong>Vista previa del mensaje:</strong>
+          </p>
+          <p style="color: #667eea; font-weight: 500;" id="delivery-time-preview">
+            🕒 Tiempo estimado: 30-40 minutos
+          </p>
+        </div>
+
+        <div style="background: #e6fffa; border-left: 4px solid #38b2ac; padding: 16px; border-radius: 4px; margin-top: 16px;">
+          <strong style="color: #234e52; display: block; margin-bottom: 8px;">💡 Recomendación</strong>
+          <p style="color: #234e52; font-size: 14px; line-height: 1.6; margin: 0;">
+            Es mejor sobreestimar el tiempo de entrega. Si entregas antes, el cliente se sorprenderá gratamente. 
+            Si te atrasas, puede generar insatisfacción.
+          </p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeDeliveryTimeModal()">Cancelar</button>
+        <button class="btn-primary" onclick="saveDeliveryTime()">Guardar Tiempo</button>
       </div>
     </div>
   </div>
@@ -2345,6 +2397,90 @@
       } catch (error) {
         console.error('Error saving payment config:', error);
         alert('Error al guardar la configuración de pagos: ' + error.message);
+      }
+    }
+
+    // Delivery Time Config
+    function openDeliveryTimeConfig() {
+      document.getElementById('delivery-time-modal').classList.add('active');
+      loadDeliveryTime();
+    }
+
+    function closeDeliveryTimeModal() {
+      document.getElementById('delivery-time-modal').classList.remove('active');
+    }
+
+    async function loadDeliveryTime() {
+      try {
+        const snapshot = await firebase.database().ref(`tenants/${tenantId}/config/deliveryTime`).once('value');
+        const deliveryTime = snapshot.val();
+
+        if (deliveryTime) {
+          document.getElementById('delivery-time-min').value = deliveryTime.min || 30;
+          document.getElementById('delivery-time-max').value = deliveryTime.max || 40;
+        } else {
+          // Valores por defecto
+          document.getElementById('delivery-time-min').value = 30;
+          document.getElementById('delivery-time-max').value = 40;
+        }
+
+        updateDeliveryTimePreview();
+      } catch (error) {
+        console.error('Error loading delivery time:', error);
+      }
+    }
+
+    function updateDeliveryTimePreview() {
+      const min = document.getElementById('delivery-time-min').value || 30;
+      const max = document.getElementById('delivery-time-max').value || 40;
+      document.getElementById('delivery-time-preview').textContent = `🕒 Tiempo estimado: ${min}-${max} minutos`;
+    }
+
+    // Actualizar preview en tiempo real
+    document.addEventListener('DOMContentLoaded', () => {
+      const minInput = document.getElementById('delivery-time-min');
+      const maxInput = document.getElementById('delivery-time-max');
+      
+      if (minInput && maxInput) {
+        minInput.addEventListener('input', updateDeliveryTimePreview);
+        maxInput.addEventListener('input', updateDeliveryTimePreview);
+      }
+    });
+
+    async function saveDeliveryTime() {
+      const min = parseInt(document.getElementById('delivery-time-min').value);
+      const max = parseInt(document.getElementById('delivery-time-max').value);
+
+      // Validaciones
+      if (!min || !max) {
+        return alert('Por favor ingresa ambos valores de tiempo');
+      }
+
+      if (min < 10 || max < 10) {
+        return alert('El tiempo mínimo debe ser de al menos 10 minutos');
+      }
+
+      if (min > max) {
+        return alert('El tiempo mínimo no puede ser mayor al tiempo máximo');
+      }
+
+      if (max > 120) {
+        return alert('El tiempo máximo no debe exceder 120 minutos (2 horas)');
+      }
+
+      try {
+        // Guardar en Firebase
+        await firebase.database().ref(`tenants/${tenantId}/config/deliveryTime`).set({
+          min: min,
+          max: max,
+          updatedAt: Date.now()
+        });
+
+        alert(`✅ Tiempo de entrega actualizado: ${min}-${max} minutos`);
+        closeDeliveryTimeModal();
+      } catch (error) {
+        console.error('Error saving delivery time:', error);
+        alert('Error al guardar el tiempo de entrega: ' + error.message);
       }
     }
   </script>

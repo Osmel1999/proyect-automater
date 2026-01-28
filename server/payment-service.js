@@ -17,6 +17,29 @@ const admin = require('firebase-admin');
 const gatewayManager = require('./payments/gateway-manager');
 const paymentConfigService = require('./payments/payment-config-service');
 
+/**
+ * Obtiene el tiempo de entrega configurado para el restaurante
+ * @param {string} tenantId - ID del restaurante
+ * @returns {Promise<string>} Texto del tiempo estimado (ej: "30-40 minutos")
+ */
+async function obtenerTiempoEntrega(tenantId) {
+  try {
+    const db = admin.database();
+    const snapshot = await db.ref(`tenants/${tenantId}/config/deliveryTime`).once('value');
+    const deliveryTime = snapshot.val();
+    
+    if (deliveryTime && deliveryTime.min && deliveryTime.max) {
+      return `${deliveryTime.min}-${deliveryTime.max} minutos`;
+    }
+    
+    // Valor por defecto si no está configurado
+    return '30-40 minutos';
+  } catch (error) {
+    console.error('Error obteniendo tiempo de entrega:', error);
+    return '30-40 minutos';
+  }
+}
+
 class PaymentService {
   constructor() {
     this.gatewayManager = gatewayManager; // Usar la instancia singleton exportada
@@ -729,7 +752,10 @@ class PaymentService {
         message += `� Método de pago: Tarjeta (Pagado)\n\n`;
         message += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
         message += `👨‍🍳 Ya lo enviamos a la cocina de *${restaurantName}*. 🛵\n\n`;
-        message += `🕒 Tiempo estimado: *30-40 minutos*\n\n`;
+        
+        // Obtener tiempo de entrega configurado
+        const tiempoEntrega = await obtenerTiempoEntrega(transaction.restaurantId);
+        message += `🕒 Tiempo estimado: *${tiempoEntrega}*\n\n`;
         message += `_Te avisaremos cuando esté listo para entrega_ ✅\n\n`;
         message += `¡Gracias por tu compra! 🙏`;
         

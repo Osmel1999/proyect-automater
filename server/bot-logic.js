@@ -35,6 +35,29 @@ function formatearPrecio(precio) {
 }
 
 /**
+ * Obtiene el tiempo de entrega configurado para el restaurante
+ * @param {string} tenantId - ID del restaurante
+ * @returns {Promise<string>} Texto del tiempo estimado (ej: "30-40 minutos")
+ */
+async function obtenerTiempoEntrega(tenantId) {
+  try {
+    const db = firebaseService.getDatabase();
+    const snapshot = await db.ref(`tenants/${tenantId}/config/deliveryTime`).once('value');
+    const deliveryTime = snapshot.val();
+    
+    if (deliveryTime && deliveryTime.min && deliveryTime.max) {
+      return `${deliveryTime.min}-${deliveryTime.max} minutos`;
+    }
+    
+    // Valor por defecto si no está configurado
+    return '30-40 minutos';
+  } catch (error) {
+    console.error('Error obteniendo tiempo de entrega:', error);
+    return '30-40 minutos';
+  }
+}
+
+/**
  * Crea una descripción natural de un item con cantidad
  * @param {string} nombreItem - Nombre del item en minúsculas
  * @param {number} cantidad - Cantidad del item
@@ -669,7 +692,10 @@ async function confirmarPedido(sesion) {
       mensaje += '🔒 Pago 100% seguro y encriptado\n\n';
       mensaje += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n';
       mensaje += `⚠️ *Una vez confirmes el pago, ${restaurantName} empezará a preparar tu pedido.*\n\n`;
-      mensaje += '🕒 Tiempo estimado: 30-40 minutos\n\n';
+      
+      // Obtener tiempo de entrega configurado
+      const tiempoEntrega = await obtenerTiempoEntrega(sesion.tenantId);
+      mensaje += `🕒 Tiempo estimado: ${tiempoEntrega}\n\n`;
       mensaje += '_Te avisaremos cuando el pago sea confirmado_ ✅';
       
       return mensaje;
@@ -728,8 +754,11 @@ async function confirmarPedido(sesion) {
     mensaje += `💰 Total: $${formatearPrecio(total)}\n`;
     mensaje += `💵 Método de pago: Efectivo\n\n`;
     mensaje += `Ya lo enviamos a la cocina de ${restaurantName}. 🛵\n\n`;
-    mensaje += ' Tiempo estimado: 30-40 minutos\n\n';
-    mensaje += '_Te avisaremos cuando esté listo para entrega_ �';
+    
+    // Obtener tiempo de entrega configurado
+    const tiempoEntrega = await obtenerTiempoEntrega(sesion.tenantId);
+    mensaje += `🕒 Tiempo estimado: ${tiempoEntrega}\n\n`;
+    mensaje += '_Te avisaremos cuando esté listo para entrega_ ✅';
     
     return mensaje;
     
@@ -842,7 +871,10 @@ async function confirmarPedidoEfectivo(sesion, pedidoKey = null, numeroHex = nul
     mensaje += '• O si prefieres transferencia, pregunta los datos al domiciliario\n\n';
     mensaje += '━'.repeat(30) + '\n\n';
     mensaje += 'Te llamaremos al número que nos diste cuando el domiciliario esté en camino. 🛵\n\n';
-    mensaje += '🕒 Tiempo estimado: 30-40 minutos\n\n';
+    
+    // Obtener tiempo de entrega configurado
+    const tiempoEntrega = await obtenerTiempoEntrega(sesion.tenantId);
+    mensaje += `🕒 Tiempo estimado: ${tiempoEntrega}\n\n`;
     mensaje += '¿Quieres pedir algo más? Escribe *menu* cuando quieras.';
     
     return mensaje;
