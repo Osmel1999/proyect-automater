@@ -586,28 +586,68 @@ class PaymentService {
       console.log(`   Pedido: ${transaction.orderId}`);
       console.log(`   Restaurante: ${transaction.restaurantId}`);
       
-      // Obtener datos completos del pedido de Firebase (si existen)
+      // Obtener datos completos del pedido temporal de Firebase
       const orderSnapshot = await this.db.ref(`orders/${transaction.orderId}`).once('value');
       const existingOrder = orderSnapshot.val();
       
-      // Construir objeto del pedido para KDS
+      if (!existingOrder) {
+        console.error(`❌ [_createOrderInKDS] No se encontró el pedido temporal: ${transaction.orderId}`);
+        throw new Error(`Pedido temporal no encontrado: ${transaction.orderId}`);
+      }
+      
+      console.log(`📝 [_createOrderInKDS] Pedido temporal encontrado:`, {
+        id: existingOrder.id,
+        items: existingOrder.items?.length,
+        total: existingOrder.total
+      });
+      
+      // Obtener número hex del orderId (ej: "tenant123_ABC123_timestamp" -> "ABC123")
+      const numeroHex = transaction.orderId.split('_')[1] || transaction.orderId.substring(0, 6).toUpperCase();
+      
+      // Obtener nombre del restaurante
+      const tenantService = require('./tenant-service');
+      const tenant = await tenantService.getTenantById(transaction.restaurantId);
+      const restaurantName = tenant?.restaurant?.name || 'Restaurante';
+      
+      // Construir objeto del pedido para KDS (mismo formato que confirmarPedido efectivo)
       const kdsOrder = {
-        id: transaction.orderId,
-        restaurantId: transaction.restaurantId,
-        orderNumber: transaction.orderId.split('_')[1] || transaction.orderId.substring(0, 6).toUpperCase(),
-        customerName: transaction.customerName,
-        customerPhone: transaction.customerPhone,
-        status: 'pending',
-        paymentStatus: 'PAID',
-        createdAt: Date.now(),
-        items: existingOrder?.items || [],
-        total: transaction.amount,
+        id: numeroHex, // 🔥 Usar el número hex corto, no el orderId completo
+        tenantId: transaction.restaurantId,
+        cliente: existingOrder.cliente || transaction.customerPhone,
+        telefono: existingOrder.telefono || transaction.customerPhone,
+        telefonoContacto: existingOrder.telefonoContacto || transaction.customerPhone,
+        direccion: existingOrder.direccion || 'No especificada',
+        items: existingOrder.items || [],
+        total: existingOrder.total || transaction.amount / 100, // Convertir de centavos a pesos
+        estado: 'pendiente', // 🔥 Estado inicial del pedido en KDS
+        timestamp: Date.now(),
+        fecha: new Date().toISOString(),
+        fuente: 'whatsapp',
+        restaurante: restaurantName,
+        paymentStatus: 'PAID', // 🔥 Ya está pagado
+        metodoPago: 'tarjeta',
       };
       
-      // Guardar en la colección de KDS del restaurante
-      await this.db.ref(`kds/${transaction.restaurantId}/orders/${transaction.orderId}`).set(kdsOrder);
+      console.log(`📝 [_createOrderInKDS] Datos del pedido a guardar:`, {
+        id: kdsOrder.id,
+        tenantId: kdsOrder.tenantId,
+        items: kdsOrder.items?.length,
+        total: kdsOrder.total,
+        path: `tenants/${transaction.restaurantId}/pedidos`
+      });
+      
+      // 🔥 Guardar en el path correcto del KDS: tenants/{restaurantId}/pedidos
+      const pedidoRef = this.db.ref(`tenants/${transaction.restaurantId}/pedidos`);
+      const pedidoSnapshot = await pedidoRef.push(kdsOrder);
+      const pedidoKey = pedidoSnapshot.key;
       
       console.log(`✅ [_createOrderInKDS] Pedido creado en KDS exitosamente`);
+      console.log(`   Path: tenants/${transaction.restaurantId}/pedidos/${pedidoKey}`);
+      console.log(`   Número: #${numeroHex}`);
+      
+      // Incrementar estadísticas del tenant
+      const tenantServiceInstance = require('./tenant-service');
+      await tenantServiceInstance.incrementOrderStats(transaction.restaurantId);
       
     } catch (error) {
       console.error('❌ [_createOrderInKDS] Error creando pedido en KDS:', error);
