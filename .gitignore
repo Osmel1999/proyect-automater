@@ -32,6 +32,7 @@ firebaserc
 backup_*/
 archive_*/
 *.tar.gz
+docs-archive/
 
 # Baileys Sessions (contiene credenciales sensibles)
 sessions/
