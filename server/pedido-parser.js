@@ -296,7 +296,10 @@ function parsearPedido(textoPedido, menuCustom = null) {
   const conectores = [
     'quiero', 'kiero', 'dame', 'queria', 'quisiera', 'me das', 'me traes',
     'con', 'kon', 'y', 'tambien', 'también', 'mas', 'más', 'ademas', 'además',
-    'porfa', 'porfavor', 'por favor', 'gracias'
+    // Palabras amables y cortesía (punto 3)
+    'porfa', 'porfavor', 'por favor', 'porfis', 'plis', 'please', 'plz', 
+    'x favor', 'xfavor', 'xfa', 'porfi', 'porfiiis',
+    'gracias', 'grax', 'grax', 'thx', 'thanks', 'muchas gracias'
   ];
   
   // Dividir por separadores comunes (incluyendo variaciones con errores)

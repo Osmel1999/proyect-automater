@@ -41,18 +41,24 @@ function formatearPrecio(precio) {
  */
 async function obtenerTiempoEntrega(tenantId) {
   try {
+    console.log(`🕒 [obtenerTiempoEntrega] Buscando tiempo para tenant: ${tenantId}`);
     const db = firebaseService.getDatabase();
     const snapshot = await db.ref(`tenants/${tenantId}/config/deliveryTime`).once('value');
     const deliveryTime = snapshot.val();
     
+    console.log(`🕒 [obtenerTiempoEntrega] Datos obtenidos:`, deliveryTime);
+    
     if (deliveryTime && deliveryTime.min && deliveryTime.max) {
-      return `${deliveryTime.min}-${deliveryTime.max} minutos`;
+      const tiempo = `${deliveryTime.min}-${deliveryTime.max} minutos`;
+      console.log(`✅ [obtenerTiempoEntrega] Tiempo personalizado: ${tiempo}`);
+      return tiempo;
     }
     
     // Valor por defecto si no está configurado
+    console.warn(`⚠️ [obtenerTiempoEntrega] No hay tiempo configurado, usando por defecto`);
     return '30-40 minutos';
   } catch (error) {
-    console.error('Error obteniendo tiempo de entrega:', error);
+    console.error('❌ [obtenerTiempoEntrega] Error:', error);
     return '30-40 minutos';
   }
 }
@@ -922,8 +928,16 @@ function solicitarDireccion(sesion) {
   
   let mensaje = '📍 *¡Perfecto! Solo necesitamos tu dirección*\n\n';
   mensaje += 'Por favor envíanos la dirección completa de entrega.\n\n';
-  mensaje += '📝 *Formato:* Calle/Carrera + # + número\n';
-  mensaje += '*Ejemplo:* Calle 80 #12-34\n\n';
+  mensaje += '📝 *Formato:* Dirección + Tipo de vivienda\n\n';
+  mensaje += '🏠 *Ejemplos:*\n';
+  mensaje += '• Calle 80 #12-34 *casa*\n';
+  mensaje += '• Carrera 45 #76-115 *edificio Perdiz apto 102*\n';
+  mensaje += '• Av. 68 #23-45 *conjunto Castellana casa 12*\n';
+  mensaje += '• Kr 15 #34-56 *edificio Torre B apto 301*\n\n';
+  mensaje += '⚠️ *Es importante especificar:*\n';
+  mensaje += '• Si es casa o conjunto/edificio\n';
+  mensaje += '• Número de apartamento/casa si aplica\n';
+  mensaje += '• Torre/bloque si aplica\n\n';
   mensaje += '¿A dónde enviamos tu pedido? 🏠';
   
   return mensaje;
@@ -935,7 +949,7 @@ function solicitarDireccion(sesion) {
 async function procesarDireccion(sesion, direccion) {
   const direccionLimpia = direccion.trim();
   
-  // Validación simple: debe contener # y al menos un número
+  // Validación 1: debe contener # y al menos un número
   const tieneNumeral = direccionLimpia.includes('#');
   const tieneNumeros = /\d/.test(direccionLimpia);
   const longitudAdecuada = direccionLimpia.length >= 8;
@@ -944,14 +958,54 @@ async function procesarDireccion(sesion, direccion) {
     return '⚠️ *Dirección no válida*\n\n' +
            'Por favor envía la dirección en el formato correcto:\n\n' +
            '📝 *Ejemplos válidos:*\n' +
-           '• Calle 80 #12-34\n' +
-           '• Carrera 15 #45-67\n' +
-           '• Avenida 68 #23-45\n' +
-           '• Kr 45 #76-115\n\n' +
-           '¿Cuál es tu dirección? 🏠';
+           '• Calle 80 #12-34 casa\n' +
+           '• Carrera 15 #45-67 edificio Perdiz apto 102\n' +
+           '• Avenida 68 #23-45 conjunto Castellana casa 5\n' +
+           '• Kr 45 #76-115 torre B apto 301\n\n' +
+           '⚠️ *No olvides especificar si es casa o conjunto/edificio*\n\n' +
+           '¿Cuál es tu dirección completa? 🏠';
   }
   
-  // Guardar dirección y solicitar teléfono
+  // Validación 2: debe especificar tipo de vivienda (casa, conjunto, edificio, etc.)
+  const textoLower = direccionLimpia.toLowerCase();
+  
+  // Patrones para detectar tipo de vivienda
+  const tieneCasa = /\bcasa\b/.test(textoLower);
+  const tieneConjunto = /\b(conjunto|condominio)\b/.test(textoLower);
+  const tieneEdificio = /\b(edificio|edifisio|edif\.?)\b/.test(textoLower);
+  const tieneApartamento = /\b(apto\.?|apartamento|apt\.?|dpt\.?|departamento|depto\.?)\b/.test(textoLower);
+  const tieneTorre = /\b(torre|bloque|block)\b/.test(textoLower);
+  
+  // Verificar si tiene al menos un tipo de vivienda
+  const tieneVivienda = tieneCasa || tieneConjunto || tieneEdificio || tieneApartamento || tieneTorre;
+  
+  if (!tieneVivienda) {
+    return '⚠️ *Información incompleta*\n\n' +
+           'Por favor especifica el tipo de vivienda:\n\n' +
+           '🏠 *¿Es una casa o un conjunto/edificio?*\n\n' +
+           '📝 *Ejemplos:*\n' +
+           '• Calle 80 #12-34 *casa*\n' +
+           '• Carrera 45 #76-115 *edificio Perdiz apto 102*\n' +
+           '• Av. 68 #23-45 *conjunto Castellana casa 12*\n\n' +
+           'Envía la dirección completa nuevamente con esta información. 📍';
+  }
+  
+  // Si es edificio/conjunto, verificar que tenga número de apartamento/casa
+  if ((tieneEdificio || tieneConjunto) && !tieneApartamento && !tieneCasa) {
+    return '⚠️ *Información incompleta*\n\n' +
+           'Indicaste que es un edificio o conjunto, pero no especificaste el número de apartamento/casa.\n\n' +
+           '📝 *Por favor incluye:*\n' +
+           '• Número de apartamento (apto, apt, dpt)\n' +
+           '• O número de casa\n' +
+           '• Torre/bloque si aplica\n\n' +
+           '*Ejemplos:*\n' +
+           '• Carrera 45 #76-115 edificio Perdiz *apto 102*\n' +
+           '• Av. 68 #23-45 conjunto Castellana *casa 12*\n' +
+           '• Kr 15 #34-56 edificio Torre B *apto 301*\n\n' +
+           'Envía la dirección completa nuevamente. 📍';
+  }
+  
+  // ✅ Dirección válida - guardar y solicitar teléfono
   sesion.direccion = direccionLimpia;
   sesion.esperandoDireccion = false;
   

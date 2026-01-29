@@ -2451,6 +2451,8 @@
       const min = parseInt(document.getElementById('delivery-time-min').value);
       const max = parseInt(document.getElementById('delivery-time-max').value);
 
+      console.log(`💾 [saveDeliveryTime] Intentando guardar: min=${min}, max=${max}, tenantId=${tenantId}`);
+
       // Validaciones
       if (!min || !max) {
         return alert('Por favor ingresa ambos valores de tiempo');
@@ -2469,17 +2471,27 @@
       }
 
       try {
+        const path = `tenants/${tenantId}/config/deliveryTime`;
+        console.log(`📡 [saveDeliveryTime] Guardando en Firebase path: ${path}`);
+        
         // Guardar en Firebase
-        await firebase.database().ref(`tenants/${tenantId}/config/deliveryTime`).set({
+        await firebase.database().ref(path).set({
           min: min,
           max: max,
           updatedAt: Date.now()
         });
 
+        console.log(`✅ [saveDeliveryTime] Guardado exitosamente`);
+        
+        // Verificar que se guardó correctamente
+        const snapshot = await firebase.database().ref(path).once('value');
+        const saved = snapshot.val();
+        console.log(`🔍 [saveDeliveryTime] Verificación - Datos guardados:`, saved);
+
         alert(`✅ Tiempo de entrega actualizado: ${min}-${max} minutos`);
         closeDeliveryTimeModal();
       } catch (error) {
-        console.error('Error saving delivery time:', error);
+        console.error('❌ [saveDeliveryTime] Error:', error);
         alert('Error al guardar el tiempo de entrega: ' + error.message);
       }
     }

@@ -24,18 +24,24 @@ const paymentConfigService = require('./payments/payment-config-service');
  */
 async function obtenerTiempoEntrega(tenantId) {
   try {
+    console.log(`🕒 [obtenerTiempoEntrega] Buscando tiempo para tenant: ${tenantId}`);
     const db = admin.database();
     const snapshot = await db.ref(`tenants/${tenantId}/config/deliveryTime`).once('value');
     const deliveryTime = snapshot.val();
     
+    console.log(`🕒 [obtenerTiempoEntrega] Datos obtenidos:`, deliveryTime);
+    
     if (deliveryTime && deliveryTime.min && deliveryTime.max) {
-      return `${deliveryTime.min}-${deliveryTime.max} minutos`;
+      const tiempo = `${deliveryTime.min}-${deliveryTime.max} minutos`;
+      console.log(`✅ [obtenerTiempoEntrega] Tiempo personalizado: ${tiempo}`);
+      return tiempo;
     }
     
     // Valor por defecto si no está configurado
+    console.warn(`⚠️ [obtenerTiempoEntrega] No hay tiempo configurado, usando por defecto`);
     return '30-40 minutos';
   } catch (error) {
-    console.error('Error obteniendo tiempo de entrega:', error);
+    console.error('❌ [obtenerTiempoEntrega] Error:', error);
     return '30-40 minutos';
   }
 }
