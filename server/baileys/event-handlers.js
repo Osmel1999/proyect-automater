@@ -44,17 +44,21 @@ class EventHandlers {
    */
   async handleIncomingMessage(tenantId, baileysMessage) {
     console.log(`🔍 [DEBUG] handleIncomingMessage llamado para tenant ${tenantId}`);
-    console.log(`🔍 [DEBUG] baileysMessage:`, JSON.stringify(baileysMessage, null, 2));
+    console.log(`🔍 [DEBUG] baileysMessage.key:`, JSON.stringify(baileysMessage.key, null, 2));
+    console.log(`🔍 [DEBUG] baileysMessage.message:`, JSON.stringify(baileysMessage.message, null, 2));
     
     try {
       // Ignorar mensajes del bot (evitar loops)
-      if (messageAdapter.isFromBot(baileysMessage)) {
-        console.log(`🔍 [DEBUG] Mensaje propio ignorado (isFromBot = true)`);
+      const isFromBot = messageAdapter.isFromBot(baileysMessage);
+      console.log(`🔍 [DEBUG] isFromBot result: ${isFromBot}`);
+      
+      if (isFromBot) {
+        console.log(`🔄 [ANTI-LOOP] Mensaje propio ignorado - fromMe=true`);
         logger.debug(`[${tenantId}] Mensaje propio ignorado`);
         return;
       }
 
-      console.log(`🔍 [DEBUG] No es mensaje del bot, convirtiendo a formato interno`);
+      console.log(`✅ [DEBUG] No es mensaje del bot, convirtiendo a formato interno`);
       
       // Convertir a formato interno
       const internalMessage = messageAdapter.baileysToInternal(baileysMessage);

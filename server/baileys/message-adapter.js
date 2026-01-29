@@ -441,7 +441,13 @@ class MessageAdapter {
    * @returns {boolean}
    */
   isFromBot(baileysMessage) {
-    return baileysMessage.key.fromMe === true;
+    const fromMe = baileysMessage.key.fromMe === true;
+    console.log(`🔍 [isFromBot] Verificando mensaje:`, {
+      messageId: baileysMessage.key.id,
+      fromMe: baileysMessage.key.fromMe,
+      result: fromMe
+    });
+    return fromMe;
   }
 
   /**
