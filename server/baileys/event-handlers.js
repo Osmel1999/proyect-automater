@@ -48,13 +48,41 @@ class EventHandlers {
     console.log(`🔍 [DEBUG] baileysMessage.message:`, JSON.stringify(baileysMessage.message, null, 2));
     
     try {
-      // Ignorar mensajes del bot (evitar loops)
+      // 🛡️ FILTRO 1: Ignorar mensajes del bot (evitar loops)
       const isFromBot = messageAdapter.isFromBot(baileysMessage);
       console.log(`🔍 [DEBUG] isFromBot result: ${isFromBot}`);
       
       if (isFromBot) {
         console.log(`🔄 [ANTI-LOOP] Mensaje propio ignorado - fromMe=true`);
         logger.debug(`[${tenantId}] Mensaje propio ignorado`);
+        return;
+      }
+
+      // 🛡️ FILTRO 2: Ignorar mensajes de protocolo de WhatsApp (notificaciones de sistema)
+      if (baileysMessage.message?.protocolMessage) {
+        const protocolType = baileysMessage.message.protocolMessage.type;
+        console.log(`🔄 [PROTOCOL-MSG] Mensaje de protocolo ignorado - type=${protocolType}`);
+        logger.debug(`[${tenantId}] Mensaje de protocolo ignorado: ${protocolType}`);
+        return;
+      }
+
+      // 🛡️ FILTRO 3: Ignorar mensajes vacíos (sin texto ni media)
+      const messageContent = baileysMessage.message;
+      const hasContent = messageContent && (
+        messageContent.conversation ||
+        messageContent.extendedTextMessage ||
+        messageContent.imageMessage ||
+        messageContent.videoMessage ||
+        messageContent.audioMessage ||
+        messageContent.documentMessage ||
+        messageContent.stickerMessage ||
+        messageContent.locationMessage ||
+        messageContent.contactMessage
+      );
+      
+      if (!hasContent) {
+        console.log(`🔄 [EMPTY-MSG] Mensaje vacío ignorado - sin contenido válido`);
+        logger.debug(`[${tenantId}] Mensaje vacío ignorado`);
         return;
       }
 
