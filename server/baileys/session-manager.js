@@ -348,15 +348,22 @@ class SessionManager extends EventEmitter {
     console.log(`🔍 [DEBUG] handleIncomingMessages llamado para tenant ${tenantId}, type: ${type}, mensajes: ${messages.length}`);
     
     for (const message of messages) {
-      // 🛡️ FILTRO: Ignorar estados/historias de WhatsApp
+      // 🛡️ FILTRO 1: Ignorar estados/historias de WhatsApp
       if (message.key.remoteJid === 'status@broadcast') {
         console.log(`🔍 [DEBUG] Estado/Historia de WhatsApp ignorado (status@broadcast)`);
         logger.info(`[${tenantId}] Estado/Historia de WhatsApp ignorado - no se procesará`);
         continue; // Saltar este mensaje
       }
       
+      // 🛡️ FILTRO 2: Ignorar mensajes enviados por el bot mismo (ANTI-LOOP)
+      if (message.key.fromMe === true) {
+        console.log(`🔄 [ANTI-LOOP] Mensaje propio ignorado - fromMe=true, messageId=${message.key.id}`);
+        logger.info(`[${tenantId}] Mensaje propio ignorado (fromMe=true) - no se procesará`);
+        continue; // Saltar este mensaje
+      }
+      
       if (type === 'notify') {
-        console.log(`🔍 [DEBUG] Mensaje tipo notify de ${message.key.remoteJid}`);
+        console.log(`✅ [DEBUG] Mensaje tipo notify de ${message.key.remoteJid}, fromMe=${message.key.fromMe}`);
         logger.info(`[${tenantId}] Mensaje recibido de ${message.key.remoteJid}`);
         
         console.log(`🔍 [DEBUG] Emitiendo evento 'message' para tenant ${tenantId}`);
