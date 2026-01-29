@@ -1,0 +1,166 @@
+/**
+ * Componente: Cards
+ * Contenedores de contenido reutilizables
+ */
+
+/* ========================================
+   CARD BASE
+   ======================================== */
+.card {
+  background: var(--bg-white);
+  border: var(--border-width) solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: all var(--transition-base);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.card-no-hover:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+/* ========================================
+   CARD HEADER
+   ======================================== */
+.card-header {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: var(--border-width) solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.card-header-title {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+/* ========================================
+   CARD BODY
+   ======================================== */
+.card-body {
+  padding: var(--spacing-lg);
+}
+
+.card-body-sm {
+  padding: var(--spacing-md);
+}
+
+.card-body-lg {
+  padding: var(--spacing-xl);
+}
+
+/* ========================================
+   CARD FOOTER
+   ======================================== */
+.card-footer {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-top: var(--border-width) solid var(--border-color);
+  background: var(--bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+/* ========================================
+   CARD VARIANTES
+   ======================================== */
+.card-flat {
+  border: none;
+  box-shadow: none;
+}
+
+.card-elevated {
+  border: none;
+  box-shadow: var(--shadow-lg);
+}
+
+.card-outlined {
+  box-shadow: none;
+}
+
+/* ========================================
+   CARD CLICKEABLE
+   ======================================== */
+.card-clickable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.card-clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.card-clickable:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-md);
+}
+
+/* ========================================
+   CARD IMAGE
+   ======================================== */
+.card-image {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.card-image-top {
+  border-top-left-radius: var(--border-radius-lg);
+  border-top-right-radius: var(--border-radius-lg);
+}
+
+/* ========================================
+   CARD CON GRADIENTE
+   ======================================== */
+.card-gradient {
+  background: var(--primary-gradient);
+  color: var(--text-white);
+  border: none;
+}
+
+.card-gradient .card-header,
+.card-gradient .card-footer {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* ========================================
+   GRID DE CARDS
+   ======================================== */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.card-grid-sm {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.card-grid-lg {
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: var(--spacing-xl);
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+@media (max-width: 768px) {
+  .card-grid,
+  .card-grid-sm,
+  .card-grid-lg {
+    grid-template-columns: 1fr;
+  }
+  
+  .card-body {
+    padding: var(--spacing-md);
+  }
+}
