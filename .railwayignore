@@ -1,4 +1,38 @@
-# Railway ignore file - Force use of Dockerfile
+# Railway ignore file - Exclude unnecessary files from deployment
 
-# This file exists to prevent Railway from using Nixpacks
-# and force it to use our Dockerfile instead
+# Node
+node_modules/
+
+# Archive and documentation
+docs-archive/
+propuesta/
+Integracion-*/
+docs/
+
+# Sessions (sensitive credentials)
+sessions/
+
+# Git
+.git/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Backups
+backup_*/
+archive_*/
+
+# Development scripts
+scripts/
