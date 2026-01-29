@@ -2,10 +2,8 @@
         const currentUserId = localStorage.getItem('currentUserId');
         const currentTenantId = localStorage.getItem('currentTenantId');
 
-        // Initialize Firebase early for status checks
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
+        // Firebase ya está inicializado en config.js
+        // No necesitamos inicializarlo de nuevo aquí
 
         if (!currentUserId) {
             window.location.href = '/auth.html';

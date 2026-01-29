@@ -8,22 +8,8 @@
       window.location.href = '/auth.html';
     }
 
-    // Initialize Firebase
-    const firebaseConfig = {
-      apiKey: "AIzaSyAChWEnXztMe5YWJTPevIY5afgHMYxZBzQ",
-      authDomain: "kds-app-7f1d3.firebaseapp.com",
-      databaseURL: "https://kds-app-7f1d3-default-rtdb.firebaseio.com",
-      projectId: "kds-app-7f1d3",
-      storageBucket: "kds-app-7f1d3.firebasestorage.app",
-      messagingSenderId: "236480135078",
-      appId: "1:236480135078:web:246c759f840c5f140e1967",
-      measurementId: "G-0Q1V5WV35X"
-    };
-
-    // Initialize Firebase
-    if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
-    }
+    // Firebase ya está inicializado en config.js
+    // No necesitamos inicializarlo de nuevo aquí
 
     // Global variables
     let tenantId = null;
