@@ -42,8 +42,7 @@ function formatearPrecio(precio) {
 async function obtenerTiempoEntrega(tenantId) {
   try {
     console.log(`🕒 [obtenerTiempoEntrega] Buscando tiempo para tenant: ${tenantId}`);
-    const db = firebaseService.getDatabase();
-    const snapshot = await db.ref(`tenants/${tenantId}/config/deliveryTime`).once('value');
+    const snapshot = await firebaseService.database.ref(`tenants/${tenantId}/config/deliveryTime`).once('value');
     const deliveryTime = snapshot.val();
     
     console.log(`🕒 [obtenerTiempoEntrega] Datos obtenidos:`, deliveryTime);
