@@ -166,12 +166,21 @@ class WhatsAppHandler {
   async handleMessageChange(value) {
     try {
       const phoneNumberId = value.metadata.phone_number_id;
+      const botPhoneNumber = value.metadata.display_phone_number; // Número del bot
       const messages = value.messages || [];
       
       // Obtener tenant por phoneNumberId
       const tenant = await tenantService.getTenantByPhoneNumberId(phoneNumberId);
       
       for (const message of messages) {
+        // 🛡️ FILTRO ANTI-LOOP: Ignorar mensajes enviados por el bot mismo
+        // Si el remitente es el número del bot, ignorar el mensaje
+        if (message.from === botPhoneNumber) {
+          console.log(`🔄 Mensaje ignorado (enviado por el bot): ${message.id}`);
+          console.log(`   Bot: ${botPhoneNumber}`);
+          continue; // Saltar este mensaje
+        }
+        
         console.log(`📩 Nuevo mensaje recibido en tenant: ${tenant.tenantId}`);
         console.log(`   De: ${message.from}`);
         console.log(`   Tipo: ${message.type}`);
