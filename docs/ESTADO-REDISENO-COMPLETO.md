@@ -20,7 +20,6 @@ Se completó el rediseño visual completo de la webapp KDS con un sistema de dis
 | `dashboard.html` | `css/dashboard.css` | `js/dashboard.js` | ✅ Completado |
 | `kds.html` | `css/kds-modern.css` | `js/kds.js` | ✅ Completado |
 | `whatsapp-connect.html` | `css/whatsapp-connect.css` | `js/whatsapp-connect.js` | ✅ Completado |
-| `onboarding-success.html` | `css/success-modern.css` | `js/onboarding-success.js` | ✅ Completado |
 | `payment-success.html` | `css/success-modern.css` | `js/payment-success.js` | ✅ Completado |
 | `privacy-policy.html` | `css/legal-modern.css` | - | ✅ Completado |
 | `terms.html` | `css/legal-modern.css` | - | ✅ Completado |
@@ -35,6 +34,8 @@ Se completó el rediseño visual completo de la webapp KDS con un sistema de dis
 | `diagnose.html` | Herramienta desarrollo (no producción) |
 | `kds-diagnose.html` | Herramienta desarrollo (no producción) |
 | `whatsapp-connect.html` (antiguo) | Reemplazado por versión modernizada |
+| `onboarding-success.html` | No usado en flujo Baileys (era para Meta API) |
+| `js/onboarding-success.js` | No usado en flujo Baileys |
 
 **Backups disponibles en**: `backups-eliminados/`
 
@@ -52,25 +53,25 @@ Se completó el rediseño visual completo de la webapp KDS con un sistema de dis
 
 ## Sistema de Diseño
 
-### Colores (del logo KDS)
+### Colores Principales
 ```css
---kds-orange: #FF6B35;
---kds-orange-dark: #E55A2B;
---kds-dark: #1A1A2E;
---kds-gray: #2D2D44;
---kds-light: #F8F9FA;
---kds-green: #10B981;
+/* Páginas principales (dashboard, kds, etc.) */
+--kds-orange: #FF6B35;     /* Acento principal */
+--kds-dark: #1A1A2E;       /* Fondo oscuro */
+--kds-gray: #2D2D44;       /* Fondo secundario */
+
+/* Páginas legales (términos, privacidad) */
+--kds-accent: #3B82F6;     /* Azul profesional */
+--kds-dark: #1A1A2E;       /* Fondo oscuro */
 ```
 
 ### Características
-- ✅ Iconos SVG en lugar de emojis
+- ✅ Iconos SVG profesionales (sin emojis)
 - ✅ Sin estilos inline
 - ✅ Variables CSS consistentes
 - ✅ Diseño responsive
 - ✅ Tipografía Inter
 - ✅ Dimensiones compactas y elegantes
-- ✅ Bordes redondeados modernos
-- ✅ Sombras sutiles
 
 ---
 
@@ -83,11 +84,10 @@ kds-webapp/
 ├── select.html             
 ├── dashboard.html          
 ├── kds.html                
-├── whatsapp-connect.html   ← (antes onboarding.html)
-├── onboarding-success.html ← Rediseñado
-├── payment-success.html    ← Rediseñado
-├── privacy-policy.html     ← Rediseñado
-├── terms.html              ← Rediseñado
+├── whatsapp-connect.html   
+├── payment-success.html    
+├── privacy-policy.html     
+├── terms.html              
 │
 ├── css/
 │   ├── index-modern.css
@@ -96,48 +96,29 @@ kds-webapp/
 │   ├── dashboard.css
 │   ├── kds-modern.css
 │   ├── whatsapp-connect.css
-│   ├── success-modern.css    ← NUEVO (success pages)
-│   └── legal-modern.css      ← NUEVO (legal pages)
+│   ├── success-modern.css    ← Solo payment-success
+│   └── legal-modern.css      ← Términos y privacidad
 │
 ├── js/
 │   ├── auth.js
 │   ├── dashboard.js
 │   ├── kds.js
 │   ├── whatsapp-connect.js
-│   ├── onboarding-success.js
 │   └── payment-success.js
 │
 └── backups-eliminados/
-    ├── landing.html
-    ├── diagnose.html
-    ├── kds-diagnose.html
-    ├── onboarding.html
-    ├── onboarding-success.html
-    ├── payment-success.html
-    ├── privacy-policy.html
-    ├── terms.html
-    └── ... (CSS antiguos)
+    └── ... (archivos históricos)
 ```
-
----
-
-## Documentación Relacionada
-
-- `docs/LIMPIEZA-ARCHIVOS-30-ENE.md` - Detalles de la limpieza
-- `docs/ONBOARDING-REDISENO-COMPLETADO.md` - Rediseño de conexión WhatsApp
-- `docs/DIMENSIONES-AJUSTADAS.md` - Ajustes de tamaños
 
 ---
 
 ## Estado Final
 
-**🎉 REDISEÑO COMPLETO - TODAS LAS PÁGINAS MODERNIZADAS**
+**🎉 REDISEÑO COMPLETO - 9 PÁGINAS ACTIVAS**
 
 El proyecto ahora cuenta con:
 - Sistema de diseño unificado
-- Paleta de colores del logo KDS
-- Iconos SVG profesionales
+- Flujo de conexión WhatsApp via Baileys (sin onboarding-success)
+- Páginas legales con colores profesionales
 - Sin emojis en el código
-- Diseño responsive
-- Páginas legales profesionales
-- Páginas de éxito elegantes
+- Diseño responsive completo

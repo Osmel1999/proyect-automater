@@ -27,10 +27,6 @@
         "destination": "/whatsapp-connect.html"
       },
       {
-        "source": "/onboarding-success",
-        "destination": "/onboarding-success.html"
-      },
-      {
         "source": "/kds",
         "destination": "/kds.html"
       },

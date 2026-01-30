@@ -4,9 +4,10 @@
 
 /* Variables del Sistema de Diseño KDS */
 :root {
-  --kds-orange: #FF6B35;
-  --kds-orange-dark: #E55A2B;
-  --kds-orange-light: #FF8F66;
+  --kds-primary: #1A1A2E;
+  --kds-primary-light: #2D2D44;
+  --kds-accent: #3B82F6;
+  --kds-accent-dark: #2563EB;
   --kds-dark: #1A1A2E;
   --kds-gray: #2D2D44;
   --kds-gray-light: #4A4A5A;
@@ -75,7 +76,7 @@ body {
 .legal-header h1 svg {
   width: 28px;
   height: 28px;
-  color: var(--kds-orange);
+  color: var(--kds-accent);
 }
 
 .legal-header p {
@@ -95,7 +96,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: var(--kds-orange);
+  color: var(--kds-accent);
   text-decoration: none;
   font-size: 13px;
   font-weight: 500;
@@ -104,7 +105,7 @@ body {
 }
 
 .back-link:hover {
-  color: var(--kds-orange-dark);
+  color: var(--kds-accent-dark);
 }
 
 .back-link svg {
@@ -121,7 +122,7 @@ body {
 
 /* Highlight Box */
 .highlight {
-  background: linear-gradient(135deg, var(--kds-orange) 0%, var(--kds-orange-dark) 100%);
+  background: linear-gradient(135deg, var(--kds-dark) 0%, var(--kds-gray) 100%);
   color: var(--kds-white);
   padding: 20px 24px;
   border-radius: var(--radius-md);
@@ -145,7 +146,7 @@ h2 {
   margin-top: 32px;
   margin-bottom: 16px;
   padding-bottom: 8px;
-  border-bottom: 2px solid var(--kds-orange);
+  border-bottom: 2px solid var(--kds-accent);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -154,7 +155,7 @@ h2 {
 h2 svg {
   width: 20px;
   height: 20px;
-  color: var(--kds-orange);
+  color: var(--kds-accent);
 }
 
 h3 {
@@ -194,7 +195,7 @@ li strong {
 .info-box {
   background: var(--kds-white);
   border: 1px solid #E5E7EB;
-  border-left: 4px solid var(--kds-orange);
+  border-left: 4px solid var(--kds-accent);
   padding: 16px 20px;
   border-radius: var(--radius-sm);
   margin: 20px 0;
@@ -265,17 +266,18 @@ li strong {
 .contact-item svg {
   width: 18px;
   height: 18px;
-  color: var(--kds-orange);
+  color: var(--kds-accent);
   flex-shrink: 0;
 }
 
 .contact-item a {
-  color: var(--kds-orange);
+  color: var(--kds-accent);
   text-decoration: none;
 }
 
 .contact-item a:hover {
   text-decoration: underline;
+  color: var(--kds-accent-dark);
 }
 
 /* Footer */
