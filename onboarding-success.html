@@ -3,124 +3,182 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>¡Conexión Exitosa! - KDS Platform</title>
+  <title>Conexión Exitosa - KDS Platform</title>
   <meta name="description" content="Tu WhatsApp Business ha sido conectado exitosamente">
   <link rel="icon" type="image/png" href="assets/images/kds-logo.png">
-  <link rel="stylesheet" href="css/onboarding-success.css">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Modern Styles -->
+  <link rel="stylesheet" href="css/success-modern.css">
 </head>
 <body>
   <div class="success-container">
-    <div class="success-icon">🎉</div>
+    <!-- Logo -->
+    <div class="success-logo">
+      <img src="assets/images/kds-logo.png" alt="KDS Logo" onerror="this.parentElement.style.display='none'">
+    </div>
 
-    <h1 class="success-title" id="success-title">¡WhatsApp Conectado!</h1>
+    <!-- Success Icon -->
+    <div class="success-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+    </div>
+
+    <h1 class="success-title" id="success-title">WhatsApp Conectado</h1>
 
     <p class="success-subtitle" id="success-subtitle">
-      Tu número de WhatsApp Business ha sido conectado exitosamente a la plataforma KDS. 
+      Tu número de WhatsApp Business ha sido conectado exitosamente. 
       Ahora puedes empezar a recibir pedidos automáticamente.
     </p>
 
-    <!-- Mensaje especial para migración -->
-    <div class="tenant-info" id="migration-note" style="display: none; background: #fff3cd; border-color: #ffc107;">
-      <h3 class="tenant-info-title" style="color: #856404;">⚠️ Importante sobre tu migración</h3>
-      <p style="color: #856404; text-align: left; line-height: 1.6;">
-        <strong>Tu número fue migrado exitosamente.</strong><br><br>
-        • La app de WhatsApp Business en tu teléfono ya no funciona<br>
-        • Gestiona todos los pedidos desde el Panel KDS<br>
-        • Tus clientes pueden seguir escribiendo al mismo número que conocen<br>
-        • Todas tus conversaciones previas están preservadas
-      </p>
+    <!-- Nota de Migración -->
+    <div class="info-note warning" id="migration-note">
+      <div class="info-note-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+          <line x1="12" y1="9" x2="12" y2="13"></line>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+        <span class="info-note-title">Importante sobre tu migración</span>
+      </div>
+      <ul class="info-note-list">
+        <li>La app de WhatsApp Business en tu teléfono ya no funciona</li>
+        <li>Gestiona todos los pedidos desde el Panel KDS</li>
+        <li>Tus clientes pueden seguir escribiendo al mismo número</li>
+        <li>Todas tus conversaciones previas están preservadas</li>
+      </ul>
     </div>
 
-    <!-- Mensaje especial para número nuevo -->
-    <div class="tenant-info" id="new-number-note" style="display: none; background: #d1ecf1; border-color: #bee5eb;">
-      <h3 class="tenant-info-title" style="color: #0c5460;">✨ Tu nuevo número está activo</h3>
-      <p style="color: #0c5460; text-align: left; line-height: 1.6;">
-        <strong>¡Tu número nuevo de WhatsApp Business está listo!</strong><br><br>
-        • Comparte tu número con tus clientes<br>
-        • Actualiza tus redes sociales y sitio web<br>
-        • Pon avisos en tu local con el nuevo contacto<br>
-        • Considera una fase de transición si tenías otro número activo
-      </p>
+    <!-- Nota de Número Nuevo -->
+    <div class="info-note info" id="new-number-note">
+      <div class="info-note-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="16" x2="12" y2="12"></line>
+          <line x1="12" y1="8" x2="12.01" y2="8"></line>
+        </svg>
+        <span class="info-note-title">Tu nuevo número está activo</span>
+      </div>
+      <ul class="info-note-list">
+        <li>Comparte tu número con tus clientes</li>
+        <li>Actualiza tus redes sociales y sitio web</li>
+        <li>Pon avisos en tu local con el nuevo contacto</li>
+        <li>Considera una fase de transición si tenías otro número</li>
+      </ul>
     </div>
 
+    <!-- Info de la Cuenta -->
     <div class="tenant-info">
-      <h3 class="tenant-info-title">📋 Información de tu cuenta</h3>
+      <div class="tenant-info-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="8.5" cy="7" r="4"></circle>
+          <line x1="20" y1="8" x2="20" y2="14"></line>
+          <line x1="23" y1="11" x2="17" y2="11"></line>
+        </svg>
+        <span class="tenant-info-title">Información de tu cuenta</span>
+      </div>
 
       <div class="tenant-info-item">
-        <span class="tenant-info-label">ID de Cliente:</span>
+        <span class="tenant-info-label">ID de Cliente</span>
         <span class="tenant-info-value" id="tenant-id">Cargando...</span>
       </div>
 
       <div class="tenant-info-item">
-        <span class="tenant-info-label">Nombre del Negocio:</span>
+        <span class="tenant-info-label">Nombre del Negocio</span>
         <span class="tenant-info-value loading" id="tenant-name">Cargando...</span>
       </div>
 
       <div class="tenant-info-item">
-        <span class="tenant-info-label">Email:</span>
+        <span class="tenant-info-label">Email</span>
         <span class="tenant-info-value loading" id="tenant-email">Cargando...</span>
       </div>
 
       <div class="tenant-info-item">
-        <span class="tenant-info-label">Estado:</span>
+        <span class="tenant-info-label">Estado</span>
         <span class="status-badge">
-          <span>✅</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
           <span>Activo</span>
         </span>
       </div>
 
       <div class="tenant-info-item">
-        <span class="tenant-info-label">Fecha de Registro:</span>
+        <span class="tenant-info-label">Fecha de Registro</span>
         <span class="tenant-info-value" id="tenant-date">Cargando...</span>
       </div>
     </div>
 
-    <a href="index.html" class="btn-dashboard" id="btn-dashboard">
-      Ir al Dashboard 🚀
+    <!-- Botón Dashboard -->
+    <a href="dashboard.html" class="btn-dashboard" id="btn-dashboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7"></rect>
+        <rect x="14" y="3" width="7" height="7"></rect>
+        <rect x="14" y="14" width="7" height="7"></rect>
+        <rect x="3" y="14" width="7" height="7"></rect>
+      </svg>
+      Ir al Dashboard
     </a>
 
+    <!-- Próximos Pasos -->
     <div class="next-steps">
-      <h3 class="next-steps-title">🎯 Próximos pasos</h3>
+      <div class="next-steps-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        <span class="next-steps-title">Próximos pasos</span>
+      </div>
 
       <div class="steps-list" id="steps-list">
         <div class="step-item">
-          <div class="step-item-title">Configura tu menú</div>
-          <div class="step-item-desc">
-            Agrega tus productos, precios y categorías para que el bot pueda mostrarlos a tus clientes.
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <div class="step-item-title">Configura tu menú</div>
+            <div class="step-item-desc">
+              Agrega tus productos, precios y categorías para que el bot pueda mostrarlos.
+            </div>
           </div>
         </div>
 
         <div class="step-item">
-          <div class="step-item-title">Personaliza los mensajes</div>
-          <div class="step-item-desc">
-            Ajusta los mensajes de bienvenida, despedida y confirmación según tu marca.
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <div class="step-item-title">Personaliza los mensajes</div>
+            <div class="step-item-desc">
+              Ajusta los mensajes de bienvenida y confirmación según tu marca.
+            </div>
           </div>
         </div>
 
         <div class="step-item">
-          <div class="step-item-title">Prueba el bot</div>
-          <div class="step-item-desc">
-            Envía un mensaje a tu número de WhatsApp para probar que todo funciona correctamente.
-          </div>
-        </div>
-
-        <div class="step-item">
-          <div class="step-item-title">¡Empieza a recibir pedidos!</div>
-          <div class="step-item-desc">
-            Comparte tu número de WhatsApp con tus clientes y comienza a automatizar tus ventas.
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <div class="step-item-title">Haz tu primer pedido de prueba</div>
+            <div class="step-item-desc">
+              Envía un mensaje al número conectado para verificar que todo funciona.
+            </div>
           </div>
         </div>
       </div>
     </div>
-
-    <div class="help-text">
-      <strong>💡 ¿Necesitas ayuda?</strong>
-      Si tienes alguna pregunta o problema con la configuración, 
-      contáctanos en <strong>soporte@kingdomdesignpro.com</strong> o 
-      visita nuestra sección de ayuda en el dashboard.
-    </div>
   </div>
 
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+  
+  <!-- Config -->
+  <script src="config.js"></script>
+  
+  <!-- Success Script -->
   <script src="js/onboarding-success.js"></script>
 </body>
 </html>

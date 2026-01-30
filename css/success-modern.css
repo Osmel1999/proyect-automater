@@ -1,0 +1,397 @@
+/* ===========================================
+   SUCCESS PAGE - KDS Modern Design System
+   =========================================== */
+
+/* Variables del Sistema de Diseño KDS */
+:root {
+  --kds-orange: #FF6B35;
+  --kds-orange-dark: #E55A2B;
+  --kds-orange-light: #FF8F66;
+  --kds-dark: #1A1A2E;
+  --kds-gray: #2D2D44;
+  --kds-gray-light: #4A4A5A;
+  --kds-light: #F8F9FA;
+  --kds-white: #FFFFFF;
+  --kds-green: #10B981;
+  --kds-green-light: #D1FAE5;
+  --kds-blue: #3B82F6;
+  --kds-blue-light: #DBEAFE;
+  --kds-yellow: #F59E0B;
+  --kds-yellow-light: #FEF3C7;
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+}
+
+/* Reset y Base */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-family);
+  background: linear-gradient(135deg, var(--kds-dark) 0%, var(--kds-gray) 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+/* Container Principal */
+.success-container {
+  max-width: 520px;
+  width: 100%;
+  padding: 32px 28px;
+  background: var(--kds-white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+  animation: slideUp 0.5s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Logo */
+.success-logo {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+}
+
+.success-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Icono de Éxito */
+.success-icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 20px;
+  background: var(--kds-green-light);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: bounceIn 0.6s ease;
+}
+
+.success-icon svg {
+  width: 36px;
+  height: 36px;
+  color: var(--kds-green);
+}
+
+@keyframes bounceIn {
+  0% { 
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% { 
+    transform: scale(1.1);
+  }
+  100% { 
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Títulos */
+.success-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--kds-dark);
+  margin-bottom: 8px;
+  line-height: 1.3;
+}
+
+.success-subtitle {
+  font-size: 13px;
+  color: var(--kds-gray-light);
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+/* Nota de Migración/Número Nuevo */
+.info-note {
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  margin-bottom: 20px;
+  text-align: left;
+  display: none;
+}
+
+.info-note.warning {
+  background: var(--kds-yellow-light);
+  border: 1px solid var(--kds-yellow);
+}
+
+.info-note.info {
+  background: var(--kds-blue-light);
+  border: 1px solid var(--kds-blue);
+}
+
+.info-note-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.info-note-header svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.info-note.warning .info-note-header svg {
+  color: var(--kds-yellow);
+}
+
+.info-note.info .info-note-header svg {
+  color: var(--kds-blue);
+}
+
+.info-note-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--kds-dark);
+}
+
+.info-note-list {
+  font-size: 12px;
+  color: var(--kds-gray-light);
+  line-height: 1.6;
+  padding-left: 26px;
+}
+
+.info-note-list li {
+  margin-bottom: 4px;
+}
+
+/* Info Card */
+.tenant-info {
+  background: var(--kds-light);
+  padding: 18px;
+  border-radius: var(--radius-md);
+  margin-bottom: 20px;
+  text-align: left;
+  border: 1px solid #E5E7EB;
+}
+
+.tenant-info-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.tenant-info-header svg {
+  width: 18px;
+  height: 18px;
+  color: var(--kds-orange);
+}
+
+.tenant-info-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--kds-dark);
+}
+
+.tenant-info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #F3F4F6;
+}
+
+.tenant-info-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.tenant-info-label {
+  font-size: 12px;
+  color: var(--kds-gray-light);
+}
+
+.tenant-info-value {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--kds-dark);
+}
+
+.tenant-info-value.loading {
+  color: var(--kds-gray-light);
+  font-style: italic;
+}
+
+/* Status Badge */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: var(--kds-green-light);
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--kds-green);
+}
+
+.status-badge svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Botón Dashboard */
+.btn-dashboard {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, var(--kds-orange) 0%, var(--kds-orange-dark) 100%);
+  color: var(--kds-white);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-md);
+  margin-bottom: 24px;
+}
+
+.btn-dashboard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.btn-dashboard svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Próximos Pasos */
+.next-steps {
+  text-align: left;
+}
+
+.next-steps-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.next-steps-header svg {
+  width: 18px;
+  height: 18px;
+  color: var(--kds-orange);
+}
+
+.next-steps-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--kds-dark);
+}
+
+.steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.step-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  background: var(--kds-light);
+  border-radius: var(--radius-sm);
+  border: 1px solid #E5E7EB;
+}
+
+.step-number {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  background: var(--kds-orange);
+  color: var(--kds-white);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.step-content {
+  flex: 1;
+}
+
+.step-item-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--kds-dark);
+  margin-bottom: 3px;
+}
+
+.step-item-desc {
+  font-size: 11px;
+  color: var(--kds-gray-light);
+  line-height: 1.4;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .success-container {
+    padding: 24px 20px;
+  }
+
+  .success-icon {
+    width: 60px;
+    height: 60px;
+  }
+
+  .success-icon svg {
+    width: 30px;
+    height: 30px;
+  }
+
+  .success-title {
+    font-size: 20px;
+  }
+
+  .success-subtitle {
+    font-size: 12px;
+  }
+
+  .btn-dashboard {
+    font-size: 13px;
+    padding: 11px 16px;
+  }
+}

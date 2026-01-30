@@ -1,0 +1,320 @@
+/* ===========================================
+   LEGAL PAGES - KDS Modern Design System
+   =========================================== */
+
+/* Variables del Sistema de Diseño KDS */
+:root {
+  --kds-orange: #FF6B35;
+  --kds-orange-dark: #E55A2B;
+  --kds-orange-light: #FF8F66;
+  --kds-dark: #1A1A2E;
+  --kds-gray: #2D2D44;
+  --kds-gray-light: #4A4A5A;
+  --kds-light: #F8F9FA;
+  --kds-white: #FFFFFF;
+  --kds-green: #10B981;
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+}
+
+/* Reset y Base */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-family);
+  background: var(--kds-light);
+  color: var(--kds-dark);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* Header */
+.legal-header {
+  background: linear-gradient(135deg, var(--kds-dark) 0%, var(--kds-gray) 100%);
+  color: var(--kds-white);
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.legal-header-content {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.legal-logo {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 16px;
+}
+
+.legal-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.legal-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.legal-header h1 svg {
+  width: 28px;
+  height: 28px;
+  color: var(--kds-orange);
+}
+
+.legal-header p {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Container */
+.legal-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 32px 20px 60px;
+}
+
+/* Back Link */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--kds-orange);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 24px;
+  transition: color 0.2s ease;
+}
+
+.back-link:hover {
+  color: var(--kds-orange-dark);
+}
+
+.back-link svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Last Update */
+.last-update {
+  font-size: 12px;
+  color: var(--kds-gray-light);
+  margin-bottom: 24px;
+}
+
+/* Highlight Box */
+.highlight {
+  background: linear-gradient(135deg, var(--kds-orange) 0%, var(--kds-orange-dark) 100%);
+  color: var(--kds-white);
+  padding: 20px 24px;
+  border-radius: var(--radius-md);
+  margin-bottom: 32px;
+}
+
+.highlight p {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.highlight strong {
+  font-weight: 600;
+}
+
+/* Section Titles */
+h2 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--kds-dark);
+  margin-top: 32px;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--kds-orange);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+h2 svg {
+  width: 20px;
+  height: 20px;
+  color: var(--kds-orange);
+}
+
+h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--kds-gray);
+  margin-top: 20px;
+  margin-bottom: 12px;
+}
+
+/* Paragraphs */
+p {
+  font-size: 14px;
+  color: var(--kds-gray-light);
+  margin-bottom: 16px;
+}
+
+/* Lists */
+ul, ol {
+  margin-bottom: 16px;
+  padding-left: 24px;
+}
+
+li {
+  font-size: 14px;
+  color: var(--kds-gray-light);
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+li strong {
+  color: var(--kds-dark);
+  font-weight: 600;
+}
+
+/* Info Box */
+.info-box {
+  background: var(--kds-white);
+  border: 1px solid #E5E7EB;
+  border-left: 4px solid var(--kds-orange);
+  padding: 16px 20px;
+  border-radius: var(--radius-sm);
+  margin: 20px 0;
+}
+
+.info-box p {
+  margin-bottom: 0;
+}
+
+/* Warning Box */
+.warning-box {
+  background: #FEF3C7;
+  border: 1px solid #F59E0B;
+  border-left: 4px solid #F59E0B;
+  padding: 16px 20px;
+  border-radius: var(--radius-sm);
+  margin: 20px 0;
+}
+
+.warning-box p {
+  color: #92400E;
+  margin-bottom: 0;
+}
+
+/* Success Box */
+.success-box {
+  background: #D1FAE5;
+  border: 1px solid var(--kds-green);
+  border-left: 4px solid var(--kds-green);
+  padding: 16px 20px;
+  border-radius: var(--radius-sm);
+  margin: 20px 0;
+}
+
+.success-box p {
+  color: #065F46;
+  margin-bottom: 0;
+}
+
+/* Contact Section */
+.contact-section {
+  background: var(--kds-white);
+  border: 1px solid #E5E7EB;
+  border-radius: var(--radius-md);
+  padding: 24px;
+  margin-top: 32px;
+}
+
+.contact-section h3 {
+  margin-top: 0;
+  margin-bottom: 16px;
+  color: var(--kds-dark);
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: var(--kds-gray-light);
+}
+
+.contact-item:last-child {
+  margin-bottom: 0;
+}
+
+.contact-item svg {
+  width: 18px;
+  height: 18px;
+  color: var(--kds-orange);
+  flex-shrink: 0;
+}
+
+.contact-item a {
+  color: var(--kds-orange);
+  text-decoration: none;
+}
+
+.contact-item a:hover {
+  text-decoration: underline;
+}
+
+/* Footer */
+.legal-footer {
+  text-align: center;
+  padding: 24px 20px;
+  border-top: 1px solid #E5E7EB;
+  margin-top: 40px;
+}
+
+.legal-footer p {
+  font-size: 12px;
+  color: var(--kds-gray-light);
+  margin-bottom: 0;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .legal-header {
+    padding: 32px 16px;
+  }
+
+  .legal-header h1 {
+    font-size: 20px;
+  }
+
+  .legal-container {
+    padding: 24px 16px 40px;
+  }
+
+  h2 {
+    font-size: 16px;
+  }
+
+  h3 {
+    font-size: 14px;
+  }
+
+  p, li {
+    font-size: 13px;
+  }
+}

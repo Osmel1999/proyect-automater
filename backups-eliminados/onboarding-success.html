@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>¡Conexión Exitosa! - KDS Platform</title>
+  <meta name="description" content="Tu WhatsApp Business ha sido conectado exitosamente">
+  <link rel="icon" type="image/png" href="assets/images/kds-logo.png">
+  <link rel="stylesheet" href="css/onboarding-success.css">
+</head>
+<body>
+  <div class="success-container">
+    <div class="success-icon">🎉</div>
+
+    <h1 class="success-title" id="success-title">¡WhatsApp Conectado!</h1>
+
+    <p class="success-subtitle" id="success-subtitle">
+      Tu número de WhatsApp Business ha sido conectado exitosamente a la plataforma KDS. 
+      Ahora puedes empezar a recibir pedidos automáticamente.
+    </p>
+
+    <!-- Mensaje especial para migración -->
+    <div class="tenant-info" id="migration-note" style="display: none; background: #fff3cd; border-color: #ffc107;">
+      <h3 class="tenant-info-title" style="color: #856404;">⚠️ Importante sobre tu migración</h3>
+      <p style="color: #856404; text-align: left; line-height: 1.6;">
+        <strong>Tu número fue migrado exitosamente.</strong><br><br>
+        • La app de WhatsApp Business en tu teléfono ya no funciona<br>
+        • Gestiona todos los pedidos desde el Panel KDS<br>
+        • Tus clientes pueden seguir escribiendo al mismo número que conocen<br>
+        • Todas tus conversaciones previas están preservadas
+      </p>
+    </div>
+
+    <!-- Mensaje especial para número nuevo -->
+    <div class="tenant-info" id="new-number-note" style="display: none; background: #d1ecf1; border-color: #bee5eb;">
+      <h3 class="tenant-info-title" style="color: #0c5460;">✨ Tu nuevo número está activo</h3>
+      <p style="color: #0c5460; text-align: left; line-height: 1.6;">
+        <strong>¡Tu número nuevo de WhatsApp Business está listo!</strong><br><br>
+        • Comparte tu número con tus clientes<br>
+        • Actualiza tus redes sociales y sitio web<br>
+        • Pon avisos en tu local con el nuevo contacto<br>
+        • Considera una fase de transición si tenías otro número activo
+      </p>
+    </div>
+
+    <div class="tenant-info">
+      <h3 class="tenant-info-title">📋 Información de tu cuenta</h3>
+
+      <div class="tenant-info-item">
+        <span class="tenant-info-label">ID de Cliente:</span>
+        <span class="tenant-info-value" id="tenant-id">Cargando...</span>
+      </div>
+
+      <div class="tenant-info-item">
+        <span class="tenant-info-label">Nombre del Negocio:</span>
+        <span class="tenant-info-value loading" id="tenant-name">Cargando...</span>
+      </div>
+
+      <div class="tenant-info-item">
+        <span class="tenant-info-label">Email:</span>
+        <span class="tenant-info-value loading" id="tenant-email">Cargando...</span>
+      </div>
+
+      <div class="tenant-info-item">
+        <span class="tenant-info-label">Estado:</span>
+        <span class="status-badge">
+          <span>✅</span>
+          <span>Activo</span>
+        </span>
+      </div>
+
+      <div class="tenant-info-item">
+        <span class="tenant-info-label">Fecha de Registro:</span>
+        <span class="tenant-info-value" id="tenant-date">Cargando...</span>
+      </div>
+    </div>
+
+    <a href="index.html" class="btn-dashboard" id="btn-dashboard">
+      Ir al Dashboard 🚀
+    </a>
+
+    <div class="next-steps">
+      <h3 class="next-steps-title">🎯 Próximos pasos</h3>
+
+      <div class="steps-list" id="steps-list">
+        <div class="step-item">
+          <div class="step-item-title">Configura tu menú</div>
+          <div class="step-item-desc">
+            Agrega tus productos, precios y categorías para que el bot pueda mostrarlos a tus clientes.
+          </div>
+        </div>
+
+        <div class="step-item">
+          <div class="step-item-title">Personaliza los mensajes</div>
+          <div class="step-item-desc">
+            Ajusta los mensajes de bienvenida, despedida y confirmación según tu marca.
+          </div>
+        </div>
+
+        <div class="step-item">
+          <div class="step-item-title">Prueba el bot</div>
+          <div class="step-item-desc">
+            Envía un mensaje a tu número de WhatsApp para probar que todo funciona correctamente.
+          </div>
+        </div>
+
+        <div class="step-item">
+          <div class="step-item-title">¡Empieza a recibir pedidos!</div>
+          <div class="step-item-desc">
+            Comparte tu número de WhatsApp con tus clientes y comienza a automatizar tus ventas.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="help-text">
+      <strong>💡 ¿Necesitas ayuda?</strong>
+      Si tienes alguna pregunta o problema con la configuración, 
+      contáctanos en <strong>soporte@kingdomdesignpro.com</strong> o 
+      visita nuestra sección de ayuda en el dashboard.
+    </div>
+  </div>
+
+  <script src="js/onboarding-success.js"></script>
+</body>
+</html>
