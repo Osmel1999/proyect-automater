@@ -10,7 +10,7 @@
 kds-webapp/
 ├── 📱 WhatsApp Bot (Baileys)
 │   ├── server/ - Backend Node.js
-│   ├── onboarding.html - Conexión WhatsApp
+│   ├── whatsapp-connect.html - Conexión WhatsApp
 │   └── MIGRACION-BAILEYS-COMPLETADA.md
 │
 ├── 💳 Sistema de Pagos (Wompi)
@@ -21,13 +21,16 @@ kds-webapp/
 │       └── ... (documentación completa)
 │
 ├── 🎨 Frontend
+│   ├── index.html - Página principal
+│   ├── auth.html - Autenticación
 │   ├── dashboard.html - Panel del restaurante
+│   ├── select.html - Selección de restaurante
 │   ├── kds.html - Display de cocina
-│   └── landing.html - Página principal
+│   └── whatsapp-connect.html - Conexión WhatsApp
 │
 └── 📚 Documentación
     ├── docs/ - Arquitectura y guías
-    └── archive_20260115/ - Archivos históricos
+    └── backups-eliminados/ - Archivos históricos
 ```
 
 ---
@@ -38,7 +41,7 @@ kds-webapp/
 
 - [x] **Migración a Baileys** - Bot WhatsApp funcional (gratis, sin Meta API)
 - [x] **Backend completo** - 11 endpoints REST + WebSocket
-- [x] **Frontend funcional** - Dashboard + KDS + Onboarding
+- [x] **Frontend funcional** - Dashboard + KDS + WhatsApp Connect
 - [x] **Sistema dual** - Meta API (legacy) + Baileys (nuevo)
 - [x] **Análisis de pagos** - 9 opciones evaluadas
 

@@ -26,16 +26,32 @@
       
       <!-- Disconnect WhatsApp Button -->
       <button class="btn-disconnect" id="btn-disconnect-whatsapp" style="display: none;" onclick="disconnectWhatsApp()">
-        📱 Desconectar WhatsApp
+        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+        </svg>
+        Desconectar WhatsApp
       </button>
       
       <!-- Connect WhatsApp Button -->
       <button class="btn-connect" id="btn-connect-whatsapp" style="display: none;" onclick="connectWhatsApp()">
-        📱 Conectar WhatsApp
+        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+        </svg>
+        Conectar WhatsApp
       </button>
       
-      <a href="/kds.html" class="btn-secondary" id="kdsBtn">📺 Ver KDS</a>
-      <a href="/select.html" class="btn-secondary">🏠 Inicio</a>
+      <a href="/kds.html" class="btn-secondary" id="kdsBtn">
+        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+        </svg>
+        Ver KDS
+      </a>
+      <a href="/select.html" class="btn-secondary">
+        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+        </svg>
+        Inicio
+      </a>
     </div>
   </div>
 
@@ -49,7 +65,11 @@
     <!-- Bot Control Card -->
     <div id="bot-control-container" style="display: none;">
       <div class="bot-control-card" id="bot-control-card">
-        <div class="bot-control-icon" id="bot-control-icon">🤖</div>
+        <div class="bot-control-icon">
+          <svg width="36" height="36" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+          </svg>
+        </div>
         <div class="bot-control-content">
           <div class="bot-control-title">Bot de WhatsApp</div>
           <div class="bot-control-status" id="bot-status-text">
@@ -82,7 +102,12 @@
     <div id="wizard-container" style="display: none;">
       <div class="wizard-card">
         <div class="wizard-header">
-          <h1 class="wizard-title">🚀 ¡Bienvenido a KDS Platform!</h1>
+          <h1 class="wizard-title">
+            <svg class="icon-lg" style="display: inline-block; vertical-align: middle; margin-right: 8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+            ¡Bienvenido a KDS Platform!
+          </h1>
           <p class="wizard-subtitle">Completa estos pasos para empezar a recibir pedidos automáticamente</p>
         </div>
 
@@ -161,21 +186,33 @@
         <!-- Stats Cards -->
         <div class="stats-grid">
           <div class="stat-card">
-            <div class="stat-icon">📊</div>
+            <div class="stat-icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+              </svg>
+            </div>
             <div class="stat-content">
               <div class="stat-label">Pedidos Hoy</div>
               <div class="stat-value" id="orders-today">0</div>
             </div>
           </div>
           <div class="stat-card">
-            <div class="stat-icon">💰</div>
+            <div class="stat-icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
             <div class="stat-content">
               <div class="stat-label">Ventas Hoy</div>
               <div class="stat-value" id="sales-today">$0</div>
             </div>
           </div>
           <div class="stat-card">
-            <div class="stat-icon">📱</div>
+            <div class="stat-icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+              </svg>
+            </div>
             <div class="stat-content">
               <div class="stat-label">WhatsApp</div>
               <div class="stat-value" id="whatsapp-status-main">Conectado</div>
@@ -185,35 +222,55 @@
 
         <!-- Quick Actions -->
         <div class="dashboard-section">
-          <h2 class="section-title-main">🚀 Acciones Rápidas</h2>
+          <h2 class="section-title-main">
+            <svg class="icon-lg" style="display: inline-block; vertical-align: middle; margin-right: 8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+            Acciones Rápidas
+          </h2>
           <div class="actions-grid">
             <div class="action-card" onclick="openMenuConfig()">
-              <div class="action-icon">🍽️</div>
+              <div class="action-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                </svg>
+              </div>
               <h3>Gestionar Menú</h3>
               <p>Agregar, editar o eliminar productos de tu menú</p>
             </div>
             <div class="action-card" onclick="openMessagesConfig()">
-              <div class="action-icon">💬</div>
+              <div class="action-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                </svg>
+              </div>
               <h3>Personalizar Mensajes</h3>
               <p>Editar mensajes automáticos del bot</p>
             </div>
             <div class="action-card" onclick="openPaymentConfig()">
-              <div class="action-icon">💳</div>
+              <div class="action-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                </svg>
+              </div>
               <h3>Configurar Pagos</h3>
               <p>Activar pagos online con Wompi</p>
             </div>
             <div class="action-card" onclick="window.location.href='kds.html'">
-              <div class="action-icon">🖥️</div>
+              <div class="action-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                </svg>
+              </div>
               <h3>Pantalla de Cocina</h3>
               <p>Ver pedidos en tiempo real (KDS)</p>
             </div>
-            <div class="action-card" onclick="viewWhatsAppInfo()">
-              <div class="action-icon">📱</div>
-              <h3>Info WhatsApp</h3>
-              <p>Ver número y estado de conexión</p>
-            </div>
             <div class="action-card" onclick="openDeliveryTimeConfig()">
-              <div class="action-icon">🕒</div>
+              <div class="action-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
               <h3>Tiempo de Entrega</h3>
               <p>Configurar tiempo estimado de entrega</p>
             </div>
@@ -223,7 +280,12 @@
         <!-- Menu Preview -->
         <div class="dashboard-section">
           <div class="section-header-main">
-            <h2 class="section-title-main">🍽️ Tu Menú</h2>
+            <h2 class="section-title-main">
+              <svg class="icon-lg" style="display: inline-block; vertical-align: middle; margin-right: 8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+              </svg>
+              Tu Menú
+            </h2>
             <button class="btn-primary" onclick="openMenuConfig()">+ Agregar Producto</button>
           </div>
           <div id="menu-list-preview" class="menu-preview-grid">
@@ -238,7 +300,12 @@
   <div class="modal-overlay" id="menu-modal">
     <div class="modal">
       <div class="modal-header">
-        <h2 class="modal-title">🍽️ Configurar Menú</h2>
+        <h2 class="modal-title">
+          <svg class="icon-lg" style="display: inline-block; vertical-align: middle; margin-right: 8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+          </svg>
+          Configurar Menú
+        </h2>
         <button class="modal-close" onclick="closeMenuModal()">×</button>
       </div>
       <div class="modal-body">
@@ -288,7 +355,12 @@
   <div class="modal-overlay" id="messages-modal">
     <div class="modal">
       <div class="modal-header">
-        <h2 class="modal-title">💬 Personalizar Mensajes</h2>
+        <h2 class="modal-title">
+          <svg class="icon-lg" style="display: inline-block; vertical-align: middle; margin-right: 8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+          </svg>
+          Personalizar Mensajes
+        </h2>
         <button class="modal-close" onclick="closeMessagesModal()">×</button>
       </div>
       <div class="modal-body">

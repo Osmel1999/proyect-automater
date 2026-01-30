@@ -68,7 +68,7 @@ app.use((req, res, next) => {
 });
 
 // Middleware para rutas limpias (sin .html)
-// Permite acceder a /onboarding en lugar de /onboarding.html
+// Permite acceder a /whatsapp-connect en lugar de /whatsapp-connect.html
 app.use((req, res, next) => {
   // Si la ruta no tiene extensión y no es una ruta de API
   if (!req.path.includes('.') && !req.path.startsWith('/api/')) {
@@ -330,7 +330,8 @@ server.listen(PORT, () => {
   console.log('🌐 URLs Importantes:');
   console.log(`   📊 Dashboard: http://localhost:${PORT}/dashboard.html`);
   console.log(`   🍽️  KDS: http://localhost:${PORT}/kds.html`);
-  console.log(`   🏠 Landing: http://localhost:${PORT}/landing.html`);
+  console.log(`   🏠 Inicio: http://localhost:${PORT}/index.html`);
+  console.log(`   📱 WhatsApp Connect: http://localhost:${PORT}/whatsapp-connect.html`);
   console.log('');
   console.log('� Para conectar WhatsApp:');
   console.log('   1. Abre el dashboard');

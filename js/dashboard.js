@@ -92,13 +92,17 @@ document.addEventListener('DOMContentLoaded', function() {
       if (connected && phoneNumber) {
         // Conectado
         statusElement.classList.remove('disconnected');
+        statusElement.classList.add('connected');
         statusDot.classList.remove('disconnected');
+        statusDot.classList.add('connected');
         statusText.textContent = `Conectado: ${phoneNumber}`;
         disconnectBtn.style.display = 'inline-flex';
         connectBtn.style.display = 'none';
       } else {
         // Desconectado
+        statusElement.classList.remove('connected');
         statusElement.classList.add('disconnected');
+        statusDot.classList.remove('connected');
         statusDot.classList.add('disconnected');
         statusText.textContent = 'WhatsApp Desconectado';
         disconnectBtn.style.display = 'none';
@@ -238,7 +242,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
       } catch (error) {
         console.error('Error loading tenant:', error);
-        alert('Error al cargar datos del restaurante');
+        document.getElementById('loading-container').style.display = 'none';
+        
+        // Mostrar mensaje de error más descriptivo
+        const errorMessage = `
+          ❌ Error al cargar datos del restaurante
+          
+          Detalles: ${error.message}
+          
+          Posibles causas:
+          • No has completado el proceso de onboarding
+          • Problemas de conexión con Firebase
+          • El tenant ID no es válido
+          
+          ¿Qué deseas hacer?
+        `;
+        
+        if (confirm(errorMessage + '\n\n✅ Ir al diagnóstico\n❌ Volver a autenticar')) {
+          window.location.href = '/dashboard-diagnostico.html';
+        } else {
+          window.location.href = '/auth.html';
+        }
       }
     }
 
@@ -592,7 +616,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const statusLabel = document.getElementById('bot-status-label');
       const card = document.getElementById('bot-control-card');
       const warning = document.getElementById('bot-warning');
-      const icon = document.getElementById('bot-control-icon');
+      // Nota: Ya no usamos bot-control-icon porque ahora es SVG fijo
 
       const canActivate = onboardingPercentage >= 75;
 
@@ -611,7 +635,7 @@ document.addEventListener('DOMContentLoaded', function() {
         statusText.classList.remove('inactive');
         card.classList.add('active');
         card.classList.remove('inactive');
-        icon.textContent = '✅';
+        // Ya no cambiamos el icono (era: icon.textContent = '✅')
       } else {
         toggle.classList.remove('active');
         label.textContent = 'OFF';
@@ -620,7 +644,7 @@ document.addEventListener('DOMContentLoaded', function() {
         statusText.classList.add('inactive');
         card.classList.remove('active');
         card.classList.add('inactive');
-        icon.textContent = '🤖';
+        // Ya no cambiamos el icono (era: icon.textContent = '🤖')
         
         if (!canActivate) {
           toggle.classList.add('disabled');

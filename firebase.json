@@ -52,7 +52,7 @@
       },
       {
         "source": "/onboarding",
-        "destination": "/onboarding.html"
+        "destination": "/whatsapp-connect.html"
       }
     ],
     "headers": [

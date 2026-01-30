@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diagnóstico Dashboard - KDS</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+    h2 {
+      color: #666;
+      font-size: 18px;
+      margin-bottom: 15px;
+      border-bottom: 2px solid #6366f1;
+      padding-bottom: 8px;
+    }
+    .status {
+      padding: 8px 12px;
+      border-radius: 6px;
+      display: inline-block;
+      font-weight: 600;
+      margin: 4px 0;
+    }
+    .success { background: #dcfce7; color: #166534; }
+    .error { background: #fee2e2; color: #991b1b; }
+    .warning { background: #fef3c7; color: #92400e; }
+    .info { background: #dbeafe; color: #1e40af; }
+    pre {
+      background: #f8f9fa;
+      padding: 12px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 13px;
+    }
+    button {
+      background: #6366f1;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover {
+      background: #4f46e5;
+    }
+    .danger-btn {
+      background: #ef4444;
+    }
+    .danger-btn:hover {
+      background: #dc2626;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🔍 Diagnóstico del Dashboard KDS</h1>
+    <p>Esta herramienta te ayudará a identificar por qué aparece el error "Error al cargar datos del restaurante"</p>
+  </div>
+
+  <div class="card">
+    <h2>1. LocalStorage</h2>
+    <div id="localStorage-status">Verificando...</div>
+  </div>
+
+  <div class="card">
+    <h2>2. Firebase</h2>
+    <div id="firebase-status">Verificando...</div>
+  </div>
+
+  <div class="card">
+    <h2>3. Datos del Tenant</h2>
+    <div id="tenant-status">Verificando...</div>
+  </div>
+
+  <div class="card">
+    <h2>4. Acciones</h2>
+    <button onclick="goToDashboard()">Ir al Dashboard</button>
+    <button onclick="goToAuth()">Volver a Autenticar</button>
+    <button onclick="clearStorage()" class="danger-btn">Limpiar LocalStorage</button>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+  <script src="config.js"></script>
+
+  <script>
+    // 1. Verificar localStorage
+    function checkLocalStorage() {
+      const userId = localStorage.getItem('currentUserId');
+      const tenantId = localStorage.getItem('currentTenantId');
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlTenant = urlParams.get('tenant') || urlParams.get('tenantId');
+      
+      const div = document.getElementById('localStorage-status');
+      
+      let html = '';
+      
+      if (userId) {
+        html += `<div class="status success">✅ User ID: ${userId}</div><br>`;
+      } else {
+        html += `<div class="status error">❌ No hay User ID en localStorage</div><br>`;
+      }
+      
+      if (tenantId) {
+        html += `<div class="status success">✅ Tenant ID (localStorage): ${tenantId}</div><br>`;
+      } else {
+        html += `<div class="status error">❌ No hay Tenant ID en localStorage</div><br>`;
+      }
+      
+      if (urlTenant) {
+        html += `<div class="status info">ℹ️ Tenant ID (URL): ${urlTenant}</div><br>`;
+      }
+      
+      const finalTenantId = urlTenant || tenantId;
+      
+      if (finalTenantId) {
+        html += `<div class="status success">✅ Tenant ID a usar: ${finalTenantId}</div>`;
+      } else {
+        html += `<div class="status error">❌ No se puede determinar el Tenant ID</div>`;
+        html += `<br><br><strong>Solución:</strong> Debes autenticarte primero. <button onclick="goToAuth()">Ir a Login</button>`;
+      }
+      
+      div.innerHTML = html;
+      
+      return finalTenantId;
+    }
+    
+    // 2. Verificar Firebase
+    function checkFirebase() {
+      const div = document.getElementById('firebase-status');
+      
+      if (!firebase.apps.length) {
+        div.innerHTML = '<div class="status error">❌ Firebase NO inicializado</div>';
+        return false;
+      }
+      
+      div.innerHTML = `
+        <div class="status success">✅ Firebase inicializado correctamente</div><br>
+        <pre>${JSON.stringify(firebase.app().options, null, 2)}</pre>
+      `;
+      return true;
+    }
+    
+    // 3. Verificar datos del tenant
+    async function checkTenantData(tenantId) {
+      const div = document.getElementById('tenant-status');
+      
+      if (!tenantId) {
+        div.innerHTML = '<div class="status warning">⚠️ No hay Tenant ID para verificar</div>';
+        return;
+      }
+      
+      div.innerHTML = '<div class="status info">⏳ Cargando datos del tenant...</div>';
+      
+      try {
+        const snapshot = await firebase.database().ref(`tenants/${tenantId}`).once('value');
+        const data = snapshot.val();
+        
+        if (!data) {
+          div.innerHTML = `
+            <div class="status error">❌ No se encontraron datos para el Tenant ID: ${tenantId}</div>
+            <br><br>
+            <strong>Posibles causas:</strong>
+            <ul>
+              <li>El tenant no existe en Firebase</li>
+              <li>El ID del tenant es incorrecto</li>
+              <li>Debes completar el onboarding primero</li>
+            </ul>
+            <br>
+            <strong>Solución:</strong> Vuelve a autenticarte y completa el onboarding.
+            <button onclick="goToAuth()">Ir a Login</button>
+          `;
+          return;
+        }
+        
+        div.innerHTML = `
+          <div class="status success">✅ Datos del tenant encontrados</div><br>
+          <strong>Información del restaurante:</strong><br>
+          <pre>${JSON.stringify(data, null, 2)}</pre>
+        `;
+        
+      } catch (error) {
+        div.innerHTML = `
+          <div class="status error">❌ Error al cargar datos: ${error.message}</div>
+          <br><br>
+          <strong>Error completo:</strong>
+          <pre>${JSON.stringify(error, null, 2)}</pre>
+        `;
+      }
+    }
+    
+    // Funciones de navegación
+    function goToDashboard() {
+      const tenantId = localStorage.getItem('currentTenantId');
+      if (tenantId) {
+        window.location.href = `/dashboard.html?tenant=${tenantId}`;
+      } else {
+        alert('No hay Tenant ID. Debes autenticarte primero.');
+        goToAuth();
+      }
+    }
+    
+    function goToAuth() {
+      window.location.href = '/auth.html';
+    }
+    
+    function clearStorage() {
+      if (confirm('¿Estás seguro? Esto borrará toda la información de sesión.')) {
+        localStorage.clear();
+        alert('LocalStorage limpiado. Ahora serás redirigido al login.');
+        goToAuth();
+      }
+    }
+    
+    // Ejecutar diagnóstico
+    window.addEventListener('DOMContentLoaded', async () => {
+      console.log('🔍 Iniciando diagnóstico...');
+      
+      // 1. localStorage
+      const tenantId = checkLocalStorage();
+      
+      // 2. Firebase
+      const firebaseOk = checkFirebase();
+      
+      // 3. Datos del tenant (solo si Firebase está OK)
+      if (firebaseOk && tenantId) {
+        await checkTenantData(tenantId);
+      }
+      
+      console.log('✅ Diagnóstico completado');
+    });
+  </script>
+</body>
+</html>
