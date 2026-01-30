@@ -112,13 +112,34 @@ kds-webapp/
 
 ---
 
+## Limpieza Final de Archivos
+
+Se movieron todos los archivos de backup y CSS duplicados a `/backups-eliminados/`:
+
+### HTMLs movidos:
+- `index-backup.html`, `landing-backup.html`, `onboarding-success-backup.html`
+- `payment-success-backup.html`, `privacy-policy-backup.html`, `terms-backup.html`
+- `dashboard-diagnostico.html`, `dashboard-new.html`
+
+### CSS movidos:
+- `auth-old.css`, `auth.css`
+- `dashboard-backup-old.css`, `dashboard-modern.css`, `dashboard-old.css`, `dashboard-redesign.css`
+- `index-old.css`, `index.css`
+- `kds-backup.css`, `kds-new.css`, `kds-old.css`, `kds.css`
+- `select-old.css`, `select.css`
+
+---
+
 ## Estado Final
 
-**🎉 REDISEÑO COMPLETO - 9 PÁGINAS ACTIVAS**
+**🎉 REDISEÑO COMPLETO - 9 PÁGINAS ACTIVAS - PROYECTO LIMPIO**
 
 El proyecto ahora cuenta con:
-- Sistema de diseño unificado
+- Sistema de diseño unificado con colores KDS
 - Flujo de conexión WhatsApp via Baileys (sin onboarding-success)
-- Páginas legales con colores profesionales
+- Páginas legales con colores profesionales (azul)
 - Sin emojis en el código
 - Diseño responsive completo
+- Solo 9 archivos HTML activos
+- Solo 8 archivos CSS activos (uno por función)
+- Backups organizados en `/backups-eliminados/`
