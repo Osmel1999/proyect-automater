@@ -1,13 +1,32 @@
-        // Check authentication
-        const currentUserId = localStorage.getItem('currentUserId');
-        const currentTenantId = localStorage.getItem('currentTenantId');
+// Selector page functionality
+// Firebase is initialized in config.js before this script loads
 
-        // Firebase ya está inicializado en config.js
-        // No necesitamos inicializarlo de nuevo aquí
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Select.js: DOM loaded, initializing...');
+    
+    // Verify Firebase is initialized
+    if (!firebase.apps.length) {
+        console.error('❌ Firebase not initialized!');
+        alert('Error: Firebase no está inicializado. Por favor recarga la página.');
+        return;
+    }
+    
+    console.log('✅ Firebase initialized:', firebase.app().name);
+    
+    // Check authentication
+    const currentUserId = localStorage.getItem('currentUserId');
+    const currentTenantId = localStorage.getItem('currentTenantId');
 
-        if (!currentUserId) {
-            window.location.href = '/auth.html';
-        }
+    console.log('🔑 Authentication check:', {
+        userId: currentUserId,
+        tenantId: currentTenantId
+    });
+
+    if (!currentUserId) {
+        console.warn('⚠️ No user ID found, redirecting to auth...');
+        window.location.href = '/auth.html';
+        return;
+    }
 
         // Check onboarding status and update UI
         async function checkOnboardingStatus() {
@@ -203,3 +222,4 @@
                 alert('Error al cerrar sesión');
             }
         });
+}); // End of DOMContentLoaded
