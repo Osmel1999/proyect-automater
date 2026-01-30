@@ -996,4 +996,34 @@ document.addEventListener('DOMContentLoaded', function() {
         maxInput.addEventListener('input', updateDeliveryTimePreview);
     }
 
+    // ====================================
+    // EXPOSE FUNCTIONS TO GLOBAL SCOPE
+    // Para que funcionen con onclick inline
+    // ====================================
+    window.connectWhatsApp = connectWhatsApp;
+    window.disconnectWhatsApp = disconnectWhatsApp;
+    window.toggleBot = toggleBot;
+    window.openMenuConfig = openMenuConfig;
+    window.closeMenuModal = closeMenuModal;
+    window.addMenuItem = addMenuItem;
+    window.removeMenuItem = removeMenuItem;
+    window.saveMenu = saveMenu;
+    window.openMessagesConfig = openMessagesConfig;
+    window.closeMessagesModal = closeMessagesModal;
+    window.saveMessages = saveMessages;
+    window.openTestBot = openTestBot;
+    window.closeTestModal = closeTestModal;
+    window.markTestCompleted = markTestCompleted;
+    window.skipOnboarding = skipOnboarding;
+    window.viewWhatsAppInfo = viewWhatsAppInfo;
+    window.openPaymentConfig = openPaymentConfig;
+    window.closePaymentModal = closePaymentModal;
+    window.togglePaymentEnabled = togglePaymentEnabled;
+    window.testPaymentCredentials = testPaymentCredentials;
+    window.copyWebhookUrl = copyWebhookUrl;
+    window.savePaymentConfig = savePaymentConfig;
+    window.openDeliveryTimeConfig = openDeliveryTimeConfig;
+    window.closeDeliveryTimeModal = closeDeliveryTimeModal;
+    window.saveDeliveryTime = saveDeliveryTime;
+
 }); // End of DOMContentLoaded
