@@ -1,15 +1,33 @@
+// Dashboard functionality
+// Firebase is initialized in config.js before this script loads
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Dashboard.js: DOM loaded, initializing...');
+    
+    // Verify Firebase is initialized
+    if (!firebase.apps.length) {
+        console.error('❌ Firebase not initialized!');
+        alert('Error: Firebase no está inicializado. Por favor recarga la página.');
+        return;
+    }
+    
+    console.log('✅ Firebase initialized:', firebase.app().name);
+    
     // Check authentication and PIN
     const currentUserId = localStorage.getItem('currentUserId');
     const currentTenantId = localStorage.getItem('currentTenantId');
+    
+    console.log('🔑 Authentication check:', {
+        userId: currentUserId,
+        tenantId: currentTenantId
+    });
     
     // Verify user is authenticated
     if (!currentUserId || !currentTenantId) {
       alert('Debes iniciar sesión primero');
       window.location.href = '/auth.html';
+      return;
     }
-
-    // Firebase ya está inicializado en config.js
-    // No necesitamos inicializarlo de nuevo aquí
 
     // Global variables
     let tenantId = null;
@@ -24,11 +42,9 @@
     let botActive = false; // Estado del bot
     let onboardingPercentage = 0; // Porcentaje de onboarding
 
-    // Initialize
-    document.addEventListener('DOMContentLoaded', function() {
-      // Get tenant ID from URL or localStorage
-      const urlParams = new URLSearchParams(window.location.search);
-      tenantId = urlParams.get('tenant') || urlParams.get('tenantId') || currentTenantId;
+    // Get tenant ID from URL or localStorage
+    const urlParams = new URLSearchParams(window.location.search);
+    tenantId = urlParams.get('tenant') || urlParams.get('tenantId') || currentTenantId;
 
       if (!tenantId) {
         alert('No se proporcionó ID de tenant');
@@ -43,7 +59,6 @@
 
       loadTenantData();
       checkWhatsAppStatus(); // Verificar estado de WhatsApp al cargar
-    });
 
     /**
      * Verifica el estado de la conexión de WhatsApp
@@ -923,17 +938,6 @@
       document.getElementById('delivery-time-preview').textContent = `🕒 Tiempo estimado: ${min}-${max} minutos`;
     }
 
-    // Actualizar preview en tiempo real
-    document.addEventListener('DOMContentLoaded', () => {
-      const minInput = document.getElementById('delivery-time-min');
-      const maxInput = document.getElementById('delivery-time-max');
-      
-      if (minInput && maxInput) {
-        minInput.addEventListener('input', updateDeliveryTimePreview);
-        maxInput.addEventListener('input', updateDeliveryTimePreview);
-      }
-    });
-
     async function saveDeliveryTime() {
       const min = parseInt(document.getElementById('delivery-time-min').value);
       const max = parseInt(document.getElementById('delivery-time-max').value);
@@ -982,3 +986,14 @@
         alert('Error al guardar el tiempo de entrega: ' + error.message);
       }
     }
+
+    // Setup delivery time preview event listeners
+    const minInput = document.getElementById('delivery-time-min');
+    const maxInput = document.getElementById('delivery-time-max');
+    
+    if (minInput && maxInput) {
+        minInput.addEventListener('input', updateDeliveryTimePreview);
+        maxInput.addEventListener('input', updateDeliveryTimePreview);
+    }
+
+}); // End of DOMContentLoaded

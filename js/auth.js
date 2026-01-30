@@ -1,6 +1,21 @@
-        // Tabs functionality
-        const tabs = document.querySelectorAll('.tab');
-        const sections = document.querySelectorAll('.form-section');
+// Authentication page functionality
+// Firebase is initialized in config.js before this script loads
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Auth.js: DOM loaded, initializing...');
+    
+    // Verify Firebase is initialized
+    if (!firebase.apps.length) {
+        console.error('❌ Firebase not initialized!');
+        alert('Error: Firebase no está inicializado. Por favor recarga la página.');
+        return;
+    }
+    
+    console.log('✅ Firebase initialized:', firebase.app().name);
+    
+    // Tabs functionality
+    const tabs = document.querySelectorAll('.tab');
+    const sections = document.querySelectorAll('.form-section');
 
         tabs.forEach(tab => {
             tab.addEventListener('click', () => {
@@ -344,3 +359,5 @@
                 showAlert(errorMessage, 'error');
             }
         });
+
+}); // End of DOMContentLoaded
