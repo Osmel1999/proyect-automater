@@ -1,0 +1,2500 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - KDS Platform</title>
+  <meta name="description" content="Configuración y gestión de tu restaurante">
+  <link rel="icon" type="image/png" href="assets/images/kds-logo.png">
+  
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #f7fafc;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      background: white;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 16px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 18px;
+    }
+
+    .tenant-name {
+      font-size: 18px;
+      font-weight: 600;
+      color: #2d3748;
+    }
+
+    .header-right {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .btn-secondary {
+      padding: 8px 16px;
+      background: #edf2f7;
+      color: #4a5568;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .btn-secondary:hover {
+      background: #e2e8f0;
+    }
+
+    .btn-primary {
+      padding: 8px 16px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-disconnect {
+      padding: 8px 16px;
+      background: #fed7d7;
+      color: #c53030;
+      border: 2px solid #fc8181;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-disconnect:hover {
+      background: #fc8181;
+      color: white;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(245, 101, 101, 0.3);
+    }
+
+    .btn-connect {
+      padding: 8px 16px;
+      background: #c6f6d5;
+      color: #22543d;
+      border: 2px solid #48bb78;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-connect:hover {
+      background: #48bb78;
+      color: white;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
+    }
+
+    .whatsapp-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: #c6f6d5;
+      border: 2px solid #48bb78;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #22543d;
+    }
+
+    .whatsapp-status.disconnected {
+      background: #fed7d7;
+      border-color: #fc8181;
+      color: #742a2a;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #48bb78;
+      animation: pulse 2s infinite;
+    }
+
+    .status-dot.disconnected {
+      background: #f56565;
+      animation: none;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.5;
+      }
+    }
+
+    /* Main Content */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 32px;
+    }
+
+    /* Bot Control Card */
+    .bot-control-card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      margin-bottom: 32px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      border: 2px solid #e2e8f0;
+      transition: all 0.3s;
+    }
+
+    .bot-control-card.active {
+      border-color: #48bb78;
+      background: linear-gradient(135deg, #f0fff4 0%, #c6f6d5 100%);
+    }
+
+    .bot-control-card.inactive {
+      border-color: #fc8181;
+      background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+    }
+
+    .bot-control-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      background: white;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .bot-control-content {
+      flex: 1;
+    }
+
+    .bot-control-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #2d3748;
+      margin-bottom: 4px;
+    }
+
+    .bot-control-status {
+      font-size: 14px;
+      color: #718096;
+    }
+
+    .bot-control-status .status-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 6px;
+      animation: pulse 2s infinite;
+    }
+
+    .bot-control-status.active .status-dot {
+      background: #48bb78;
+    }
+
+    .bot-control-status.inactive .status-dot {
+      background: #fc8181;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .bot-toggle-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .bot-toggle {
+      position: relative;
+      width: 60px;
+      height: 34px;
+      background: #cbd5e0;
+      border-radius: 34px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .bot-toggle.active {
+      background: #48bb78;
+    }
+
+    .bot-toggle.disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    .bot-toggle-slider {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      width: 26px;
+      height: 26px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.3s;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .bot-toggle.active .bot-toggle-slider {
+      transform: translateX(26px);
+    }
+
+    .bot-toggle-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #4a5568;
+      text-transform: uppercase;
+    }
+
+    .bot-warning {
+      background: #fff5f5;
+      border: 2px solid #fc8181;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 16px;
+      display: none;
+    }
+
+    .bot-warning.visible {
+      display: block;
+    }
+
+    .bot-warning-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #c53030;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .bot-warning-text {
+      font-size: 13px;
+      color: #742a2a;
+      line-height: 1.5;
+    }
+
+
+    /* Wizard Card */
+    .wizard-card {
+      background: white;
+      border-radius: 12px;
+      padding: 40px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      margin-bottom: 32px;
+    }
+
+    .wizard-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .wizard-title {
+      font-size: 32px;
+      font-weight: 700;
+      color: #2d3748;
+      margin-bottom: 12px;
+    }
+
+    .wizard-subtitle {
+      font-size: 16px;
+      color: #718096;
+    }
+
+    /* Progress Bar */
+    .progress-container {
+      margin-bottom: 40px;
+    }
+
+    .progress-text {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .progress-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #4a5568;
+    }
+
+    .progress-percentage {
+      font-size: 24px;
+      font-weight: 700;
+      color: #667eea;
+    }
+
+    .progress-bar {
+      height: 8px;
+      background: #e2e8f0;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      transition: width 0.5s ease;
+      border-radius: 4px;
+    }
+
+    /* Steps */
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .step-item {
+      background: #f7fafc;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 24px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      transition: all 0.3s;
+    }
+
+    .step-item.completed {
+      background: #f0fff4;
+      border-color: #48bb78;
+    }
+
+    .step-item.active {
+      background: #ebf8ff;
+      border-color: #4299e1;
+    }
+
+    .step-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      flex-shrink: 0;
+      background: white;
+      border: 2px solid #e2e8f0;
+    }
+
+    .step-item.completed .step-icon {
+      background: #48bb78;
+      border-color: #48bb78;
+      color: white;
+    }
+
+    .step-item.active .step-icon {
+      background: #4299e1;
+      border-color: #4299e1;
+      color: white;
+    }
+
+    .step-content {
+      flex: 1;
+    }
+
+    .step-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #2d3748;
+      margin-bottom: 4px;
+    }
+
+    .step-description {
+      font-size: 14px;
+      color: #718096;
+    }
+
+    .step-action {
+      flex-shrink: 0;
+    }
+
+    .btn-step {
+      padding: 10px 24px;
+      background: white;
+      color: #667eea;
+      border: 2px solid #667eea;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .btn-step:hover {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn-step:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .step-status {
+      padding: 6px 12px;
+      background: #48bb78;
+      color: white;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    /* Skip Button */
+    .wizard-footer {
+      margin-top: 32px;
+      text-align: center;
+    }
+
+    .btn-skip {
+      padding: 12px 32px;
+      background: transparent;
+      color: #718096;
+      border: 2px solid #e2e8f0;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .btn-skip:hover {
+      border-color: #cbd5e0;
+      color: #4a5568;
+    }
+
+    /* Completion Card */
+    .completion-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 12px;
+      padding: 48px;
+      text-align: center;
+    }
+
+    .completion-icon {
+      font-size: 80px;
+      margin-bottom: 24px;
+    }
+
+    .completion-title {
+      font-size: 36px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    .completion-description {
+      font-size: 18px;
+      margin-bottom: 32px;
+      opacity: 0.9;
+    }
+
+    .completion-actions {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-white {
+      padding: 14px 32px;
+      background: white;
+      color: #667eea;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 16px;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .btn-white:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: white;
+      border-radius: 12px;
+      max-width: 700px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      animation: modalSlide 0.3s ease-out;
+    }
+
+    @keyframes modalSlide {
+      from {
+        opacity: 0;
+        transform: translateY(-30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .modal-header {
+      padding: 24px;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: #2d3748;
+    }
+
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #f7fafc;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      color: #718096;
+      transition: all 0.2s;
+    }
+
+    .modal-close:hover {
+      background: #e2e8f0;
+    }
+
+    .modal-body {
+      padding: 24px;
+    }
+
+    .modal-footer {
+      padding: 24px;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    /* Form Elements */
+    .form-group {
+      margin-bottom: 24px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #2d3748;
+      margin-bottom: 8px;
+    }
+
+    .form-input,
+    .form-textarea,
+    .form-select {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+
+    .form-input:focus,
+    .form-textarea:focus,
+    .form-select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .form-textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .form-help {
+      font-size: 13px;
+      color: #718096;
+      margin-top: 4px;
+    }
+
+    /* Menu Items */
+    .menu-items {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .menu-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: #f7fafc;
+      border-radius: 6px;
+    }
+
+    .menu-item-name {
+      flex: 1;
+      font-weight: 600;
+      color: #2d3748;
+    }
+
+    .menu-item-price {
+      color: #48bb78;
+      font-weight: 600;
+    }
+
+    .btn-remove {
+      padding: 6px 12px;
+      background: #fed7d7;
+      color: #c53030;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .btn-add {
+      padding: 10px 20px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      margin-top: 12px;
+    }
+
+    /* Loading */
+    .loading {
+      text-align: center;
+      padding: 60px;
+      color: #718096;
+    }
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid #e2e8f0;
+      border-top-color: #667eea;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Dashboard Main (Post-Onboarding) */
+    .dashboard-main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 32px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 32px;
+    }
+
+    .stat-card {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      transition: transform 0.2s;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    }
+
+    .stat-icon {
+      font-size: 2.5rem;
+    }
+
+    .stat-content {
+      flex: 1;
+    }
+
+    .stat-label {
+      font-size: 0.875rem;
+      color: #718096;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #2d3748;
+    }
+
+    .dashboard-section {
+      background: white;
+      padding: 32px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      margin-bottom: 24px;
+    }
+
+    .section-title-main {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #2d3748;
+      margin-bottom: 24px;
+    }
+
+    .section-header-main {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+
+    .actions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+    }
+
+    .action-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 24px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s;
+      color: white;
+      text-align: center;
+    }
+
+    .action-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .action-icon {
+      font-size: 2.5rem;
+      margin-bottom: 12px;
+    }
+
+    .action-card h3 {
+      font-size: 1.125rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .action-card p {
+      font-size: 0.875rem;
+      opacity: 0.9;
+      line-height: 1.4;
+    }
+
+    .menu-preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .menu-preview-item {
+      background: #f7fafc;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.2s;
+    }
+
+    .menu-preview-item:hover {
+      background: #edf2f7;
+      border-color: #cbd5e0;
+    }
+
+    .menu-preview-info h4 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #2d3748;
+      margin-bottom: 4px;
+    }
+
+    .menu-preview-info p {
+      font-size: 0.875rem;
+      color: #718096;
+    }
+
+    .menu-preview-price {
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: #667eea;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .container {
+        padding: 20px 16px;
+      }
+
+      .wizard-card {
+        padding: 24px 16px;
+      }
+
+      .header {
+        padding: 12px 16px;
+      }
+
+      .completion-actions {
+        flex-direction: column;
+      }
+
+      .btn-white {
+        width: 100%;
+      }
+
+      .dashboard-main {
+        padding: 16px;
+      }
+
+      .dashboard-section {
+        padding: 20px;
+      }
+
+      .stats-grid,
+      .actions-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="logo">KDS</div>
+      <div class="tenant-name" id="tenant-name">Cargando...</div>
+    </div>
+    <div class="header-right">
+      <!-- WhatsApp Status -->
+      <div class="whatsapp-status disconnected" id="whatsapp-status" style="display: none;">
+        <span class="status-dot disconnected" id="status-dot"></span>
+        <span id="status-text">Desconectado</span>
+      </div>
+      
+      <!-- Disconnect WhatsApp Button -->
+      <button class="btn-disconnect" id="btn-disconnect-whatsapp" style="display: none;" onclick="disconnectWhatsApp()">
+        📱 Desconectar WhatsApp
+      </button>
+      
+      <!-- Connect WhatsApp Button -->
+      <button class="btn-connect" id="btn-connect-whatsapp" style="display: none;" onclick="connectWhatsApp()">
+        📱 Conectar WhatsApp
+      </button>
+      
+      <a href="/kds.html" class="btn-secondary" id="kdsBtn">📺 Ver KDS</a>
+      <a href="/select.html" class="btn-secondary">🏠 Inicio</a>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="container">
+    <div id="loading-container" class="loading">
+      <div class="spinner"></div>
+      <p>Cargando tu configuración...</p>
+    </div>
+
+    <!-- Bot Control Card -->
+    <div id="bot-control-container" style="display: none;">
+      <div class="bot-control-card" id="bot-control-card">
+        <div class="bot-control-icon" id="bot-control-icon">🤖</div>
+        <div class="bot-control-content">
+          <div class="bot-control-title">Bot de WhatsApp</div>
+          <div class="bot-control-status" id="bot-status-text">
+            <span class="status-dot"></span>
+            <span id="bot-status-label">Cargando...</span>
+          </div>
+        </div>
+        <div class="bot-toggle-container">
+          <div class="bot-toggle" id="bot-toggle" onclick="toggleBot()">
+            <div class="bot-toggle-slider"></div>
+          </div>
+          <span class="bot-toggle-label" id="bot-toggle-label">OFF</span>
+        </div>
+      </div>
+
+      <!-- Warning cuando el onboarding está incompleto -->
+      <div class="bot-warning" id="bot-warning">
+        <div class="bot-warning-title">
+          <span>⚠️</span>
+          <span>Completa tu configuración primero</span>
+        </div>
+        <div class="bot-warning-text">
+          Para activar el bot, debes completar al menos el 75% del onboarding (menú configurado y mensajes personalizados).
+          Esto asegura que tus clientes tengan una buena experiencia al usar el bot.
+        </div>
+      </div>
+    </div>
+
+    <!-- Wizard (hidden initially) -->
+    <div id="wizard-container" style="display: none;">
+      <div class="wizard-card">
+        <div class="wizard-header">
+          <h1 class="wizard-title">🚀 ¡Bienvenido a KDS Platform!</h1>
+          <p class="wizard-subtitle">Completa estos pasos para empezar a recibir pedidos automáticamente</p>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="progress-container">
+          <div class="progress-text">
+            <span class="progress-label">Tu progreso</span>
+            <span class="progress-percentage" id="progress-percentage">25%</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill" style="width: 25%"></div>
+          </div>
+        </div>
+
+        <!-- Steps -->
+        <div class="steps">
+          <!-- Step 1: WhatsApp -->
+          <div class="step-item completed" id="step-1">
+            <div class="step-icon">✅</div>
+            <div class="step-content">
+              <div class="step-title">1. Conectar WhatsApp</div>
+              <div class="step-description">Tu número de WhatsApp Business está conectado y listo</div>
+            </div>
+            <div class="step-action">
+              <span class="step-status">Completado</span>
+            </div>
+          </div>
+
+          <!-- Step 2: Menu -->
+          <div class="step-item" id="step-2">
+            <div class="step-icon">🍽️</div>
+            <div class="step-content">
+              <div class="step-title">2. Configurar tu menú</div>
+              <div class="step-description">Agrega los productos que tus clientes pueden ordenar (5 min)</div>
+            </div>
+            <div class="step-action">
+              <button class="btn-step" onclick="openMenuConfig()">Configurar →</button>
+            </div>
+          </div>
+
+          <!-- Step 3: Messages -->
+          <div class="step-item" id="step-3">
+            <div class="step-icon">💬</div>
+            <div class="step-content">
+              <div class="step-title">3. Personalizar mensajes</div>
+              <div class="step-description">Ajusta los mensajes automáticos que envía el bot (3 min)</div>
+            </div>
+            <div class="step-action">
+              <button class="btn-step" onclick="openMessagesConfig()">Personalizar →</button>
+            </div>
+          </div>
+
+          <!-- Step 4: Test -->
+          <div class="step-item" id="step-4">
+            <div class="step-icon">🧪</div>
+            <div class="step-content">
+              <div class="step-title">4. Probar el bot</div>
+              <div class="step-description">Envía un mensaje de prueba para ver cómo funciona (2 min)</div>
+            </div>
+            <div class="step-action">
+              <button class="btn-step" onclick="openTestBot()">Probar →</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="wizard-footer">
+          <button class="btn-skip" onclick="skipOnboarding()">Saltar por ahora, explorar por mi cuenta</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Completion Card / Dashboard (hidden initially) -->
+    <div id="completion-container" style="display: none;">
+      <div class="dashboard-main">
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon">📊</div>
+            <div class="stat-content">
+              <div class="stat-label">Pedidos Hoy</div>
+              <div class="stat-value" id="orders-today">0</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">💰</div>
+            <div class="stat-content">
+              <div class="stat-label">Ventas Hoy</div>
+              <div class="stat-value" id="sales-today">$0</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">📱</div>
+            <div class="stat-content">
+              <div class="stat-label">WhatsApp</div>
+              <div class="stat-value" id="whatsapp-status-main">Conectado</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="dashboard-section">
+          <h2 class="section-title-main">🚀 Acciones Rápidas</h2>
+          <div class="actions-grid">
+            <div class="action-card" onclick="openMenuConfig()">
+              <div class="action-icon">🍽️</div>
+              <h3>Gestionar Menú</h3>
+              <p>Agregar, editar o eliminar productos de tu menú</p>
+            </div>
+            <div class="action-card" onclick="openMessagesConfig()">
+              <div class="action-icon">💬</div>
+              <h3>Personalizar Mensajes</h3>
+              <p>Editar mensajes automáticos del bot</p>
+            </div>
+            <div class="action-card" onclick="openPaymentConfig()">
+              <div class="action-icon">💳</div>
+              <h3>Configurar Pagos</h3>
+              <p>Activar pagos online con Wompi</p>
+            </div>
+            <div class="action-card" onclick="window.location.href='kds.html'">
+              <div class="action-icon">🖥️</div>
+              <h3>Pantalla de Cocina</h3>
+              <p>Ver pedidos en tiempo real (KDS)</p>
+            </div>
+            <div class="action-card" onclick="viewWhatsAppInfo()">
+              <div class="action-icon">📱</div>
+              <h3>Info WhatsApp</h3>
+              <p>Ver número y estado de conexión</p>
+            </div>
+            <div class="action-card" onclick="openDeliveryTimeConfig()">
+              <div class="action-icon">🕒</div>
+              <h3>Tiempo de Entrega</h3>
+              <p>Configurar tiempo estimado de entrega</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Menu Preview -->
+        <div class="dashboard-section">
+          <div class="section-header-main">
+            <h2 class="section-title-main">🍽️ Tu Menú</h2>
+            <button class="btn-primary" onclick="openMenuConfig()">+ Agregar Producto</button>
+          </div>
+          <div id="menu-list-preview" class="menu-preview-grid">
+            <p style="color: #718096;">Cargando menú...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Menu Config -->
+  <div class="modal-overlay" id="menu-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">🍽️ Configurar Menú</h2>
+        <button class="modal-close" onclick="closeMenuModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 24px; color: #718096;">
+          Agrega los productos de tu menú. Los clientes podrán ordenarlos por WhatsApp.
+        </p>
+
+        <div class="form-group">
+          <label class="form-label">Nombre del producto</label>
+          <input type="text" class="form-input" id="item-name" placeholder="Ej: Hamburguesa Clásica">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Precio (COP)</label>
+          <input type="number" class="form-input" id="item-price" placeholder="25000">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Descripción (opcional)</label>
+          <input type="text" class="form-input" id="item-description" placeholder="Carne, lechuga, tomate...">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Categoría</label>
+          <select class="form-select" id="item-category">
+            <option value="Entradas">Entradas</option>
+            <option value="Platos Principales">Platos Principales</option>
+            <option value="Bebidas">Bebidas</option>
+            <option value="Postres">Postres</option>
+          </select>
+        </div>
+
+        <button class="btn-add" onclick="addMenuItem()">+ Agregar producto</button>
+
+        <div class="menu-items" id="menu-items-list">
+          <!-- Items will be added here -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeMenuModal()">Cancelar</button>
+        <button class="btn-primary" onclick="saveMenu()">Guardar Menú</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Messages Config -->
+  <div class="modal-overlay" id="messages-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">💬 Personalizar Mensajes</h2>
+        <button class="modal-close" onclick="closeMessagesModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 24px; color: #718096;">
+          Personaliza los mensajes automáticos que envía el bot a tus clientes.
+        </p>
+
+        <div class="form-group">
+          <label class="form-label">Mensaje de Bienvenida</label>
+          <textarea class="form-textarea" id="msg-welcome" placeholder="¡Hola! 👋 Bienvenido a [Nombre Restaurante]..."></textarea>
+          <div class="form-help">Se envía cuando un cliente escribe por primera vez</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Mensaje de Confirmación de Pedido</label>
+          <textarea class="form-textarea" id="msg-confirmation" placeholder="✅ ¡Pedido confirmado! Tu orden está siendo preparada..."></textarea>
+          <div class="form-help">Se envía después de que el cliente confirma su pedido</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Mensaje de Despedida</label>
+          <textarea class="form-textarea" id="msg-goodbye" placeholder="¡Gracias por tu pedido! 🙏 Esperamos verte pronto..."></textarea>
+          <div class="form-help">Se envía al finalizar la conversación</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeMessagesModal()">Cancelar</button>
+        <button class="btn-primary" onclick="saveMessages()">Guardar Mensajes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Test Bot -->
+  <div class="modal-overlay" id="test-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">🧪 Probar el Bot</h2>
+        <button class="modal-close" onclick="closeTestModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 16px; color: #2d3748;">
+          📱 Tu número de WhatsApp Business
+        </h3>
+        <div style="background: #f7fafc; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+          <div style="font-size: 24px; font-weight: 700; color: #667eea;" id="test-phone-number">
+            Cargando...
+          </div>
+        </div>
+
+        <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 16px; color: #2d3748;">
+          ✅ Cómo probar el bot
+        </h3>
+        <ol style="padding-left: 20px; color: #4a5568; line-height: 1.8;">
+          <li><strong>Abre WhatsApp</strong> en tu teléfono</li>
+          <li><strong>Envía un mensaje</strong> al número de arriba</li>
+          <li><strong>Escribe:</strong> "Hola" o "Menú"</li>
+          <li><strong>El bot responderá</strong> con el menú automáticamente</li>
+          <li><strong>Haz un pedido de prueba</strong> siguiendo las instrucciones</li>
+          <li><strong>Revisa que aparezca</strong> en el KDS (pantalla de cocina)</li>
+        </ol>
+
+        <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 16px; border-radius: 4px; margin-top: 24px;">
+          <strong style="color: #856404; display: block; margin-bottom: 8px;">⚠️ Nota importante:</strong>
+          <p style="color: #856404; font-size: 14px; line-height: 1.6; margin: 0;">
+            Si tu app aún no está aprobada por Meta, es posible que el bot no responda aún. 
+            Una vez Meta apruebe tu aplicación, el bot empezará a funcionar automáticamente.
+          </p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeTestModal()">Cerrar</button>
+        <button class="btn-primary" onclick="markTestCompleted()">Ya probé el bot ✓</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Payment Config -->
+  <div class="modal-overlay" id="payment-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">💳 Configurar Pagos Online</h2>
+        <button class="modal-close" onclick="closePaymentModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 24px; color: #718096;">
+          Acepta pagos con tarjeta de crédito/débito a través de Wompi. Tus clientes pagarán online antes de confirmar el pedido.
+        </p>
+
+        <!-- Toggle de activación -->
+        <div class="form-group">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px; background: #f7fafc; border-radius: 8px; margin-bottom: 24px;">
+            <div>
+              <label class="form-label" style="margin-bottom: 4px;">Habilitar Pagos Online</label>
+              <div class="form-help">Los clientes deberán pagar antes de confirmar su pedido</div>
+            </div>
+            <div class="bot-toggle" id="payment-toggle" onclick="togglePaymentEnabled()">
+              <div class="bot-toggle-slider"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Campos de credenciales (visibles solo si está habilitado) -->
+        <div id="payment-credentials-section" style="display: none;">
+          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: #2d3748;">
+            🔑 Credenciales de Wompi
+          </h3>
+          
+          <div class="form-group">
+            <label class="form-label">Public Key (Llave Pública)</label>
+            <input type="text" class="form-input" id="payment-public-key" placeholder="pub_test_..." autocomplete="off">
+            <div class="form-help">Comienza con pub_test_ (pruebas) o pub_prod_ (producción)</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Private Key (Llave Privada)</label>
+            <input type="password" class="form-input" id="payment-private-key" placeholder="prv_test_..." autocomplete="off">
+            <div class="form-help">Comienza con prv_test_ o prv_prod_. Nunca la compartas</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Integrity Secret (Secreto de Integridad)</label>
+            <input type="password" class="form-input" id="payment-integrity-secret" placeholder="test_integrity_..." autocomplete="off">
+            <div class="form-help">Usado para firmar transacciones</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Events Secret (Secreto de Eventos)</label>
+            <input type="password" class="form-input" id="payment-events-secret" placeholder="test_events_..." autocomplete="off">
+            <div class="form-help">Usado para validar webhooks</div>
+          </div>
+
+          <!-- Botón para probar credenciales -->
+          <button class="btn-secondary" onclick="testPaymentCredentials()" style="width: 100%; margin-bottom: 24px;" id="btn-test-credentials">
+            🧪 Probar Credenciales
+          </button>
+
+          <!-- Resultado de la prueba -->
+          <div id="credentials-test-result" style="display: none; padding: 12px; border-radius: 8px; margin-bottom: 24px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span id="test-result-icon"></span>
+              <span id="test-result-message" style="font-weight: 600;"></span>
+            </div>
+          </div>
+
+          <!-- Webhook URL -->
+          <div style="background: #ebf8ff; border-left: 4px solid #4299e1; padding: 16px; border-radius: 4px; margin-bottom: 24px;">
+            <h4 style="color: #2c5282; margin-bottom: 12px; font-weight: 600;">📡 URL del Webhook</h4>
+            <p style="color: #2c5282; font-size: 13px; margin-bottom: 12px; line-height: 1.6;">
+              Copia esta URL y configúrala en tu cuenta de Wompi (Panel → Eventos → Agregar Evento). 
+              Esta URL permitirá que Wompi notifique automáticamente cuando se apruebe un pago.
+            </p>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <input 
+                type="text" 
+                readonly 
+                class="form-input" 
+                id="webhook-url" 
+                value="https://api.kdsapp.site/api/payments/webhook/wompi/TENANT_ID" 
+                style="font-family: monospace; font-size: 12px; background: white;"
+              >
+              <button 
+                class="btn-secondary" 
+                onclick="copyWebhookUrl()" 
+                style="flex-shrink: 0;"
+              >
+                📋 Copiar
+              </button>
+            </div>
+          </div>
+
+          <!-- Guía rápida -->
+          <div style="background: #fffaf0; border-left: 4px solid #f6ad55; padding: 16px; border-radius: 4px;">
+            <h4 style="color: #7c2d12; margin-bottom: 8px; font-weight: 600;">📚 ¿Dónde encuentro mis credenciales?</h4>
+            <ol style="padding-left: 20px; color: #7c2d12; font-size: 13px; line-height: 1.8; margin: 0;">
+              <li>Ingresa a tu cuenta de Wompi (<a href="https://comercios.wompi.co/login" target="_blank" style="color: #c05621; text-decoration: underline;">comercios.wompi.co</a>)</li>
+              <li>Ve a <strong>Desarrollo → Programadores → Llaves del API</strong></li>
+              <li>Copia las llaves y pégalas arriba</li>
+              <li>Para webhooks: <strong>Desarrollo → Programadores → Pega la URL de arriba en URL de Eventos</strong></li>
+            </ol>
+          </div>
+        </div>
+
+        <!-- Mensaje cuando está deshabilitado -->
+        <div id="payment-disabled-message" style="background: #f7fafc; padding: 24px; border-radius: 8px; text-align: center; color: #718096;">
+          <div style="font-size: 48px; margin-bottom: 16px;">🔒</div>
+          <p style="font-weight: 600; color: #4a5568; margin-bottom: 8px;">Pagos Online Deshabilitados</p>
+          <p style="font-size: 14px;">Activa el interruptor arriba para configurar pagos con tarjeta.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closePaymentModal()">Cancelar</button>
+        <button class="btn-primary" onclick="savePaymentConfig()" id="btn-save-payment">Guardar Configuración</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Delivery Time Config -->
+  <div class="modal-overlay" id="delivery-time-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">🕒 Configurar Tiempo de Entrega</h2>
+        <button class="modal-close" onclick="closeDeliveryTimeModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 24px; color: #718096;">
+          Configura el tiempo estimado de entrega que se mostrará a tus clientes al confirmar su pedido.
+        </p>
+
+        <div class="form-group">
+          <label class="form-label">Tiempo Estimado de Entrega</label>
+          <div style="display: flex; gap: 12px; align-items: center;">
+            <input type="number" class="form-input" id="delivery-time-min" placeholder="30" min="10" max="120" style="flex: 1;">
+            <span style="color: #4a5568; font-weight: 500;">-</span>
+            <input type="number" class="form-input" id="delivery-time-max" placeholder="40" min="10" max="120" style="flex: 1;">
+            <span style="color: #4a5568; font-weight: 500;">minutos</span>
+          </div>
+          <div class="form-help">Por ejemplo: 30-40 minutos, 20-30 minutos, etc.</div>
+        </div>
+
+        <div style="background: #f7fafc; padding: 16px; border-radius: 8px; margin-top: 16px;">
+          <p style="font-size: 14px; color: #4a5568; margin-bottom: 8px;">
+            <strong>Vista previa del mensaje:</strong>
+          </p>
+          <p style="color: #667eea; font-weight: 500;" id="delivery-time-preview">
+            🕒 Tiempo estimado: 30-40 minutos
+          </p>
+        </div>
+
+        <div style="background: #e6fffa; border-left: 4px solid #38b2ac; padding: 16px; border-radius: 4px; margin-top: 16px;">
+          <strong style="color: #234e52; display: block; margin-bottom: 8px;">💡 Recomendación</strong>
+          <p style="color: #234e52; font-size: 14px; line-height: 1.6; margin: 0;">
+            Es mejor sobreestimar el tiempo de entrega. Si entregas antes, el cliente se sorprenderá gratamente. 
+            Si te atrasas, puede generar insatisfacción.
+          </p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeDeliveryTimeModal()">Cancelar</button>
+        <button class="btn-primary" onclick="saveDeliveryTime()">Guardar Tiempo</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Check authentication and PIN
+    const currentUserId = localStorage.getItem('currentUserId');
+    const currentTenantId = localStorage.getItem('currentTenantId');
+    
+    // Verify user is authenticated
+    if (!currentUserId || !currentTenantId) {
+      alert('Debes iniciar sesión primero');
+      window.location.href = '/auth.html';
+    }
+
+    // Initialize Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyAChWEnXztMe5YWJTPevIY5afgHMYxZBzQ",
+      authDomain: "kds-app-7f1d3.firebaseapp.com",
+      databaseURL: "https://kds-app-7f1d3-default-rtdb.firebaseio.com",
+      projectId: "kds-app-7f1d3",
+      storageBucket: "kds-app-7f1d3.firebasestorage.app",
+      messagingSenderId: "236480135078",
+      appId: "1:236480135078:web:246c759f840c5f140e1967",
+      measurementId: "G-0Q1V5WV35X"
+    };
+
+    // Initialize Firebase
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+
+    // Global variables
+    let tenantId = null;
+    let tenantData = null;
+    let menuItems = [];
+    let onboardingState = {
+      whatsapp_connected: true,
+      menu_configured: false,
+      messages_customized: false,
+      bot_tested: false
+    };
+    let botActive = false; // Estado del bot
+    let onboardingPercentage = 0; // Porcentaje de onboarding
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+      // Get tenant ID from URL or localStorage
+      const urlParams = new URLSearchParams(window.location.search);
+      tenantId = urlParams.get('tenant') || urlParams.get('tenantId') || currentTenantId;
+
+      if (!tenantId) {
+        alert('No se proporcionó ID de tenant');
+        window.location.href = '/auth.html';
+        return;
+      }
+
+      // Update tenant ID in URL if not present
+      if (!urlParams.has('tenant')) {
+        window.history.replaceState({}, '', `?tenant=${tenantId}`);
+      }
+
+      loadTenantData();
+      checkWhatsAppStatus(); // Verificar estado de WhatsApp al cargar
+    });
+
+    /**
+     * Verifica el estado de la conexión de WhatsApp
+     */
+    async function checkWhatsAppStatus() {
+      try {
+        const response = await fetch(`https://api.kdsapp.site/api/baileys/status?tenantId=${tenantId}`);
+        const data = await response.json();
+        
+        console.log('Estado de WhatsApp:', data);
+        
+        updateWhatsAppStatusUI(data.connected, data.phoneNumber);
+      } catch (error) {
+        console.error('Error verificando estado de WhatsApp:', error);
+        updateWhatsAppStatusUI(false, null);
+      }
+    }
+
+    /**
+     * Actualiza la UI del estado de WhatsApp
+     */
+    function updateWhatsAppStatusUI(connected, phoneNumber) {
+      const statusElement = document.getElementById('whatsapp-status');
+      const statusDot = document.getElementById('status-dot');
+      const statusText = document.getElementById('status-text');
+      const disconnectBtn = document.getElementById('btn-disconnect-whatsapp');
+      const connectBtn = document.getElementById('btn-connect-whatsapp');
+      
+      statusElement.style.display = 'inline-flex';
+      
+      if (connected && phoneNumber) {
+        // Conectado
+        statusElement.classList.remove('disconnected');
+        statusDot.classList.remove('disconnected');
+        statusText.textContent = `Conectado: ${phoneNumber}`;
+        disconnectBtn.style.display = 'inline-flex';
+        connectBtn.style.display = 'none';
+      } else {
+        // Desconectado
+        statusElement.classList.add('disconnected');
+        statusDot.classList.add('disconnected');
+        statusText.textContent = 'WhatsApp Desconectado';
+        disconnectBtn.style.display = 'none';
+        connectBtn.style.display = 'inline-flex';
+      }
+    }
+
+    /**
+     * Redirige a la página de conexión de WhatsApp
+     */
+    function connectWhatsApp() {
+      window.location.href = `/whatsapp-connect.html?tenant=${tenantId}`;
+    }
+
+    /**
+     * Desconecta WhatsApp y redirige al onboarding para reconectar
+     */
+    async function disconnectWhatsApp() {
+      if (!confirm('¿Estás seguro de que deseas desconectar WhatsApp?\n\nEsto cerrará la sesión actual y necesitarás escanear un nuevo código QR para reconectar.')) {
+        return;
+      }
+
+      try {
+        // Mostrar loading
+        const disconnectBtn = document.getElementById('btn-disconnect-whatsapp');
+        disconnectBtn.innerHTML = '⏳ Desconectando...';
+        disconnectBtn.disabled = true;
+
+        // Desconectar en el backend
+        const response = await fetch('https://api.kdsapp.site/api/baileys/disconnect', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ tenantId })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          alert('✅ WhatsApp desconectado correctamente.\n\nAhora serás redirigido al onboarding para reconectar.');
+          
+          // Actualizar estado en Firebase
+          await firebase.database().ref(`tenants/${tenantId}/onboarding/steps/whatsapp_connected`).set(false);
+          
+          // Redirigir al onboarding
+          window.location.href = `/onboarding?tenant=${tenantId}`;
+        } else {
+          throw new Error(data.error || 'Error al desconectar');
+        }
+      } catch (error) {
+        console.error('Error desconectando WhatsApp:', error);
+        alert('❌ Error al desconectar WhatsApp:\n\n' + error.message);
+        
+        // Restaurar botón
+        const disconnectBtn = document.getElementById('btn-disconnect-whatsapp');
+        disconnectBtn.innerHTML = '📱 Desconectar WhatsApp';
+        disconnectBtn.disabled = false;
+      }
+    }
+
+    // Load tenant data
+    async function loadTenantData() {
+      try {
+        const snapshot = await firebase.database().ref(`tenants/${tenantId}`).once('value');
+        tenantData = snapshot.val();
+
+        if (!tenantData) {
+          throw new Error('Tenant no encontrado');
+        }
+
+        // Update UI
+        document.getElementById('tenant-name').textContent = tenantData.restaurant?.name || 'Mi Restaurante';
+
+        // Load onboarding state
+        if (tenantData.onboarding) {
+          onboardingState = tenantData.onboarding.steps || onboardingState;
+          
+          // PRIORIDAD: Usar el progreso guardado en Firebase si existe
+          if (typeof tenantData.onboarding.progress === 'number') {
+            onboardingPercentage = tenantData.onboarding.progress;
+            console.log(`📊 Progreso de onboarding leído desde Firebase: ${onboardingPercentage}%`);
+          } else {
+            // Si no existe, calcularlo y guardarlo
+            const completed = Object.values(onboardingState).filter(v => v === true).length;
+            const total = Object.keys(onboardingState).length;
+            onboardingPercentage = Math.round((completed / total) * 100);
+            console.log(`📊 Progreso de onboarding calculado (no existía en Firebase): ${onboardingPercentage}%`);
+            
+            // Guardar el progreso calculado en Firebase
+            await firebase.database().ref(`tenants/${tenantId}/onboarding/progress`).set(onboardingPercentage);
+          }
+        } else {
+          // Si no hay datos de onboarding, el progreso es 25% (solo whatsapp_connected)
+          const completed = Object.values(onboardingState).filter(v => v === true).length;
+          const total = Object.keys(onboardingState).length;
+          onboardingPercentage = Math.round((completed / total) * 100);
+          console.log(`📊 Progreso de onboarding inicial (sin datos previos): ${onboardingPercentage}%`);
+        }
+
+        // Load bot state
+        // Si el progreso es < 75%, forzar el bot a OFF sin importar el valor en Firebase
+        if (onboardingPercentage < 75) {
+          console.log('⚠️ Progreso < 75%, forzando bot a OFF');
+          botActive = false;
+          // Guardar en Firebase para asegurar consistencia
+          await firebase.database().ref(`tenants/${tenantId}/bot/config`).set({
+            active: false,
+            lastUpdated: new Date().toISOString(),
+            reason: 'onboarding_incomplete'
+          });
+        } else {
+          // Si el progreso >= 75%, respetar el valor en Firebase
+          if (tenantData.bot && tenantData.bot.config) {
+            botActive = tenantData.bot.config.active === true; // Solo true si es explícitamente true
+          } else {
+            botActive = false; // Por defecto OFF si no existe el config
+          }
+        }
+
+        console.log(`🤖 Estado inicial del bot: ${botActive ? 'ON' : 'OFF'} (progreso: ${onboardingPercentage}%)`);
+
+        // Check if onboarding is completed
+        const isCompleted = Object.values(onboardingState).every(v => v === true);
+
+        document.getElementById('loading-container').style.display = 'none';
+
+        // Mostrar el control del bot siempre
+        document.getElementById('bot-control-container').style.display = 'block';
+        updateBotControlUI();
+
+        if (isCompleted) {
+          showCompletionScreen();
+        } else {
+          showWizard();
+        }
+
+      } catch (error) {
+        console.error('Error loading tenant:', error);
+        alert('Error al cargar datos del restaurante');
+      }
+    }
+
+    // Show wizard
+    function showWizard() {
+      document.getElementById('wizard-container').style.display = 'block';
+      updateProgress();
+      updateStepsUI();
+    }
+
+    // Show completion screen
+    function showCompletionScreen() {
+      document.getElementById('completion-container').style.display = 'block';
+      loadDashboardStats();
+      loadMenuPreview();
+    }
+
+    // Load dashboard stats
+    async function loadDashboardStats() {
+      try {
+        // Obtener pedidos de hoy
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayTimestamp = today.getTime();
+
+        const ordersSnapshot = await firebase.database()
+          .ref(`restaurants/${tenantId}/orders`)
+          .orderByChild('createdAt')
+          .startAt(todayTimestamp)
+          .once('value');
+
+        const orders = ordersSnapshot.val() || {};
+        const ordersList = Object.values(orders);
+        
+        // Contar pedidos y calcular ventas
+        const ordersCount = ordersList.length;
+        const salesTotal = ordersList.reduce((sum, order) => sum + (order.total || 0), 0);
+
+        // Actualizar UI
+        document.getElementById('orders-today').textContent = ordersCount;
+        document.getElementById('sales-today').textContent = '$' + salesTotal.toLocaleString('es-CO');
+
+        // Estado de WhatsApp
+        const whatsappStatus = await checkWhatsAppConnection();
+        document.getElementById('whatsapp-status-main').textContent = whatsappStatus ? 'Conectado' : 'Desconectado';
+        
+      } catch (error) {
+        console.error('Error loading dashboard stats:', error);
+      }
+    }
+
+    // Check WhatsApp connection for stats
+    async function checkWhatsAppConnection() {
+      try {
+        const response = await fetch(`https://api.kdsapp.site/api/baileys/status?tenantId=${tenantId}`);
+        const data = await response.json();
+        return data.connected;
+      } catch (error) {
+        return false;
+      }
+    }
+
+    // Load menu preview
+    async function loadMenuPreview() {
+      try {
+        const snapshot = await firebase.database().ref(`tenants/${tenantId}/menu/items`).once('value');
+        const items = snapshot.val() || {};
+        const menuList = Object.values(items);
+
+        const container = document.getElementById('menu-list-preview');
+
+        if (menuList.length === 0) {
+          container.innerHTML = '<p style="color: #718096; text-align: center; padding: 40px;">No tienes productos en tu menú aún. ¡Agrega tu primer producto!</p>';
+          return;
+        }
+
+        container.innerHTML = menuList.map(item => `
+          <div class="menu-preview-item">
+            <div class="menu-preview-info">
+              <h4>${item.name}</h4>
+              <p>${item.category || 'Sin categoría'}</p>
+            </div>
+            <div class="menu-preview-price">$${item.price.toLocaleString('es-CO')}</div>
+          </div>
+        `).join('');
+
+      } catch (error) {
+        console.error('Error loading menu preview:', error);
+        document.getElementById('menu-list-preview').innerHTML = '<p style="color: #e53e3e;">Error cargando menú</p>';
+      }
+    }
+
+    // Update progress
+    function updateProgress() {
+      const completed = Object.values(onboardingState).filter(v => v === true).length;
+      const total = Object.keys(onboardingState).length;
+      const percentage = Math.round((completed / total) * 100);
+      onboardingPercentage = percentage; // Guardar globalmente
+
+      document.getElementById('progress-percentage').textContent = percentage + '%';
+      document.getElementById('progress-fill').style.width = percentage + '%';
+
+      // Actualizar el control del bot con el nuevo porcentaje
+      updateBotControlUI();
+
+      return percentage === 100;
+    }
+
+    // Update steps UI
+    function updateStepsUI() {
+      // Step 2: Menu
+      const step2 = document.getElementById('step-2');
+      if (onboardingState.menu_configured) {
+        step2.classList.add('completed');
+        step2.querySelector('.step-action').innerHTML = '<span class="step-status">Completado</span>';
+      }
+
+      // Step 3: Messages
+      const step3 = document.getElementById('step-3');
+      if (onboardingState.messages_customized) {
+        step3.classList.add('completed');
+        step3.querySelector('.step-action').innerHTML = '<span class="step-status">Completado</span>';
+      }
+
+      // Step 4: Test
+      const step4 = document.getElementById('step-4');
+      if (onboardingState.bot_tested) {
+        step4.classList.add('completed');
+        step4.querySelector('.step-action').innerHTML = '<span class="step-status">Completado</span>';
+      }
+    }
+
+    // Save onboarding state
+    async function saveOnboardingState() {
+      try {
+        // Calcular porcentaje
+        const completed = Object.values(onboardingState).filter(v => v === true).length;
+        const total = Object.keys(onboardingState).length;
+        const percentage = Math.round((completed / total) * 100);
+        
+        await firebase.database().ref(`tenants/${tenantId}/onboarding`).set({
+          completed: Object.values(onboardingState).every(v => v === true),
+          steps: onboardingState,
+          progress: percentage, // ← GUARDAR EL PORCENTAJE
+          lastUpdated: new Date().toISOString()
+        });
+
+        const isCompleted = updateProgress();
+        updateStepsUI();
+
+        if (isCompleted) {
+          // Show completion
+          setTimeout(() => {
+            document.getElementById('wizard-container').style.display = 'none';
+            showCompletionScreen();
+          }, 500);
+        }
+      } catch (error) {
+        console.error('Error saving onboarding state:', error);
+      }
+    }
+
+    // Menu Config
+    function openMenuConfig() {
+      document.getElementById('menu-modal').classList.add('active');
+      loadCurrentMenu();
+    }
+
+    function closeMenuModal() {
+      document.getElementById('menu-modal').classList.remove('active');
+    }
+
+    async function loadCurrentMenu() {
+      try {
+        const snapshot = await firebase.database().ref(`tenants/${tenantId}/menu/items`).once('value');
+        const items = snapshot.val() || {};
+        menuItems = Object.values(items);
+        renderMenuItems();
+      } catch (error) {
+        console.error('Error loading menu:', error);
+      }
+    }
+
+    function addMenuItem() {
+      const name = document.getElementById('item-name').value.trim();
+      const price = parseInt(document.getElementById('item-price').value);
+      const description = document.getElementById('item-description').value.trim();
+      const category = document.getElementById('item-category').value;
+
+      if (!name || !price) {
+        alert('Por favor completa el nombre y precio del producto');
+        return;
+      }
+
+      menuItems.push({
+        id: `item_${Date.now()}`,
+        name,
+        price,
+        description,
+        category,
+        available: true
+      });
+
+      // Clear inputs
+      document.getElementById('item-name').value = '';
+      document.getElementById('item-price').value = '';
+      document.getElementById('item-description').value = '';
+
+      renderMenuItems();
+    }
+
+    function renderMenuItems() {
+      const container = document.getElementById('menu-items-list');
+      
+      if (menuItems.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #718096; padding: 20px;">No hay productos agregados aún</p>';
+        return;
+      }
+
+      container.innerHTML = menuItems.map((item, index) => `
+        <div class="menu-item">
+          <div class="menu-item-name">${item.name}</div>
+          <div class="menu-item-price">$${item.price.toLocaleString()}</div>
+          <button class="btn-remove" onclick="removeMenuItem(${index})">Eliminar</button>
+        </div>
+      `).join('');
+    }
+
+    function removeMenuItem(index) {
+      menuItems.splice(index, 1);
+      renderMenuItems();
+    }
+
+    async function saveMenu() {
+      if (menuItems.length === 0) {
+        alert('Agrega al menos un producto al menú');
+        return;
+      }
+
+      try {
+        const itemsObj = {};
+        menuItems.forEach(item => {
+          itemsObj[item.id] = item;
+        });
+
+        await firebase.database().ref(`tenants/${tenantId}/menu/items`).set(itemsObj);
+
+        onboardingState.menu_configured = true;
+        await saveOnboardingState();
+
+        closeMenuModal();
+        alert('✅ Menú guardado exitosamente');
+      } catch (error) {
+        console.error('Error saving menu:', error);
+        alert('Error al guardar el menú');
+      }
+    }
+
+    // Messages Config
+    function openMessagesConfig() {
+      document.getElementById('messages-modal').classList.add('active');
+      loadCurrentMessages();
+    }
+
+    function closeMessagesModal() {
+      document.getElementById('messages-modal').classList.remove('active');
+    }
+
+    async function loadCurrentMessages() {
+      try {
+        const snapshot = await firebase.database().ref(`tenants/${tenantId}/messages`).once('value');
+        const messages = snapshot.val() || {};
+
+        document.getElementById('msg-welcome').value = messages.welcome || '¡Hola! 👋 Bienvenido a nuestro restaurante.\n\nEscribe "menú" para ver nuestros productos disponibles.';
+        document.getElementById('msg-confirmation').value = messages.confirmation || '✅ ¡Pedido confirmado!\n\nTu orden está siendo preparada. Te notificaremos cuando esté lista.';
+        document.getElementById('msg-goodbye').value = messages.goodbye || '¡Gracias por tu pedido! 🙏\n\nEsperamos verte pronto.';
+      } catch (error) {
+        console.error('Error loading messages:', error);
+      }
+    }
+
+    async function saveMessages() {
+      try {
+        const messages = {
+          welcome: document.getElementById('msg-welcome').value.trim(),
+          confirmation: document.getElementById('msg-confirmation').value.trim(),
+          goodbye: document.getElementById('msg-goodbye').value.trim()
+        };
+
+        await firebase.database().ref(`tenants/${tenantId}/messages`).set(messages);
+
+        onboardingState.messages_customized = true;
+        await saveOnboardingState();
+
+        closeMessagesModal();
+        alert('✅ Mensajes guardados exitosamente');
+      } catch (error) {
+        console.error('Error saving messages:', error);
+        alert('Error al guardar los mensajes');
+      }
+    }
+
+    // Test Bot
+    function openTestBot() {
+      document.getElementById('test-modal').classList.add('active');
+      document.getElementById('test-phone-number').textContent = tenantData.whatsapp?.phoneNumber || 'No disponible';
+    }
+
+    function closeTestModal() {
+      document.getElementById('test-modal').classList.remove('active');
+    }
+
+    async function markTestCompleted() {
+      onboardingState.bot_tested = true;
+      await saveOnboardingState();
+      closeTestModal();
+      alert('✅ ¡Excelente! Has completado todos los pasos');
+    }
+
+    // Skip onboarding
+    async function skipOnboarding() {
+      if (confirm('¿Estás seguro? Puedes completar estos pasos después desde el dashboard.')) {
+        // Mark as completed to hide wizard
+        onboardingState = {
+          whatsapp_connected: true,
+          menu_configured: true,
+          messages_customized: true,
+          bot_tested: true
+        };
+        await saveOnboardingState();
+      }
+    }
+
+    // View WhatsApp info
+    function viewWhatsAppInfo() {
+      const phone = tenantData.whatsapp?.phoneNumber || 'No disponible';
+      alert(`📱 Tu número de WhatsApp Business:\n\n${phone}\n\nComparte este número con tus clientes para que puedan hacer pedidos.`);
+    }
+
+    // ====================================
+    // BOT CONTROL FUNCTIONS
+    // ====================================
+
+    /**
+     * Actualiza la UI del control del bot
+     */
+    function updateBotControlUI() {
+      const toggle = document.getElementById('bot-toggle');
+      const label = document.getElementById('bot-toggle-label');
+      const statusText = document.getElementById('bot-status-text');
+      const statusLabel = document.getElementById('bot-status-label');
+      const card = document.getElementById('bot-control-card');
+      const warning = document.getElementById('bot-warning');
+      const icon = document.getElementById('bot-control-icon');
+
+      const canActivate = onboardingPercentage >= 75;
+
+      console.log(`🎨 Actualizando UI del bot:
+        - Estado del bot: ${botActive ? 'ON' : 'OFF'}
+        - Progreso de onboarding: ${onboardingPercentage}%
+        - Puede activar (>= 75%): ${canActivate}`);
+
+      // Actualizar toggle
+      if (botActive) {
+        toggle.classList.add('active');
+        toggle.classList.remove('disabled');
+        label.textContent = 'ON';
+        statusLabel.textContent = 'Bot activo y respondiendo mensajes';
+        statusText.classList.add('active');
+        statusText.classList.remove('inactive');
+        card.classList.add('active');
+        card.classList.remove('inactive');
+        icon.textContent = '✅';
+      } else {
+        toggle.classList.remove('active');
+        label.textContent = 'OFF';
+        statusLabel.textContent = 'Bot desactivado, no responderá mensajes';
+        statusText.classList.remove('active');
+        statusText.classList.add('inactive');
+        card.classList.remove('active');
+        card.classList.add('inactive');
+        icon.textContent = '🤖';
+        
+        if (!canActivate) {
+          toggle.classList.add('disabled');
+        } else {
+          toggle.classList.remove('disabled');
+        }
+      }
+
+      // Mostrar/ocultar advertencia
+      if (!canActivate && !botActive) {
+        warning.classList.add('visible');
+      } else {
+        warning.classList.remove('visible');
+      }
+    }
+
+    /**
+     * Toggle del estado del bot
+     */
+    async function toggleBot() {
+      const canActivate = onboardingPercentage >= 75;
+
+      console.log(`🎯 Toggle bot llamado:
+        - Estado actual del bot: ${botActive ? 'ON' : 'OFF'}
+        - Progreso local (onboardingPercentage): ${onboardingPercentage}%
+        - Puede activar (>= 75%): ${canActivate}
+        - Estado de onboarding: ${JSON.stringify(onboardingState)}`);
+
+      // VALIDACIÓN CRÍTICA: Si intenta activar el bot pero el progreso es < 75%
+      if (!botActive && !canActivate) {
+        console.warn('⚠️ Intento de activar bot con progreso insuficiente');
+        alert('⚠️ Para activar el bot, debes completar al menos el 75% del onboarding.\n\nActualmente has completado: ' + onboardingPercentage + '%\n\n' +
+              'Completa la configuración del menú y los mensajes personalizados para continuar.');
+        return;
+      }
+
+      // VALIDACIÓN ADICIONAL: Verificar progreso en Firebase antes de cambiar
+      try {
+        const onboardingSnapshot = await firebase.database().ref(`tenants/${tenantId}/onboarding`).once('value');
+        const onboarding = onboardingSnapshot.val();
+        const progress = onboarding?.progress || 0;
+        
+        console.log(`🔍 Validación en Firebase:
+          - Progreso guardado en Firebase: ${progress}%
+          - Steps en Firebase: ${JSON.stringify(onboarding?.steps)}
+          - Completed en Firebase: ${onboarding?.completed}`);
+        
+        // Si intenta activar y el progreso en Firebase es < 75%, bloquear
+        if (!botActive && progress < 75) {
+          console.error(`🚫 Validación de progreso falló. 
+            - Progreso en Firebase: ${progress}%
+            - Progreso local: ${onboardingPercentage}%
+            - Diferencia detectada: Se bloqueará la activación`);
+          alert('⚠️ El progreso de onboarding en el servidor es insuficiente (' + progress + '%).\n\n' +
+                'Completa al menos el 75% del onboarding antes de activar el bot.');
+          return;
+        }
+        
+        // Si hay discrepancia entre el progreso local y Firebase, sincronizar
+        if (Math.abs(progress - onboardingPercentage) > 5) {
+          console.warn(`⚠️ Discrepancia detectada entre progreso local (${onboardingPercentage}%) y Firebase (${progress}%). Sincronizando...`);
+          onboardingPercentage = progress;
+          updateBotControlUI();
+        }
+        
+      } catch (error) {
+        console.error('Error validando progreso:', error);
+        alert('Error al validar el progreso. Por favor intenta de nuevo.');
+        return;
+      }
+
+      // Cambiar estado
+      const newState = !botActive;
+      botActive = newState;
+
+      // Guardar en Firebase
+      try {
+        await firebase.database().ref(`tenants/${tenantId}/bot/config`).set({
+          active: botActive,
+          lastUpdated: new Date().toISOString()
+        });
+
+        console.log(`✅ Estado del bot actualizado en Firebase: ${botActive ? 'ACTIVO (true)' : 'DESACTIVADO (false)'}`);
+        
+        // Actualizar UI
+        updateBotControlUI();
+
+        // Mostrar mensaje de confirmación
+        if (botActive) {
+          alert('✅ Bot activado\n\nEl bot ahora responderá automáticamente a los mensajes de tus clientes.');
+        } else {
+          alert('🔴 Bot desactivado\n\nEl bot no responderá a los mensajes hasta que lo vuelvas a activar.');
+        }
+
+      } catch (error) {
+        console.error('Error actualizando estado del bot:', error);
+        alert('Error al actualizar el estado del bot. Por favor intenta de nuevo.');
+        // Revertir el cambio
+        botActive = !botActive;
+        updateBotControlUI();
+      }
+    }
+
+    // Payment Config
+    function openPaymentConfig() {
+      document.getElementById('payment-modal').classList.add('active');
+      loadPaymentConfig();
+    }
+
+    function closePaymentModal() {
+      document.getElementById('payment-modal').classList.remove('active');
+    }
+
+    async function loadPaymentConfig() {
+      try {
+        // Obtener configuración de pagos desde el backend
+        const response = await fetch(`https://api.kdsapp.site/api/payments/get-config/${tenantId}?includeCredentials=true`);
+        const data = await response.json();
+
+        if (!data.success || !data.config) {
+          // Si no hay configuración, mostrar estado deshabilitado
+          document.getElementById('payment-toggle').classList.remove('active');
+          document.getElementById('payment-credentials-section').style.display = 'none';
+          document.getElementById('payment-disabled-message').style.display = 'block';
+          
+          // Limpiar campos
+          document.getElementById('payment-public-key').value = '';
+          document.getElementById('payment-private-key').value = '';
+          document.getElementById('payment-integrity-secret').value = '';
+          document.getElementById('payment-events-secret').value = '';
+        } else {
+          const paymentConfig = data.config;
+          
+          // Cargar estado de habilitación
+          const isEnabled = paymentConfig.enabled === true;
+          document.getElementById('payment-toggle').classList.toggle('active', isEnabled);
+          document.getElementById('payment-credentials-section').style.display = isEnabled ? 'block' : 'none';
+          document.getElementById('payment-disabled-message').style.display = isEnabled ? 'none' : 'block';
+
+          // Cargar credenciales (solo si están disponibles)
+          if (paymentConfig.credentials) {
+            document.getElementById('payment-public-key').value = paymentConfig.credentials.publicKey || '';
+            document.getElementById('payment-private-key').value = paymentConfig.credentials.privateKey || '';
+            document.getElementById('payment-integrity-secret').value = paymentConfig.credentials.integritySecret || '';
+            document.getElementById('payment-events-secret').value = paymentConfig.credentials.eventsSecret || '';
+          }
+        }
+
+        // Cargar URL de webhook (siempre disponible)
+        const webhookUrl = `https://api.kdsapp.site/api/payments/webhook/wompi/${tenantId}`;
+        document.getElementById('webhook-url').value = webhookUrl;
+
+      } catch (error) {
+        console.error('Error loading payment config:', error);
+        // En caso de error, mostrar estado deshabilitado
+        document.getElementById('payment-toggle').classList.remove('active');
+        document.getElementById('payment-credentials-section').style.display = 'none';
+        document.getElementById('payment-disabled-message').style.display = 'block';
+      }
+    }
+
+    function togglePaymentEnabled() {
+      const toggle = document.getElementById('payment-toggle');
+      const isEnabled = !toggle.classList.contains('active');
+
+      toggle.classList.toggle('active', isEnabled);
+      document.getElementById('payment-credentials-section').style.display = isEnabled ? 'block' : 'none';
+      document.getElementById('payment-disabled-message').style.display = isEnabled ? 'none' : 'block';
+    }
+
+    async function testPaymentCredentials() {
+      const publicKey = document.getElementById('payment-public-key').value.trim();
+      const privateKey = document.getElementById('payment-private-key').value.trim();
+      const integritySecret = document.getElementById('payment-integrity-secret').value.trim();
+      const eventsSecret = document.getElementById('payment-events-secret').value.trim();
+
+      // Validar campos
+      if (!publicKey || !privateKey || !integritySecret || !eventsSecret) {
+        return alert('Por favor completa todas las llaves antes de probar');
+      }
+
+      try {
+        // Mostrar loading
+        const btnTest = document.getElementById('btn-test-credentials');
+        btnTest.innerHTML = '⏳ Probando...';
+        btnTest.disabled = true;
+
+        // Probar conexión con Wompi usando el endpoint correcto
+        const response = await fetch('https://api.kdsapp.site/api/payments/validate-credentials', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            provider: 'wompi',
+            credentials: {
+              publicKey,
+              privateKey,
+              integritySecret,
+              eventsSecret
+            }
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          document.getElementById('test-result-icon').innerHTML = '✅';
+          document.getElementById('test-result-message').textContent = data.message || 'Conexión exitosa con Wompi';
+        } else {
+          throw new Error(data.error || 'Error desconocido');
+        }
+      } catch (error) {
+        console.error('Error probando credenciales:', error);
+        document.getElementById('test-result-icon').innerHTML = '❌';
+        document.getElementById('test-result-message').textContent = 'Error: ' + error.message;
+      } finally {
+        document.getElementById('credentials-test-result').style.display = 'flex';
+        const btnTest = document.getElementById('btn-test-credentials');
+        btnTest.innerHTML = '🧪 Probar Credenciales';
+        btnTest.disabled = false;
+      }
+    }
+
+    function copyWebhookUrl() {
+      const urlField = document.getElementById('webhook-url');
+      urlField.select();
+      document.execCommand('copy');
+      alert('✅ URL del webhook copiada al portapapeles');
+    }
+
+    // Save payment configuration
+    async function savePaymentConfig() {
+      const isEnabled = document.getElementById('payment-toggle').classList.contains('active');
+      const publicKey = document.getElementById('payment-public-key').value.trim();
+      const privateKey = document.getElementById('payment-private-key').value.trim();
+      const integritySecret = document.getElementById('payment-integrity-secret').value.trim();
+      const eventsSecret = document.getElementById('payment-events-secret').value.trim();
+
+      // Validar campos requeridos
+      if (isEnabled && (!publicKey || !privateKey || !integritySecret || !eventsSecret)) {
+        return alert('Por favor completa todas las llaves antes de guardar la configuración');
+      }
+
+      try {
+        // Guardar usando el backend (con cifrado de credenciales)
+        const response = await fetch('https://api.kdsapp.site/api/payments/save-config', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            tenantId,
+            enabled: isEnabled,
+            gateway: 'wompi',
+            credentials: isEnabled ? {
+              publicKey,
+              privateKey,
+              integritySecret,
+              eventsSecret
+            } : null
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          alert('✅ Configuración de pagos guardada exitosamente');
+          closePaymentModal();
+          
+          // Actualizar la UI para reflejar el estado
+          await loadPaymentConfig();
+        } else {
+          throw new Error(data.error || 'Error al guardar configuración');
+        }
+      } catch (error) {
+        console.error('Error saving payment config:', error);
+        alert('Error al guardar la configuración de pagos: ' + error.message);
+      }
+    }
+
+    // Delivery Time Config
+    function openDeliveryTimeConfig() {
+      document.getElementById('delivery-time-modal').classList.add('active');
+      loadDeliveryTime();
+    }
+
+    function closeDeliveryTimeModal() {
+      document.getElementById('delivery-time-modal').classList.remove('active');
+    }
+
+    async function loadDeliveryTime() {
+      try {
+        const snapshot = await firebase.database().ref(`tenants/${tenantId}/config/deliveryTime`).once('value');
+        const deliveryTime = snapshot.val();
+
+        if (deliveryTime) {
+          document.getElementById('delivery-time-min').value = deliveryTime.min || 30;
+          document.getElementById('delivery-time-max').value = deliveryTime.max || 40;
+        } else {
+          // Valores por defecto
+          document.getElementById('delivery-time-min').value = 30;
+          document.getElementById('delivery-time-max').value = 40;
+        }
+
+        updateDeliveryTimePreview();
+      } catch (error) {
+        console.error('Error loading delivery time:', error);
+      }
+    }
+
+    function updateDeliveryTimePreview() {
+      const min = document.getElementById('delivery-time-min').value || 30;
+      const max = document.getElementById('delivery-time-max').value || 40;
+      document.getElementById('delivery-time-preview').textContent = `🕒 Tiempo estimado: ${min}-${max} minutos`;
+    }
+
+    // Actualizar preview en tiempo real
+    document.addEventListener('DOMContentLoaded', () => {
+      const minInput = document.getElementById('delivery-time-min');
+      const maxInput = document.getElementById('delivery-time-max');
+      
+      if (minInput && maxInput) {
+        minInput.addEventListener('input', updateDeliveryTimePreview);
+        maxInput.addEventListener('input', updateDeliveryTimePreview);
+      }
+    });
+
+    async function saveDeliveryTime() {
+      const min = parseInt(document.getElementById('delivery-time-min').value);
+      const max = parseInt(document.getElementById('delivery-time-max').value);
+
+      console.log(`💾 [saveDeliveryTime] Intentando guardar: min=${min}, max=${max}, tenantId=${tenantId}`);
+
+      // Validaciones
+      if (!min || !max) {
+        return alert('Por favor ingresa ambos valores de tiempo');
+      }
+
+      if (min < 10 || max < 10) {
+        return alert('El tiempo mínimo debe ser de al menos 10 minutos');
+      }
+
+      if (min > max) {
+        return alert('El tiempo mínimo no puede ser mayor al tiempo máximo');
+      }
+
+      if (max > 120) {
+        return alert('El tiempo máximo no debe exceder 120 minutos (2 horas)');
+      }
+
+      try {
+        const path = `tenants/${tenantId}/config/deliveryTime`;
+        console.log(`📡 [saveDeliveryTime] Guardando en Firebase path: ${path}`);
+        
+        // Guardar en Firebase
+        await firebase.database().ref(path).set({
+          min: min,
+          max: max,
+          updatedAt: Date.now()
+        });
+
+        console.log(`✅ [saveDeliveryTime] Guardado exitosamente`);
+        
+        // Verificar que se guardó correctamente
+        const snapshot = await firebase.database().ref(path).once('value');
+        const saved = snapshot.val();
+        console.log(`🔍 [saveDeliveryTime] Verificación - Datos guardados:`, saved);
+
+        alert(`✅ Tiempo de entrega actualizado: ${min}-${max} minutos`);
+        closeDeliveryTimeModal();
+      } catch (error) {
+        console.error('❌ [saveDeliveryTime] Error:', error);
+        alert('Error al guardar el tiempo de entrega: ' + error.message);
+      }
+    }
+  </script>
+</body>
+</html>

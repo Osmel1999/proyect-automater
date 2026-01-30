@@ -1,3 +1,16 @@
+        /* Auth Page Styles - KDS Modern Design */
+        :root {
+            --kds-primary: #1a5f7a;
+            --kds-primary-light: #2d8baa;
+            --kds-primary-dark: #0f3d4f;
+            --kds-secondary: #57cc99;
+            --kds-gray-50: #f9fafb;
+            --kds-gray-100: #f3f4f6;
+            --kds-gray-200: #e5e7eb;
+            --kds-gray-600: #4b5563;
+            --kds-gray-900: #111827;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -5,13 +18,25 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, var(--kds-primary) 0%, var(--kds-primary-dark) 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 1rem;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 30% 50%, rgba(87, 204, 153, 0.15) 0%, transparent 50%);
+            pointer-events: none;
         }
 
         .auth-container {
@@ -21,10 +46,11 @@
             max-width: 450px;
             width: 100%;
             overflow: hidden;
+            position: relative;
         }
 
         .auth-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--kds-primary) 0%, var(--kds-primary-dark) 100%);
             color: white;
             padding: 2rem;
             text-align: center;
@@ -33,10 +59,12 @@
         .auth-header h1 {
             font-size: 2rem;
             margin-bottom: 0.5rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
         }
 
         .auth-header p {
-            opacity: 0.9;
+            opacity: 0.95;
             font-size: 0.95rem;
         }
 
@@ -54,17 +82,19 @@
             flex: 1;
             padding: 0.8rem;
             border: none;
-            background: #f0f0f0;
+            background: var(--kds-gray-100);
             border-radius: 10px;
             cursor: pointer;
             font-size: 1rem;
             font-weight: 600;
-            transition: all 0.3s;
+            transition: all 0.3s ease;
+            color: var(--kds-gray-600);
         }
 
         .tab.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--kds-primary) 0%, var(--kds-primary-light) 100%);
             color: white;
+            box-shadow: 0 4px 10px rgba(26, 95, 122, 0.3);
         }
 
         .form-section {
@@ -95,29 +125,33 @@
             display: block;
             margin-bottom: 0.5rem;
             font-weight: 600;
-            color: #333;
+            color: var(--kds-gray-900);
+            font-size: 0.95rem;
         }
 
         .form-group input {
             width: 100%;
             padding: 0.8rem;
-            border: 2px solid #e0e0e0;
+            border: 1px solid var(--kds-gray-200);
             border-radius: 8px;
             font-size: 1rem;
-            transition: border-color 0.3s;
+            transition: all 0.3s ease;
+            background: white;
+            color: var(--kds-gray-900);
         }
 
         .form-group input:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--kds-primary);
+            box-shadow: 0 0 0 3px rgba(26, 95, 122, 0.1);
         }
 
         .form-group input.error {
-            border-color: #f5576c;
+            border-color: #ef4444;
         }
 
         .error-message {
-            color: #f5576c;
+            color: #ef4444;
             font-size: 0.85rem;
             margin-top: 0.3rem;
             display: none;
@@ -139,14 +173,15 @@
             text-align: center;
             font-size: 1.5rem;
             font-weight: bold;
-            border: 2px solid #e0e0e0;
+            border: 1px solid var(--kds-gray-200);
             border-radius: 8px;
-            transition: border-color 0.3s;
+            transition: all 0.3s ease;
         }
 
         .pin-digit:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--kds-primary);
+            box-shadow: 0 0 0 3px rgba(26, 95, 122, 0.1);
         }
 
         .btn {
@@ -157,18 +192,19 @@
             font-size: 1rem;
             font-weight: bold;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.3s ease;
             margin-top: 1rem;
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--kds-primary) 0%, var(--kds-primary-light) 100%);
             color: white;
+            box-shadow: 0 4px 10px rgba(26, 95, 122, 0.2);
         }
 
         .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 6px 20px rgba(26, 95, 122, 0.3);
         }
 
         .btn-primary:disabled {
@@ -179,7 +215,7 @@
 
         .info-text {
             text-align: center;
-            color: #666;
+            color: var(--kds-gray-600);
             font-size: 0.9rem;
             margin-top: 1rem;
         }
@@ -193,12 +229,13 @@
 
         .alert.show {
             display: block;
+            animation: fadeIn 0.3s;
         }
 
         .alert-error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
         }
 
         .alert-success {
