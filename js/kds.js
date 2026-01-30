@@ -1,6 +1,6 @@
         // Debug: Verificar versión cargada
-        console.log('🔄 KDS HTML cargado - Timestamp: 1768856159');
-        console.log('📍 Versión de scripts: app.js?v=1768856159');
+        console.log('[KDS] HTML cargado - Timestamp: 1768856159');
+        console.log('[KDS] Versión de scripts: app.js?v=1768856159');
         
         // Configurar botón de dashboard
         document.getElementById('dashboardBtn').addEventListener('click', function(e) {
@@ -22,10 +22,10 @@
                     if (typeof init === 'function') {
                         init();
                     } else {
-                        console.error('❌ Función init() no encontrada. app.js no se cargó correctamente.');
+                        console.error('[KDS] ERROR: Función init() no encontrada. app.js no se cargó correctamente.');
                     }
                 } catch (error) {
-                    console.error('❌ Error al inicializar KDS:', error);
+                    console.error('[KDS] ERROR al inicializar KDS:', error);
                     alert('Error al inicializar KDS. Recarga la página (Ctrl+Shift+R)');
                 }
             });
@@ -34,10 +34,10 @@
                 if (typeof init === 'function') {
                     init();
                 } else {
-                    console.error('❌ Función init() no encontrada. app.js no se cargó correctamente.');
+                    console.error('[KDS] ERROR: Función init() no encontrada. app.js no se cargó correctamente.');
                 }
             } catch (error) {
-                console.error('❌ Error al inicializar KDS:', error);
+                console.error('[KDS] ERROR al inicializar KDS:', error);
                 alert('Error al inicializar KDS. Recarga la página (Ctrl+Shift+R)');
             }
         }

@@ -241,35 +241,44 @@ function createOrderCard(order, status) {
     const isUrgent = minutes > 25;
     
     card.innerHTML = `
-        <div class="card-header">
-            <div class="order-id-section">
-                <div class="order-id">#${order.displayId}</div>
-                ${order.total ? `<div class="order-total">$${formatMoney(order.total)}</div>` : ''}
+        <div class="order-header">
+            <div class="order-number">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="9" cy="21" r="1"></circle>
+                    <circle cx="20" cy="21" r="1"></circle>
+                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                </svg>
+                #${order.displayId}
             </div>
             <div class="order-time">
-                <div class="time-label">Pedido${isUrgent ? ' - 🔥 Urgente' : ''}</div>
-                <div class="time-value">${formatTime(order.timestamp)} - <span class="elapsed-time ${elapsedClass}">⏱️ ${minutes} min</span></div>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                ${formatTime(order.timestamp)} - <span class="elapsed-time ${elapsedClass}">${minutes} min</span>
             </div>
         </div>
         
-        <div class="customer-info">
-            <div class="customer-name">👤 ${order.cliente || 'Cliente'}</div>
-            ${order.telefono ? `<div class="customer-phone">📱 ${order.telefono}</div>` : ''}
+        <div class="order-customer">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            ${order.cliente || 'Cliente'}
+            ${order.telefono ? `<span class="phone-number">${order.telefono}</span>` : ''}
         </div>
         
-        <ul class="items-list">
+        <ul class="order-items">
             ${order.items.map(item => `
-                <li class="item">
-                    <div>
-                        <span class="item-quantity">${item.cantidad}</span>
-                        <span class="item-name">${item.nombre}</span>
-                        ${item.notas ? `<div class="item-notes">📝 ${item.notas}</div>` : ''}
-                    </div>
+                <li class="order-item">
+                    <span class="item-quantity">${item.cantidad}</span>
+                    <span class="item-name">${item.nombre}</span>
+                    ${item.notas ? `<div class="item-notes">${item.notas}</div>` : ''}
                 </li>
             `).join('')}
         </ul>
         
-        <div class="card-footer">
+        <div class="order-actions">
             ${getActionButtons(order.estado, order.firebaseKey)}
         </div>
     `;
@@ -283,19 +292,31 @@ function getActionButtons(estado, orderId) {
         case 'pendiente':
             return `
                 <button class="btn btn-start" onclick="changeStatus('${orderId}', 'cocinando')">
-                    👨‍🍳 Empezar a Cocinar
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polygon points="10 8 16 12 10 16 10 8"></polygon>
+                    </svg>
+                    Empezar a Cocinar
                 </button>
             `;
         case 'cocinando':
             return `
                 <button class="btn btn-ready" onclick="changeStatus('${orderId}', 'listo')">
-                    ✅ Marcar como Listo
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    Marcar como Listo
                 </button>
             `;
         case 'listo':
             return `
                 <button class="btn btn-complete" onclick="completeOrder('${orderId}')">
-                    📦 Entregado
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                    </svg>
+                    Entregado
                 </button>
             `;
         default:
@@ -410,14 +431,15 @@ function updateElapsedTimes() {
             }
             
             // Actualizar texto
-            elapsedSpan.innerHTML = `⏱️ ${minutes} min`;
+            elapsedSpan.textContent = `${minutes} min`;
         }
         
-        // Actualizar indicador de urgente
-        const timeLabel = card.querySelector('.time-label');
-        if (timeLabel) {
-            const isUrgent = minutes > 25;
-            timeLabel.textContent = isUrgent ? 'Pedido - 🔥 Urgente' : 'Pedido';
+        // Actualizar indicador de urgente en tiempo real si es necesario
+        const orderHeader = card.querySelector('.order-header');
+        if (orderHeader && minutes > 25) {
+            card.classList.add('urgent');
+        } else {
+            card.classList.remove('urgent');
         }
     });
 }
