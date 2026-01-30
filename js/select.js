@@ -111,25 +111,47 @@
                 return;
             }
 
+            console.log('🔐 Verificando PIN...');
+            console.log('   - UserId:', currentUserId);
+            console.log('   - TenantId:', currentTenantId);
+            console.log('   - PIN ingresado:', pin.replace(/./g, '*'));
+
             try {
                 // Get user PIN from database
-                const userSnapshot = await firebase.database().ref('users/' + currentUserId).once('value');
+                const userRef = firebase.database().ref('users/' + currentUserId);
+                console.log('   - Consultando ruta:', `users/${currentUserId}`);
+                
+                const userSnapshot = await userRef.once('value');
                 const userData = userSnapshot.val();
 
+                console.log('   - Datos de usuario obtenidos:', userData ? 'Sí' : 'No');
+
                 if (!userData) {
+                    console.error('❌ Usuario no encontrado en Firebase');
                     throw new Error('Usuario no encontrado');
                 }
 
+                if (!userData.pin) {
+                    console.error('❌ Usuario no tiene PIN configurado');
+                    throw new Error('PIN no configurado');
+                }
+
+                console.log('   - PIN almacenado existe:', userData.pin ? 'Sí' : 'No');
+
                 // Hash entered PIN and compare
                 const hashedPin = await hashPin(pin);
+                console.log('   - PIN hasheado:', hashedPin.substring(0, 10) + '...');
+                console.log('   - PIN guardado:', userData.pin.substring(0, 10) + '...');
+                console.log('   - ¿Coinciden?:', hashedPin === userData.pin);
 
                 if (hashedPin === userData.pin) {
+                    console.log('✅ PIN correcto, redirigiendo al dashboard...');
                     // PIN correct, redirect to dashboard directly
-                    // NEVER redirect to onboarding from here - onboarding is only for initial setup
                     closePinModal();
                     window.location.href = `/dashboard.html?tenant=${currentTenantId}`;
                 } else {
                     // PIN incorrect
+                    console.warn('❌ PIN incorrecto');
                     pinError.classList.add('show');
                     pinDigits.forEach(d => {
                         d.classList.add('error');
@@ -142,8 +164,10 @@
                     }, 500);
                 }
             } catch (error) {
-                console.error('Error verificando PIN:', error);
-                alert('Error al verificar el PIN. Intenta nuevamente.');
+                console.error('❌ Error verificando PIN:', error);
+                console.error('   - Mensaje:', error.message);
+                console.error('   - Stack:', error.stack);
+                alert('Error al verificar el PIN. Intenta nuevamente.\n\nDetalles: ' + error.message);
             }
         }
 
