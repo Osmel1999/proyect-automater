@@ -437,10 +437,10 @@ Asumiendo que usas **Railway Hobby ($5/mes) + Firebase Blaze (pago por uso)**:
 │                                                                 │
 │  • Hasta 25 ped/día      • Hasta 50 ped/día    • Hasta 100 ped  │
 │  • Bot WhatsApp          • Bot WhatsApp        • Bot WhatsApp   │
-│  • KDS básico            • KDS completo        • KDS completo   │
-│  • Soporte email         • Soporte chat        • Soporte VIP    │
-│                          • Reportes            • Reportes       │
-│                                                • Personalización│
+│  • Panel KDS             • Panel KDS           • Panel KDS      │
+│  • Menú personalizable   • Menú personalizable • Menú personaliz│
+│  • Soporte CORREO        • Soporte WHATSAPP    • Soporte WHATSAP│
+│  • Actualizaciones       • Actualizaciones     • Actualizaciones│
 │                                                                 │
 │  Ideal para:             Ideal para:           Ideal para:      │
 │  - Food trucks           - Restaurantes        - Dark kitchens  │
@@ -449,3 +449,7 @@ Asumiendo que usas **Railway Hobby ($5/mes) + Firebase Blaze (pago por uso)**:
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+**Diferencias clave entre planes:**
+- **Emprendedor**: Soporte por correo electrónico
+- **Profesional y Empresarial**: Soporte por WhatsApp (más rápido y directo)
