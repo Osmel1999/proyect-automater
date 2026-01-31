@@ -297,7 +297,6 @@ body::before {
   font-size: 0.8125rem;
   margin-top: var(--spacing-xs);
   display: none;
-  display: flex;
   align-items: center;
   gap: var(--spacing-xs);
 }

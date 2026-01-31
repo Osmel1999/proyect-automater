@@ -1,32 +1,28 @@
-// Dashboard functionality
-// Firebase is initialized in config.js before this script loads
-
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Dashboard.js: DOM loaded, initializing...');
-    
-    // Verify Firebase is initialized
-    if (!firebase.apps.length) {
-        console.error('❌ Firebase not initialized!');
-        alert('Error: Firebase no está inicializado. Por favor recarga la página.');
-        return;
-    }
-    
-    console.log('✅ Firebase initialized:', firebase.app().name);
-    
     // Check authentication and PIN
     const currentUserId = localStorage.getItem('currentUserId');
     const currentTenantId = localStorage.getItem('currentTenantId');
-    
-    console.log('🔑 Authentication check:', {
-        userId: currentUserId,
-        tenantId: currentTenantId
-    });
     
     // Verify user is authenticated
     if (!currentUserId || !currentTenantId) {
       alert('Debes iniciar sesión primero');
       window.location.href = '/auth.html';
-      return;
+    }
+
+    // Initialize Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyAChWEnXztMe5YWJTPevIY5afgHMYxZBzQ",
+      authDomain: "kds-app-7f1d3.firebaseapp.com",
+      databaseURL: "https://kds-app-7f1d3-default-rtdb.firebaseio.com",
+      projectId: "kds-app-7f1d3",
+      storageBucket: "kds-app-7f1d3.firebasestorage.app",
+      messagingSenderId: "236480135078",
+      appId: "1:236480135078:web:246c759f840c5f140e1967",
+      measurementId: "G-0Q1V5WV35X"
+    };
+
+    // Initialize Firebase
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
     }
 
     // Global variables
@@ -42,9 +38,11 @@ document.addEventListener('DOMContentLoaded', function() {
     let botActive = false; // Estado del bot
     let onboardingPercentage = 0; // Porcentaje de onboarding
 
-    // Get tenant ID from URL or localStorage
-    const urlParams = new URLSearchParams(window.location.search);
-    tenantId = urlParams.get('tenant') || urlParams.get('tenantId') || currentTenantId;
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+      // Get tenant ID from URL or localStorage
+      const urlParams = new URLSearchParams(window.location.search);
+      tenantId = urlParams.get('tenant') || urlParams.get('tenantId') || currentTenantId;
 
       if (!tenantId) {
         alert('No se proporcionó ID de tenant');
@@ -59,6 +57,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       loadTenantData();
       checkWhatsAppStatus(); // Verificar estado de WhatsApp al cargar
+    });
 
     /**
      * Verifica el estado de la conexión de WhatsApp
@@ -92,17 +91,13 @@ document.addEventListener('DOMContentLoaded', function() {
       if (connected && phoneNumber) {
         // Conectado
         statusElement.classList.remove('disconnected');
-        statusElement.classList.add('connected');
         statusDot.classList.remove('disconnected');
-        statusDot.classList.add('connected');
         statusText.textContent = `Conectado: ${phoneNumber}`;
         disconnectBtn.style.display = 'inline-flex';
         connectBtn.style.display = 'none';
       } else {
         // Desconectado
-        statusElement.classList.remove('connected');
         statusElement.classList.add('disconnected');
-        statusDot.classList.remove('connected');
         statusDot.classList.add('disconnected');
         statusText.textContent = 'WhatsApp Desconectado';
         disconnectBtn.style.display = 'none';
@@ -242,27 +237,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       } catch (error) {
         console.error('Error loading tenant:', error);
-        document.getElementById('loading-container').style.display = 'none';
-        
-        // Mostrar mensaje de error más descriptivo
-        const errorMessage = `
-          ❌ Error al cargar datos del restaurante
-          
-          Detalles: ${error.message}
-          
-          Posibles causas:
-          • No has completado el proceso de onboarding
-          • Problemas de conexión con Firebase
-          • El tenant ID no es válido
-          
-          ¿Qué deseas hacer?
-        `;
-        
-        if (confirm(errorMessage + '\n\n✅ Ir al diagnóstico\n❌ Volver a autenticar')) {
-          window.location.href = '/dashboard-diagnostico.html';
-        } else {
-          window.location.href = '/auth.html';
-        }
+        alert('Error al cargar datos del restaurante');
       }
     }
 
@@ -616,7 +591,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const statusLabel = document.getElementById('bot-status-label');
       const card = document.getElementById('bot-control-card');
       const warning = document.getElementById('bot-warning');
-      // Nota: Ya no usamos bot-control-icon porque ahora es SVG fijo
+      const icon = document.getElementById('bot-control-icon');
 
       const canActivate = onboardingPercentage >= 75;
 
@@ -635,7 +610,7 @@ document.addEventListener('DOMContentLoaded', function() {
         statusText.classList.remove('inactive');
         card.classList.add('active');
         card.classList.remove('inactive');
-        // Ya no cambiamos el icono (era: icon.textContent = '✅')
+        icon.textContent = '✅';
       } else {
         toggle.classList.remove('active');
         label.textContent = 'OFF';
@@ -644,7 +619,7 @@ document.addEventListener('DOMContentLoaded', function() {
         statusText.classList.add('inactive');
         card.classList.remove('active');
         card.classList.add('inactive');
-        // Ya no cambiamos el icono (era: icon.textContent = '🤖')
+        icon.textContent = '🤖';
         
         if (!canActivate) {
           toggle.classList.add('disabled');
@@ -962,6 +937,17 @@ document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('delivery-time-preview').textContent = `🕒 Tiempo estimado: ${min}-${max} minutos`;
     }
 
+    // Actualizar preview en tiempo real
+    document.addEventListener('DOMContentLoaded', () => {
+      const minInput = document.getElementById('delivery-time-min');
+      const maxInput = document.getElementById('delivery-time-max');
+      
+      if (minInput && maxInput) {
+        minInput.addEventListener('input', updateDeliveryTimePreview);
+        maxInput.addEventListener('input', updateDeliveryTimePreview);
+      }
+    });
+
     async function saveDeliveryTime() {
       const min = parseInt(document.getElementById('delivery-time-min').value);
       const max = parseInt(document.getElementById('delivery-time-max').value);
@@ -1010,44 +996,3 @@ document.addEventListener('DOMContentLoaded', function() {
         alert('Error al guardar el tiempo de entrega: ' + error.message);
       }
     }
-
-    // Setup delivery time preview event listeners
-    const minInput = document.getElementById('delivery-time-min');
-    const maxInput = document.getElementById('delivery-time-max');
-    
-    if (minInput && maxInput) {
-        minInput.addEventListener('input', updateDeliveryTimePreview);
-        maxInput.addEventListener('input', updateDeliveryTimePreview);
-    }
-
-    // ====================================
-    // EXPOSE FUNCTIONS TO GLOBAL SCOPE
-    // Para que funcionen con onclick inline
-    // ====================================
-    window.connectWhatsApp = connectWhatsApp;
-    window.disconnectWhatsApp = disconnectWhatsApp;
-    window.toggleBot = toggleBot;
-    window.openMenuConfig = openMenuConfig;
-    window.closeMenuModal = closeMenuModal;
-    window.addMenuItem = addMenuItem;
-    window.removeMenuItem = removeMenuItem;
-    window.saveMenu = saveMenu;
-    window.openMessagesConfig = openMessagesConfig;
-    window.closeMessagesModal = closeMessagesModal;
-    window.saveMessages = saveMessages;
-    window.openTestBot = openTestBot;
-    window.closeTestModal = closeTestModal;
-    window.markTestCompleted = markTestCompleted;
-    window.skipOnboarding = skipOnboarding;
-    window.viewWhatsAppInfo = viewWhatsAppInfo;
-    window.openPaymentConfig = openPaymentConfig;
-    window.closePaymentModal = closePaymentModal;
-    window.togglePaymentEnabled = togglePaymentEnabled;
-    window.testPaymentCredentials = testPaymentCredentials;
-    window.copyWebhookUrl = copyWebhookUrl;
-    window.savePaymentConfig = savePaymentConfig;
-    window.openDeliveryTimeConfig = openDeliveryTimeConfig;
-    window.closeDeliveryTimeModal = closeDeliveryTimeModal;
-    window.saveDeliveryTime = saveDeliveryTime;
-
-}); // End of DOMContentLoaded

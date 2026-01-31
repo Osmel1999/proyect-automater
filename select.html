@@ -222,6 +222,9 @@
                 const snapshot = await firebase.database().ref(`tenants/${currentTenantId}/membership`).once('value');
                 const membership = snapshot.val();
                 
+                console.log('🔍 [DEBUG] currentTenantId:', currentTenantId);
+                console.log('🔍 [DEBUG] membership from Firebase:', JSON.stringify(membership));
+                
                 if (!membership) {
                     // Si no hay membresía, asumimos trial expirado (caso legacy)
                     console.warn('⚠️ No se encontró información de membresía');
@@ -234,7 +237,16 @@
                 
                 // Verificar si es trial y si expiró
                 if (plan === 'trial') {
-                    const trialEnd = membership.trialEndDate;
+                    const trialEndRaw = membership.trialEndDate;
+                    console.log('🔍 [DEBUG] trialEndRaw:', trialEndRaw, 'tipo:', typeof trialEndRaw);
+                    
+                    // Convertir a timestamp si es string ISO
+                    const trialEnd = typeof trialEndRaw === 'string' 
+                        ? new Date(trialEndRaw).getTime() 
+                        : trialEndRaw;
+                    
+                    console.log('🔍 [DEBUG] trialEnd (timestamp):', trialEnd, 'now:', now);
+                    
                     if (trialEnd && now > trialEnd) {
                         // Trial expirado
                         console.log('⏰ Trial expirado');
@@ -253,6 +265,15 @@
                             valid: true,
                             plan: 'trial',
                             daysLeft: daysLeft,
+                            status: 'active'
+                        };
+                    } else {
+                        // Trial sin fecha de fin (legacy) - asumir 30 días desde ahora
+                        console.warn('⚠️ Trial sin fecha de fin configurada');
+                        return {
+                            valid: true,
+                            plan: 'trial',
+                            daysLeft: 30,
                             status: 'active'
                         };
                     }
@@ -304,12 +325,13 @@
                 badge.classList.add('expired');
                 text.textContent = 'Trial Expirado';
             } else if (membershipData.plan === 'trial') {
-                if (membershipData.daysLeft <= 5) {
+                const daysLeft = membershipData.daysLeft ?? 0;
+                if (daysLeft <= 5) {
                     badge.classList.add('warning');
-                    text.textContent = `Trial: ${membershipData.daysLeft} días`;
+                    text.textContent = `Trial: ${daysLeft} días`;
                 } else {
                     badge.classList.add('trial');
-                    text.textContent = `Trial: ${membershipData.daysLeft} días`;
+                    text.textContent = `Trial: ${daysLeft} días`;
                 }
             } else {
                 badge.classList.add('active');
@@ -325,6 +347,8 @@
         // Ejecutar verificación de membresía al cargar
         async function initMembershipCheck() {
             const membershipData = await checkMembershipStatus();
+            
+            console.log('🔍 [DEBUG] membershipData:', JSON.stringify(membershipData));
             
             updateMembershipBadge(membershipData);
             

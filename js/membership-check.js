@@ -41,7 +41,12 @@ const MembershipCheck = {
             
             // Verificar si es trial y si expiró
             if (plan === 'trial') {
-                const trialEnd = membership.trialEndDate;
+                const trialEndRaw = membership.trialEndDate;
+                // Convertir a timestamp si es string ISO
+                const trialEnd = typeof trialEndRaw === 'string' 
+                    ? new Date(trialEndRaw).getTime() 
+                    : trialEndRaw;
+                
                 if (trialEnd && now > trialEnd) {
                     console.log('⏰ Trial expirado');
                     return { 

@@ -92,7 +92,59 @@ document.addEventListener('DOMContentLoaded', function() {
                     pinDigits[index - 1].focus();
                 }
             });
+            
+            // Validar PIN en tiempo real
+            digit.addEventListener('input', () => {
+                const pin = getPin();
+                const pinError = document.getElementById('pinError');
+                if (pin.length === 4) {
+                    if (validatePin(pin)) {
+                        pinError.classList.remove('show');
+                    } else {
+                        pinError.classList.add('show');
+                    }
+                } else {
+                    pinError.classList.remove('show');
+                }
+            });
         });
+
+        // Validación en tiempo real para contraseña
+        const registerPassword = document.getElementById('registerPassword');
+        const registerPasswordConfirm = document.getElementById('registerPasswordConfirm');
+        const passwordError = document.getElementById('passwordError');
+        const passwordConfirmError = document.getElementById('passwordConfirmError');
+
+        if (registerPassword) {
+            registerPassword.addEventListener('input', () => {
+                const password = registerPassword.value;
+                if (password.length > 0 && password.length < 6) {
+                    passwordError.classList.add('show');
+                } else {
+                    passwordError.classList.remove('show');
+                }
+                // También verificar confirmación si ya tiene valor
+                if (registerPasswordConfirm.value.length > 0) {
+                    if (password !== registerPasswordConfirm.value) {
+                        passwordConfirmError.classList.add('show');
+                    } else {
+                        passwordConfirmError.classList.remove('show');
+                    }
+                }
+            });
+        }
+
+        if (registerPasswordConfirm) {
+            registerPasswordConfirm.addEventListener('input', () => {
+                const password = registerPassword.value;
+                const confirm = registerPasswordConfirm.value;
+                if (confirm.length > 0 && password !== confirm) {
+                    passwordConfirmError.classList.add('show');
+                } else {
+                    passwordConfirmError.classList.remove('show');
+                }
+            });
+        }
 
         // Validate PIN
         function validatePin(pin) {
