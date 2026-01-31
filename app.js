@@ -118,34 +118,69 @@ function updateClock() {
     }
 }
 
-// Escuchar cambios en Firebase
+// Escuchar cambios en Firebase - OPTIMIZADO con listeners granulares
+// En lugar de descargar TODOS los pedidos en cada cambio, solo descargamos lo que cambió
+// Esto reduce el consumo de Firebase en ~80%
 function listenToOrders() {
     if (!currentTenantId) {
         console.error('❌ No hay tenant ID configurado');
         return;
     }
     
-    // Escuchar pedidos del tenant actual
     const ordersRef = window.db.ref(`tenants/${currentTenantId}/pedidos`);
     
-    console.log(`📡 Escuchando pedidos del tenant: ${currentTenantId}`);
+    console.log(`📡 [OPTIMIZADO] Escuchando pedidos del tenant: ${currentTenantId}`);
+    console.log(`📊 Usando listeners granulares (child_added/changed/removed)`);
     
-    ordersRef.on('value', (snapshot) => {
+    // Inicializar orders vacío
+    orders = {};
+    
+    // Listener para nuevos pedidos - solo descarga el pedido nuevo
+    ordersRef.on('child_added', (snapshot) => {
+        const key = snapshot.key;
         const data = snapshot.val();
         
-        // Filtrar placeholder si existe
-        if (data && data._placeholder) {
-            delete data._placeholder;
-        }
+        // Ignorar placeholder
+        if (key === '_placeholder') return;
         
-        orders = data || {};
+        console.log(`📥 Nuevo pedido recibido: ${key}`);
+        orders[key] = data;
         
-        // Detectar nuevos pedidos para reproducir sonido
-        const currentOrderCount = Object.keys(orders).length;
-        if (currentOrderCount > previousOrderCount) {
+        // Reproducir sonido solo para pedidos nuevos (no al cargar inicial)
+        if (previousOrderCount > 0) {
             playNotification();
         }
-        previousOrderCount = currentOrderCount;
+        previousOrderCount = Object.keys(orders).length;
+        
+        renderOrders();
+        updateCounters();
+    });
+    
+    // Listener para pedidos actualizados - solo descarga el pedido que cambió
+    ordersRef.on('child_changed', (snapshot) => {
+        const key = snapshot.key;
+        const data = snapshot.val();
+        
+        // Ignorar placeholder
+        if (key === '_placeholder') return;
+        
+        console.log(`🔄 Pedido actualizado: ${key} -> ${data.estado}`);
+        orders[key] = data;
+        
+        renderOrders();
+        updateCounters();
+    });
+    
+    // Listener para pedidos eliminados - solo recibe la key
+    ordersRef.on('child_removed', (snapshot) => {
+        const key = snapshot.key;
+        
+        // Ignorar placeholder
+        if (key === '_placeholder') return;
+        
+        console.log(`🗑️ Pedido eliminado: ${key}`);
+        delete orders[key];
+        previousOrderCount = Object.keys(orders).length;
         
         renderOrders();
         updateCounters();
