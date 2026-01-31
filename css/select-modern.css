@@ -259,7 +259,9 @@ body::before {
   padding: var(--spacing-xl);
   text-align: center;
   cursor: pointer;
-  transition: var(--transition);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+              box-shadow 0.3s ease,
+              border-color 0.3s ease;
   position: relative;
   overflow: hidden;
 }
@@ -278,8 +280,8 @@ body::before {
 }
 
 .option-card:hover {
-  transform: translateY(-5px);
-  box-shadow: var(--shadow-lg);
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.2);
   border-color: var(--primary);
   background: white;
 }
@@ -289,7 +291,7 @@ body::before {
 }
 
 .option-card:active {
-  transform: translateY(-2px);
+  transform: translateY(-4px) scale(1.01);
 }
 
 /* ===== OPTION ICON ===== */
@@ -302,12 +304,12 @@ body::before {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: var(--transition);
+  transition: transform 0.3s ease;
 }
 
 .option-card:hover .option-icon {
   background: linear-gradient(135deg, var(--primary) 0%, var(--info) 100%);
-  transform: scale(1.05);
+  transform: scale(1.1);
 }
 
 .option-icon svg {
@@ -406,7 +408,7 @@ body::before {
   font-weight: var(--font-weight-semibold);
   font-family: var(--font-sans);
   cursor: pointer;
-  transition: var(--transition);
+  transition: all 0.3s ease;
 }
 
 .logout-button svg {
@@ -418,6 +420,8 @@ body::before {
   background: var(--gray-200);
   color: var(--text-primary);
   border-color: var(--gray-300);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
 
 .logout-button:active {
@@ -701,4 +705,61 @@ body::before {
 
 .text-center {
   text-align: center;
+}
+
+/* ===== ANIMACIONES ADICIONALES ===== */
+
+/* Option cards con hover mejorado */
+.option-card {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+              box-shadow 0.3s ease,
+              border-color 0.3s ease;
+}
+
+.option-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.2);
+}
+
+.option-card:active {
+  transform: translateY(-4px) scale(1.01);
+}
+
+/* Icon flotante en cards */
+.option-icon {
+  transition: transform 0.3s ease;
+}
+
+.option-card:hover .option-icon {
+  transform: scale(1.1);
+}
+
+/* Header icon animación */
+.header-icon {
+  animation: floatIcon 3s ease-in-out infinite;
+}
+
+@keyframes floatIcon {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+/* Logout button hover */
+.logout-button {
+  transition: all 0.3s ease;
+}
+
+.logout-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+/* Badge pulse para onboarding */
+.option-badge {
+  animation: badgePulse 2s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
 }

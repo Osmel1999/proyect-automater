@@ -12,10 +12,11 @@
   
   <!-- WhatsApp Connect Modern Styles -->
   <link rel="stylesheet" href="css/whatsapp-connect.css">
+  <link rel="stylesheet" href="css/animations.css">
 </head>
 <body>
   <!-- Botón de Logout -->
-  <button class="logout-button" id="logoutButton" title="Cerrar sesión">
+  <button class="logout-button animate-fade-in" id="logoutButton" title="Cerrar sesión">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
       <polyline points="16 17 21 12 16 7"></polyline>
@@ -24,15 +25,15 @@
     <span>Cerrar Sesión</span>
   </button>
 
-  <div class="onboarding-container">
+  <div class="onboarding-container animate-fade-in">
     <!-- Logo -->
-    <div class="onboarding-logo">
+    <div class="onboarding-logo animate-fade-in-down">
       <img src="assets/images/kds-logo.png" alt="KDS Logo" onerror="this.style.display='none'">
     </div>
 
     <!-- QR View (Default) -->
     <div id="qr-view">
-      <h1 class="onboarding-title">
+      <h1 class="onboarding-title animate-fade-in-up">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
         </svg>
@@ -43,8 +44,8 @@
       </p>
 
       <!-- QR Container -->
-      <div class="qr-section">
-        <div class="qr-container">
+      <div class="qr-section animate-fade-in-up delay-200">
+        <div class="qr-container qr-pulse">
           <!-- Loading State -->
           <div id="qr-loading" class="qr-loading">
             <div class="spinner"></div>
@@ -65,7 +66,7 @@
         </div>
 
         <!-- Instructions -->
-        <div class="instructions-container">
+        <div class="instructions-container animate-fade-in-up delay-400">
           <div class="instructions-title">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>

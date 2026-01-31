@@ -9,10 +9,11 @@
     
     <!-- Auth Styles -->
     <link rel="stylesheet" href="css/auth-modern.css">
+    <link rel="stylesheet" href="css/animations.css">
 </head>
 <body>
-    <div class="auth-container">
-        <div class="auth-header">
+    <div class="auth-container animate-fade-in-scale">
+        <div class="auth-header animate-fade-in-down">
             <h1>
                 <div class="logo-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -27,7 +28,7 @@
             <p>Sistema de Gestión de Pedidos</p>
         </div>
 
-        <div class="auth-body">
+        <div class="auth-body animate-fade-in-up delay-200">
             <div class="tabs">
                 <button class="tab active" data-tab="login">Iniciar Sesión</button>
                 <button class="tab" data-tab="register">Registrarse</button>
@@ -57,10 +58,10 @@
                             </svg>
                             Contraseña
                         </label>
-                        <input type="password" id="loginPassword" required>
+                        <input type="password" id="loginPassword" required class="input-glow">
                     </div>
 
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-primary btn-ripple hover-lift">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
                             <polyline points="10 17 15 12 10 7"/>
