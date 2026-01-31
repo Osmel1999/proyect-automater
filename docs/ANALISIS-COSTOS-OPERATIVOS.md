@@ -261,7 +261,7 @@
 
 ---
 
-## 10. Optimizaciones Implementadas
+## 12. Optimizaciones Implementadas
 
 | Optimización | Archivo | Ahorro |
 |--------------|---------|--------|
@@ -270,3 +270,182 @@
 | Sesiones en memoria | `server/bot-logic.js` | 0 lecturas por mensaje intermedio |
 
 Estas optimizaciones permiten que cada pedido consuma solo **~6.5 KB** en lugar de ~20 KB sin optimizar.
+
+---
+
+*Documento generado para planificación de precios y escalabilidad de Automater KDS*
+
+---
+
+## 11. Precios Recomendados por Tipo de Restaurante
+
+### Perfiles de Restaurante
+
+| Perfil | Pedidos/día | Pedidos/mes | Descripción |
+|--------|-------------|-------------|-------------|
+| **Pequeño** | 25 | 750 | Cafetería, food truck, negocio barrial |
+| **Mediano** | 50 | 1,500 | Restaurante típico, pizzería, comida rápida |
+| **Alto volumen** | 100 | 3,000 | Dark kitchen, franquicia, restaurante popular |
+
+---
+
+### Cálculo de Costos Reales por Perfil
+
+#### Consumo por Restaurante Pequeño (25 pedidos/día)
+
+| Concepto | Cálculo | Total/mes |
+|----------|---------|-----------|
+| Pedidos/mes | 25 × 30 | **750** |
+| Datos descargados (DB) | 750 × 6.5 KB | **~5 MB** |
+| Almacenamiento | 750 × 2 KB + config | **~2 MB** |
+| Hosting transferencia | ~25 MB | **~25 MB** |
+| Conexiones pico | 2-3 | **2-3** |
+
+#### Consumo por Restaurante Mediano (50 pedidos/día)
+
+| Concepto | Cálculo | Total/mes |
+|----------|---------|-----------|
+| Pedidos/mes | 50 × 30 | **1,500** |
+| Datos descargados (DB) | 1,500 × 6.5 KB | **~10 MB** |
+| Almacenamiento | 1,500 × 2 KB + config | **~4 MB** |
+| Hosting transferencia | ~50 MB | **~50 MB** |
+| Conexiones pico | 3-5 | **3-5** |
+
+#### Consumo por Restaurante Alto Volumen (100 pedidos/día)
+
+| Concepto | Cálculo | Total/mes |
+|----------|---------|-----------|
+| Pedidos/mes | 100 × 30 | **3,000** |
+| Datos descargados (DB) | 3,000 × 6.5 KB | **~20 MB** |
+| Almacenamiento | 3,000 × 2 KB + config | **~8 MB** |
+| Hosting transferencia | ~100 MB | **~100 MB** |
+| Conexiones pico | 5-8 | **5-8** |
+
+---
+
+### Costo Operativo Real por Tipo de Restaurante
+
+Asumiendo que usas **Railway Hobby ($5/mes) + Firebase Blaze (pago por uso)**:
+
+| # Restaurantes totales | Costo total/mes | Costo prorrateado por restaurante |
+|------------------------|-----------------|-----------------------------------|
+| 10 | $5 | $0.50 |
+| 25 | $5 | $0.20 |
+| 50 | $5-6 | $0.10-0.12 |
+| 100 | $6-8 | $0.06-0.08 |
+
+**Nota:** Firebase permanece en $0 hasta ~666 restaurantes medianos (10 GB descargas gratis).
+
+#### Costo por perfil de restaurante (con 50 restaurantes totales en plataforma):
+
+| Perfil | Consume | % del total* | Costo real/mes |
+|--------|---------|--------------|----------------|
+| **Pequeño** (25 ped/día) | 5 MB | 50% menos | **~$0.05** |
+| **Mediano** (50 ped/día) | 10 MB | Promedio | **~$0.10** |
+| **Alto volumen** (100 ped/día) | 20 MB | 100% más | **~$0.20** |
+
+*Comparado con el restaurante promedio de 50 ped/día
+
+---
+
+### 💰 Precios de Suscripción Recomendados
+
+| Perfil | Costo real/mes | Precio sugerido | Margen |
+|--------|----------------|-----------------|--------|
+| **Pequeño** (25 ped/día) | ~$0.05 (~$200 COP) | **$90,000 COP** (~$22 USD) | **99.8%** |
+| **Mediano** (50 ped/día) | ~$0.10 (~$400 COP) | **$120,000 COP** (~$29 USD) | **99.7%** |
+| **Alto volumen** (100 ped/día) | ~$0.20 (~$800 COP) | **$150,000 COP** (~$36 USD) | **99.5%** |
+
+---
+
+### Justificación de Precios
+
+#### Plan Pequeño - $90,000 COP/mes
+- ✅ Ideal para negocios que empiezan
+- ✅ Precio accesible (< $100,000)
+- ✅ 750 pedidos incluidos
+- ✅ Margen: ~$89,800 COP de ganancia pura
+
+#### Plan Mediano - $120,000 COP/mes
+- ✅ El plan más popular (punto medio)
+- ✅ 1,500 pedidos incluidos
+- ✅ Funcionalidades completas
+- ✅ Margen: ~$119,600 COP de ganancia pura
+
+#### Plan Alto Volumen - $150,000 COP/mes
+- ✅ Para restaurantes exitosos
+- ✅ 3,000 pedidos incluidos
+- ✅ Soporte prioritario (justifica precio)
+- ✅ Margen: ~$149,200 COP de ganancia pura
+
+---
+
+### 📊 Proyección de Ingresos por Mix de Clientes
+
+#### Escenario realista: Mix 40% pequeños, 40% medianos, 20% alto volumen
+
+| Total restaurantes | Pequeños (40%) | Medianos (40%) | Alto vol (20%) | Ingreso/mes |
+|--------------------|----------------|----------------|----------------|-------------|
+| 10 | 4 × $90k | 4 × $120k | 2 × $150k | **$1,140,000 COP** |
+| 25 | 10 × $90k | 10 × $120k | 5 × $150k | **$2,850,000 COP** |
+| 50 | 20 × $90k | 20 × $120k | 10 × $150k | **$5,700,000 COP** |
+| 100 | 40 × $90k | 40 × $120k | 20 × $150k | **$11,400,000 COP** |
+
+#### Ingreso promedio por restaurante: ~$114,000 COP/mes
+
+---
+
+### 🎯 Tabla de Rentabilidad Final
+
+| Restaurantes | Ingreso bruto/mes | Costos operativos | Ganancia neta | Margen |
+|--------------|-------------------|-------------------|---------------|--------|
+| 10 | $1,140,000 COP (~$276 USD) | ~$5 USD | **$1,119,000 COP** | 98% |
+| 25 | $2,850,000 COP (~$690 USD) | ~$5 USD | **$2,829,000 COP** | 99% |
+| 50 | $5,700,000 COP (~$1,380 USD) | ~$6 USD | **$5,675,000 COP** | 99.5% |
+| 100 | $11,400,000 COP (~$2,760 USD) | ~$8 USD | **$11,367,000 COP** | 99.7% |
+
+> **Nota:** Costos operativos son solo infraestructura. No incluyen marketing, soporte, desarrollo, etc.
+
+---
+
+### Comparativa con el Mercado
+
+| Solución | Precio mensual | Tu ventaja |
+|----------|----------------|------------|
+| iFood/Rappi comisiones | 15-25% por pedido | Tarifa fija, sin comisiones |
+| POS tradicionales | $200,000-500,000 COP | Más barato + WhatsApp integrado |
+| Bots WhatsApp genéricos | $50,000-150,000 COP | KDS incluido + sin comisiones |
+
+**Tu propuesta de valor:**
+- ✅ Sin comisiones por pedido
+- ✅ WhatsApp (donde ya están los clientes)
+- ✅ KDS profesional incluido
+- ✅ Configuración en minutos
+- ✅ Precio predecible
+
+---
+
+### Recomendación Final de Planes
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    PLANES AUTOMATER KDS                        │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  🥉 EMPRENDEDOR          🥈 PROFESIONAL        🥇 EMPRESARIAL   │
+│     $90,000/mes             $120,000/mes          $150,000/mes  │
+│                                                                 │
+│  • Hasta 25 ped/día      • Hasta 50 ped/día    • Hasta 100 ped  │
+│  • Bot WhatsApp          • Bot WhatsApp        • Bot WhatsApp   │
+│  • KDS básico            • KDS completo        • KDS completo   │
+│  • Soporte email         • Soporte chat        • Soporte VIP    │
+│                          • Reportes            • Reportes       │
+│                                                • Personalización│
+│                                                                 │
+│  Ideal para:             Ideal para:           Ideal para:      │
+│  - Food trucks           - Restaurantes        - Dark kitchens  │
+│  - Cafeterías            - Pizzerías           - Franquicias    │
+│  - Emprendimientos       - Comida rápida       - Alto volumen   │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
