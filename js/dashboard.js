@@ -164,7 +164,7 @@ async function disconnectWhatsApp() {
     const data = await response.json();
 
     if (data.success) {
-      alert('✅ WhatsApp desconectado correctamente.\n\nAhora serás redirigido al onboarding para reconectar.');
+      alert('WhatsApp desconectado correctamente.\n\nAhora serás redirigido al onboarding para reconectar.');
       
       // Actualizar estado en Firebase
       await firebase.database().ref(`tenants/${tenantId}/onboarding/steps/whatsapp_connected`).set(false);
@@ -193,7 +193,7 @@ async function loadTenantData() {
   try {
     // Verificar que tenantId esté definido
     if (!tenantId) {
-      console.error('❌ tenantId no está definido');
+      console.error('tenantId no está definido');
       return;
     }
     
@@ -203,7 +203,7 @@ async function loadTenantData() {
     tenantData = snapshot.val();
 
     if (!tenantData) {
-      console.warn('⚠️ No se encontraron datos del tenant, puede ser un tenant nuevo');
+      console.warn('No se encontraron datos del tenant, puede ser un tenant nuevo');
       // No lanzar error, crear estructura básica
       tenantData = {
         restaurant: { name: localStorage.getItem('businessName') || 'Mi Restaurante' },
@@ -243,7 +243,7 @@ async function loadTenantData() {
     // Load bot state
     // Si el progreso es < 75%, forzar el bot a OFF sin importar el valor en Firebase
     if (onboardingPercentage < 75) {
-      console.log('⚠️ Progreso < 75%, forzando bot a OFF');
+      console.log('Progreso < 75%, forzando bot a OFF');
       botActive = false;
       // Guardar en Firebase para asegurar consistencia
       await firebase.database().ref(`tenants/${tenantId}/bot/config`).set({
@@ -260,7 +260,7 @@ async function loadTenantData() {
       }
     }
 
-    console.log(`🤖 Estado inicial del bot: ${botActive ? 'ON' : 'OFF'} (progreso: ${onboardingPercentage}%)`);
+    console.log(`Estado inicial del bot: ${botActive ? 'ON' : 'OFF'} (progreso: ${onboardingPercentage}%)`);
 
     // Check if onboarding is completed
     const isCompleted = Object.values(onboardingState).every(v => v === true);
@@ -403,16 +403,20 @@ function updateProgress() {
 }
 
 function updateStepsUI() {
+  // SVG icons
+  const checkIcon = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
+  const whatsappIcon = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>';
+  
   // Step 1: WhatsApp
   const step1 = document.getElementById('step-1');
   if (onboardingState.whatsapp_connected) {
     step1.classList.add('completed');
-    step1.querySelector('.step-icon').textContent = '✅';
+    step1.querySelector('.step-icon').innerHTML = checkIcon;
     step1.querySelector('.step-description').textContent = 'Tu número de WhatsApp Business está conectado y listo';
     step1.querySelector('.step-action').innerHTML = '<span class="step-status">Completado</span>';
   } else {
     step1.classList.remove('completed');
-    step1.querySelector('.step-icon').textContent = '1';
+    step1.querySelector('.step-icon').innerHTML = whatsappIcon;
     step1.querySelector('.step-action').innerHTML = '<button class="btn-step" onclick="connectWhatsAppStep()">Conectar →</button>';
   }
 
@@ -420,7 +424,7 @@ function updateStepsUI() {
   const step2 = document.getElementById('step-2');
   if (onboardingState.menu_configured) {
     step2.classList.add('completed');
-    step2.querySelector('.step-icon').textContent = '✅';
+    step2.querySelector('.step-icon').innerHTML = checkIcon;
     step2.querySelector('.step-action').innerHTML = '<span class="step-status">Completado</span>';
   }
 
@@ -428,7 +432,7 @@ function updateStepsUI() {
   const step3 = document.getElementById('step-3');
   if (onboardingState.messages_customized) {
     step3.classList.add('completed');
-    step3.querySelector('.step-icon').textContent = '✅';
+    step3.querySelector('.step-icon').innerHTML = checkIcon;
     step3.querySelector('.step-action').innerHTML = '<span class="step-status">Completado</span>';
   }
 
@@ -452,7 +456,7 @@ function updateStepsUI() {
   
   if (onboardingState.bot_activated) {
     step4.classList.add('completed');
-    step4.querySelector('.step-icon').textContent = '✅';
+    step4.querySelector('.step-icon').innerHTML = checkIcon;
     step4.querySelector('.step-action').innerHTML = '<span class="step-status">Completado</span>';
   }
 }
@@ -578,7 +582,7 @@ async function saveMenu() {
     await saveOnboardingState();
 
     closeMenuModal();
-    alert('✅ Menú guardado exitosamente');
+    alert('Menú guardado exitosamente');
   } catch (error) {
     console.error('Error saving menu:', error);
     alert('Error al guardar el menú');
@@ -604,7 +608,7 @@ async function loadCurrentMessages() {
     const messages = snapshot.val() || {};
 
     document.getElementById('msg-welcome').value = messages.welcome || '¡Hola! 👋 Bienvenido a nuestro restaurante.\n\nEscribe "menú" para ver nuestros productos disponibles.';
-    document.getElementById('msg-confirmation').value = messages.confirmation || '✅ ¡Pedido confirmado!\n\nTu orden está siendo preparada. Te notificaremos cuando esté lista.';
+    document.getElementById('msg-confirmation').value = messages.confirmation || '¡Pedido confirmado!\n\nTu orden está siendo preparada. Te notificaremos cuando esté lista.';
     document.getElementById('msg-goodbye').value = messages.goodbye || '¡Gracias por tu pedido! 🙏\n\nEsperamos verte pronto.';
   } catch (error) {
     console.error('Error loading messages:', error);
@@ -625,7 +629,7 @@ async function saveMessages() {
     await saveOnboardingState();
 
     closeMessagesModal();
-    alert('✅ Mensajes guardados exitosamente');
+    alert('Mensajes guardados exitosamente');
   } catch (error) {
     console.error('Error saving messages:', error);
     alert('Error al guardar los mensajes');
@@ -647,15 +651,15 @@ function connectWhatsAppStep() {
 async function activateBotStep() {
   // Verificar que los pasos anteriores estén completos
   if (!onboardingState.whatsapp_connected) {
-    alert('⚠️ Primero debes conectar tu WhatsApp Business');
+    alert('Primero debes conectar tu WhatsApp Business');
     return;
   }
   if (!onboardingState.menu_configured) {
-    alert('⚠️ Primero debes configurar tu menú');
+    alert('Primero debes configurar tu menú');
     return;
   }
   if (!onboardingState.messages_customized) {
-    alert('⚠️ Primero debes personalizar tus mensajes');
+    alert('Primero debes personalizar tus mensajes');
     return;
   }
   
@@ -675,7 +679,7 @@ async function activateBotStep() {
     
   } catch (error) {
     console.error('Error activating bot:', error);
-    alert('❌ Error al activar el bot. Intenta nuevamente.');
+    alert('Error al activar el bot. Intenta nuevamente.');
   }
 }
 
@@ -696,7 +700,7 @@ async function markTestCompleted() {
   onboardingState.bot_tested = true;
   await saveOnboardingState();
   closeTestModal();
-  alert('✅ ¡Excelente! Has completado todos los pasos');
+  alert('¡Excelente! Has completado todos los pasos');
 }
 
 // ====================================
@@ -753,6 +757,10 @@ function updateBotControlUI() {
     - Progreso de onboarding: ${onboardingPercentage}%
     - Puede activar (>= 75%): ${canActivate}`);
 
+  // SVG icons para el bot control
+  const botActiveIcon = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
+  const botInactiveIcon = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>';
+
   // Actualizar toggle
   if (botActive) {
     toggle.classList.add('active');
@@ -763,7 +771,7 @@ function updateBotControlUI() {
     statusText.classList.remove('inactive');
     card.classList.add('active');
     card.classList.remove('inactive');
-    if (icon) icon.textContent = '✅';
+    if (icon) icon.innerHTML = botActiveIcon;
   } else {
     toggle.classList.remove('active');
     label.textContent = 'OFF';
@@ -772,7 +780,7 @@ function updateBotControlUI() {
     statusText.classList.add('inactive');
     card.classList.remove('active');
     card.classList.add('inactive');
-    if (icon) icon.textContent = '🤖';
+    if (icon) icon.innerHTML = botInactiveIcon;
     
     if (!canActivate) {
       toggle.classList.add('disabled');
@@ -805,8 +813,8 @@ async function toggleBot() {
 
   // VALIDACIÓN CRÍTICA: Si intenta activar el bot pero el progreso es < 75%
   if (!botActive && !canActivate) {
-    console.warn('⚠️ Intento de activar bot con progreso insuficiente');
-    alert('⚠️ Para activar el bot, debes completar al menos el 75% del onboarding.\n\nActualmente has completado: ' + onboardingPercentage + '%\n\n' +
+    console.warn('Intento de activar bot con progreso insuficiente');
+    alert('Para activar el bot, debes completar al menos el 75% del onboarding.\n\nActualmente has completado: ' + onboardingPercentage + '%\n\n' +
           'Completa la configuración del menú y los mensajes personalizados para continuar.');
     return;
   }
@@ -828,14 +836,14 @@ async function toggleBot() {
         - Progreso en Firebase: ${progress}%
         - Progreso local: ${onboardingPercentage}%
         - Diferencia detectada: Se bloqueará la activación`);
-      alert('⚠️ El progreso de onboarding en el servidor es insuficiente (' + progress + '%).\n\n' +
+      alert('El progreso de onboarding en el servidor es insuficiente (' + progress + '%).\n\n' +
             'Completa al menos el 75% del onboarding antes de activar el bot.');
       return;
     }
     
     // Si hay discrepancia entre el progreso local y Firebase, sincronizar
     if (Math.abs(progress - onboardingPercentage) > 5) {
-      console.warn(`⚠️ Discrepancia detectada entre progreso local (${onboardingPercentage}%) y Firebase (${progress}%). Sincronizando...`);
+      console.warn(`Discrepancia detectada entre progreso local (${onboardingPercentage}%) y Firebase (${progress}%). Sincronizando...`);
       onboardingPercentage = progress;
       updateBotControlUI();
     }
@@ -857,14 +865,14 @@ async function toggleBot() {
       lastUpdated: new Date().toISOString()
     });
 
-    console.log(`✅ Estado del bot actualizado en Firebase: ${botActive ? 'ACTIVO (true)' : 'DESACTIVADO (false)'}`);
+    console.log(`Estado del bot actualizado en Firebase: ${botActive ? 'ACTIVO (true)' : 'DESACTIVADO (false)'}`);
     
     // Actualizar UI
     updateBotControlUI();
 
     // Mostrar mensaje de confirmación
     if (botActive) {
-      alert('✅ Bot activado\n\nEl bot ahora responderá automáticamente a los mensajes de tus clientes.');
+      alert('Bot activado\n\nEl bot ahora responderá automáticamente a los mensajes de tus clientes.');
     } else {
       alert('🔴 Bot desactivado\n\nEl bot no responderá a los mensajes hasta que lo vuelvas a activar.');
     }
@@ -985,19 +993,19 @@ async function testPaymentCredentials() {
     const data = await response.json();
 
     if (data.success) {
-      document.getElementById('test-result-icon').innerHTML = '✅';
+      document.getElementById('test-result-icon').innerHTML = '<svg fill="none" stroke="#22c55e" viewBox="0 0 24 24" width="24" height="24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
       document.getElementById('test-result-message').textContent = data.message || 'Conexión exitosa con Wompi';
     } else {
       throw new Error(data.error || 'Error desconocido');
     }
   } catch (error) {
     console.error('Error probando credenciales:', error);
-    document.getElementById('test-result-icon').innerHTML = '❌';
+    document.getElementById('test-result-icon').innerHTML = '<svg fill="none" stroke="#ef4444" viewBox="0 0 24 24" width="24" height="24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>';
     document.getElementById('test-result-message').textContent = 'Error: ' + error.message;
   } finally {
     document.getElementById('credentials-test-result').style.display = 'flex';
     const btnTest = document.getElementById('btn-test-credentials');
-    btnTest.innerHTML = '🧪 Probar Credenciales';
+    btnTest.innerHTML = 'Probar Credenciales';
     btnTest.disabled = false;
   }
 }
@@ -1006,7 +1014,7 @@ function copyWebhookUrl() {
   const urlField = document.getElementById('webhook-url');
   urlField.select();
   document.execCommand('copy');
-  alert('✅ URL del webhook copiada al portapapeles');
+  alert('URL del webhook copiada al portapapeles');
 }
 
 async function savePaymentConfig() {
@@ -1044,7 +1052,7 @@ async function savePaymentConfig() {
     const data = await response.json();
 
     if (data.success) {
-      alert('✅ Configuración de pagos guardada exitosamente');
+      alert('Configuración de pagos guardada exitosamente');
       closePaymentModal();
       
       // Actualizar la UI para reflejar el estado
@@ -1142,17 +1150,17 @@ async function saveDeliveryTime() {
       updatedAt: Date.now()
     });
 
-    console.log(`✅ [saveDeliveryTime] Guardado exitosamente`);
+    console.log(`[saveDeliveryTime] Guardado exitosamente`);
     
     // Verificar que se guardó correctamente
     const snapshot = await firebase.database().ref(path).once('value');
     const saved = snapshot.val();
     console.log(`🔍 [saveDeliveryTime] Verificación - Datos guardados:`, saved);
 
-    alert(`✅ Tiempo de entrega actualizado: ${min}-${max} minutos`);
+    alert(`Tiempo de entrega actualizado: ${min}-${max} minutos`);
     closeDeliveryTimeModal();
   } catch (error) {
-    console.error('❌ [saveDeliveryTime] Error:', error);
+    console.error('[saveDeliveryTime] Error:', error);
     alert('Error al guardar el tiempo de entrega: ' + error.message);
   }
 }
