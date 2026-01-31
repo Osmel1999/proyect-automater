@@ -87,7 +87,7 @@ async function checkWhatsAppStatus() {
     
     // Si cambió el estado, guardar en Firebase y actualizar UI
     if (wasConnected !== onboardingState.whatsapp_connected) {
-      console.log(`📱 Estado de WhatsApp cambió: ${wasConnected} → ${onboardingState.whatsapp_connected}`);
+      console.log(`[WhatsApp] Estado cambió: ${wasConnected} → ${onboardingState.whatsapp_connected}`);
       await firebase.database().ref(`tenants/${tenantId}/onboarding/steps/whatsapp_connected`).set(onboardingState.whatsapp_connected);
       updateProgress();
       updateStepsUI();
@@ -176,11 +176,11 @@ async function disconnectWhatsApp() {
     }
   } catch (error) {
     console.error('Error desconectando WhatsApp:', error);
-    alert('❌ Error al desconectar WhatsApp:\n\n' + error.message);
+    alert('Error al desconectar WhatsApp:\n\n' + error.message);
     
     // Restaurar botón
     const disconnectBtn = document.getElementById('btn-disconnect-whatsapp');
-    disconnectBtn.innerHTML = '📱 Desconectar WhatsApp';
+    disconnectBtn.innerHTML = 'Desconectar WhatsApp';
     disconnectBtn.disabled = false;
   }
 }
@@ -412,7 +412,7 @@ function updateStepsUI() {
     step1.querySelector('.step-action').innerHTML = '<span class="step-status">Completado</span>';
   } else {
     step1.classList.remove('completed');
-    step1.querySelector('.step-icon').textContent = '📱';
+    step1.querySelector('.step-icon').textContent = '1';
     step1.querySelector('.step-action').innerHTML = '<button class="btn-step" onclick="connectWhatsAppStep()">Conectar →</button>';
   }
 
@@ -722,7 +722,7 @@ async function skipOnboarding() {
 
 function viewWhatsAppInfo() {
   const phone = tenantData.whatsapp?.phoneNumber || 'No disponible';
-  alert(`📱 Tu número de WhatsApp Business:\n\n${phone}\n\nComparte este número con tus clientes para que puedan hacer pedidos.`);
+  alert(`Tu número de WhatsApp Business:\n\n${phone}\n\nComparte este número con tus clientes para que puedan hacer pedidos.`);
 }
 
 // ====================================
