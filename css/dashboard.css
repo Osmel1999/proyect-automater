@@ -1123,23 +1123,107 @@ body {
 
   .tenant-name {
     font-size: 12px;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .btn-connect,
   .btn-disconnect,
   .btn-secondary {
-    padding: 8px 14px;
-    font-size: 13px;
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  
+  .btn-connect svg,
+  .btn-disconnect svg,
+  .btn-secondary svg {
+    width: 14px;
+    height: 14px;
+  }
+  
+  /* Ocultar texto en botones pequeños */
+  .btn-secondary span,
+  .btn-connect span,
+  .btn-disconnect span {
+    display: none;
+  }
+  
+  /* Mostrar solo iconos */
+  .header-right {
+    gap: var(--spacing-xs);
   }
 
   .wizard-title {
-    font-size: 20px;
+    font-size: 18px;
+    line-height: 1.3;
+  }
+  
+  .wizard-subtitle {
+    font-size: 14px;
   }
 
   .section-header-main {
     flex-direction: column;
     align-items: flex-start;
     gap: var(--spacing-md);
+  }
+  
+  .step-icon {
+    font-size: 20px;
+  }
+  
+  .step-title {
+    font-size: 14px;
+  }
+  
+  .step-description {
+    font-size: 12px;
+  }
+  
+  .btn-step {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  
+  /* Bot control más compacto */
+  .bot-control-card {
+    padding: var(--spacing-md);
+    flex-direction: column;
+    text-align: center;
+    gap: var(--spacing-md);
+  }
+  
+  .bot-control-icon {
+    margin: 0 auto;
+  }
+  
+  /* Progress bar */
+  .progress-container {
+    padding: var(--spacing-md);
+  }
+  
+  .progress-text {
+    font-size: 13px;
+  }
+  
+  /* Config cards más compactos */
+  .config-card-header h3 {
+    font-size: 16px;
+  }
+  
+  /* Modales full width en móvil */
+  .modal {
+    margin: 0;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+  
+  .modal-header,
+  .modal-body,
+  .modal-footer {
+    padding: var(--spacing-md);
   }
 }
 

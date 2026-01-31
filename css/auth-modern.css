@@ -544,14 +544,104 @@ body::before {
 }
 
 @media (max-width: 480px) {
+  body {
+    padding: var(--spacing-sm);
+  }
+  
+  .auth-container {
+    border-radius: var(--border-radius);
+  }
+  
+  .auth-header {
+    padding: var(--spacing-lg);
+  }
+  
   .auth-header h1 {
     font-size: 1.25rem;
     flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+  
+  .logo-icon {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .auth-header p {
+    font-size: 0.875rem;
+  }
+  
+  .auth-body {
+    padding: var(--spacing-md);
+  }
+  
+  .tabs {
+    gap: var(--spacing-xs);
+  }
+  
+  .tab {
+    padding: var(--spacing-sm);
+    font-size: 0.8rem;
+  }
+  
+  .form-group {
+    margin-bottom: var(--spacing-md);
+  }
+  
+  .form-group label {
+    font-size: 0.8rem;
+    margin-bottom: var(--spacing-xs);
+  }
+  
+  .form-group input {
+    padding: 12px;
+    font-size: 16px; /* Evita zoom en iOS */
+  }
+  
+  .btn-primary {
+    padding: 14px;
+    font-size: 0.9rem;
   }
   
   .pin-digit {
-    width: 44px;
-    height: 44px;
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+  }
+  
+  .pin-input-group {
+    gap: 6px;
+  }
+  
+  .pin-buttons {
+    gap: var(--spacing-xs);
+  }
+  
+  .pin-buttons button {
+    padding: 10px 16px;
+    font-size: 0.8rem;
+  }
+  
+  /* Social buttons */
+  .btn-social {
+    padding: 12px;
+    font-size: 0.85rem;
+  }
+  
+  /* Divider */
+  .divider {
+    margin: var(--spacing-md) 0;
+    font-size: 0.75rem;
+  }
+  
+  /* Error messages */
+  .error-message {
+    font-size: 0.75rem;
+  }
+  
+  /* Loading */
+  .loading p {
+    font-size: 0.85rem;
   }
 }
 

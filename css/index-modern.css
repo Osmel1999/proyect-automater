@@ -119,6 +119,39 @@ nav {
   border-radius: var(--border-radius-sm);
 }
 
+/* Mobile Menu Toggle */
+.mobile-menu-toggle {
+  display: none;
+  background: none;
+  border: none;
+  padding: var(--spacing-sm);
+  cursor: pointer;
+  color: var(--text-primary);
+  border-radius: var(--border-radius-sm);
+  transition: var(--transition);
+}
+
+.mobile-menu-toggle:hover {
+  background: var(--bg-hover);
+}
+
+.mobile-menu-toggle.active svg line:nth-child(1) {
+  transform: rotate(45deg) translate(5px, 5px);
+}
+
+.mobile-menu-toggle.active svg line:nth-child(2) {
+  opacity: 0;
+}
+
+.mobile-menu-toggle.active svg line:nth-child(3) {
+  transform: rotate(-45deg) translate(5px, -5px);
+}
+
+.mobile-menu-toggle svg line {
+  transition: var(--transition);
+  transform-origin: center;
+}
+
 .nav-links {
   display: flex;
   align-items: center;
@@ -650,19 +683,56 @@ footer {
 }
 
 @media (max-width: 768px) {
+  /* Mobile menu toggle visible */
+  .mobile-menu-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
   nav {
-    padding: 0 var(--spacing-md);
+    padding: var(--spacing-md);
     height: auto;
-    flex-direction: column;
-    gap: var(--spacing-md);
-    padding-top: var(--spacing-md);
-    padding-bottom: var(--spacing-md);
+    flex-wrap: wrap;
+    position: relative;
   }
   
   .nav-links {
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: var(--spacing-md);
+    display: none;
+    flex-direction: column;
+    width: 100%;
+    gap: 0;
+    background: var(--bg-card);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-lg);
+    margin-top: var(--spacing-md);
+    overflow: hidden;
+  }
+  
+  .nav-links.active {
+    display: flex;
+  }
+  
+  .nav-links li {
+    width: 100%;
+  }
+  
+  .nav-links a {
+    display: block;
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-bottom: 1px solid var(--border);
+    text-align: center;
+  }
+  
+  .nav-links li:last-child a {
+    border-bottom: none;
+  }
+  
+  .nav-cta {
+    background: var(--primary) !important;
+    color: white !important;
+    margin: var(--spacing-sm);
+    border-radius: var(--border-radius-sm) !important;
   }
   
   .hero {
@@ -709,15 +779,131 @@ footer {
 @media (max-width: 480px) {
   .hero h1 {
     font-size: 24px;
+    line-height: 1.3;
+  }
+  
+  .hero p {
+    font-size: 15px;
   }
   
   .cta-button {
     width: 100%;
     justify-content: center;
+    padding: 16px 24px;
+    font-size: 16px;
   }
   
   .section-title {
     font-size: 24px;
+  }
+  
+  /* Nav móvil mejorado */
+  .nav-links {
+    display: none;
+    flex-direction: column;
+    width: 100%;
+    text-align: center;
+  }
+  
+  .nav-links.active {
+    display: flex;
+  }
+  
+  .nav-links li {
+    width: 100%;
+  }
+  
+  .nav-links a {
+    display: block;
+    padding: 12px;
+  }
+  
+  .nav-cta {
+    margin: 0;
+    width: 100%;
+  }
+  
+  /* Feature cards más compactos */
+  .feature-card {
+    padding: var(--spacing-lg);
+  }
+  
+  .feature-icon svg {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .feature-card h3 {
+    font-size: 16px;
+  }
+  
+  .feature-card p {
+    font-size: 14px;
+  }
+  
+  /* Steps más compactos */
+  .step {
+    padding: var(--spacing-md);
+  }
+  
+  .step-number {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+  }
+  
+  /* Pricing cards */
+  .pricing-card {
+    padding: var(--spacing-lg);
+  }
+  
+  .pricing-price {
+    font-size: 32px;
+  }
+  
+  /* Benefits */
+  .benefit-item {
+    padding: var(--spacing-sm);
+  }
+  
+  /* Footer más compacto */
+  .footer-content {
+    gap: var(--spacing-lg);
+  }
+  
+  .footer-section {
+    text-align: center;
+  }
+  
+  /* Scroll horizontal para pricing en móvil */
+  .pricing-cards {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    gap: var(--spacing-md);
+    padding-bottom: var(--spacing-md);
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .pricing-card {
+    flex: 0 0 85%;
+    scroll-snap-align: center;
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 360px) {
+  .hero h1 {
+    font-size: 22px;
+  }
+  
+  .section-title {
+    font-size: 20px;
+  }
+  
+  .cta-button {
+    padding: 14px 20px;
+    font-size: 15px;
   }
 }
 
