@@ -1663,11 +1663,24 @@
     // Load tenant data
     async function loadTenantData() {
       try {
+        // Verificar que tenantId esté definido
+        if (!tenantId) {
+          console.error('❌ tenantId no está definido');
+          return;
+        }
+        
+        console.log(`📡 Cargando datos del tenant: ${tenantId}`);
+        
         const snapshot = await firebase.database().ref(`tenants/${tenantId}`).once('value');
         tenantData = snapshot.val();
 
         if (!tenantData) {
-          throw new Error('Tenant no encontrado');
+          console.warn('⚠️ No se encontraron datos del tenant, puede ser un tenant nuevo');
+          // No lanzar error, crear estructura básica
+          tenantData = {
+            restaurant: { name: localStorage.getItem('businessName') || 'Mi Restaurante' },
+            onboarding: { steps: onboardingState, progress: 0 }
+          };
         }
 
         // Update UI
@@ -1738,7 +1751,11 @@
 
       } catch (error) {
         console.error('Error loading tenant:', error);
-        alert('Error al cargar datos del restaurante');
+        // Solo mostrar error si es crítico (no simplemente datos vacíos)
+        document.getElementById('loading-container').style.display = 'none';
+        
+        // Mostrar el wizard de todas formas para que el usuario pueda configurar
+        showWizard();
       }
     }
 
