@@ -612,6 +612,13 @@
   <!-- Firebase Configuration (initializes Firebase) -->
   <script src="config.js"></script>
   
+  <!-- Membership Check -->
+  <script src="js/membership-check.js"></script>
+  <script>
+    // Verificar membresía antes de cargar Dashboard
+    MembershipCheck.init({ blockOnExpired: true });
+  </script>
+  
   <!-- Dashboard Script -->
   <script src="js/dashboard.js"></script>
 </body>

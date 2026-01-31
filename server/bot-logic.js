@@ -7,6 +7,7 @@
 const menuService = require('./menu-service');
 const firebaseService = require('./firebase-service');
 const tenantService = require('./tenant-service');
+const membershipService = require('./membership-service');
 const { parsearPedido, generarMensajeConfirmacion } = require('./pedido-parser');
 const paymentService = require('./payment-service');
 const paymentConfigService = require('./payments/payment-config-service');
@@ -14,6 +15,11 @@ const paymentConfigService = require('./payments/payment-config-service');
 // Almacenamiento en memoria de sesiones de usuario por tenant
 // Formato: Map<tenantId_telefono, sesion>
 const sesionesUsuarios = new Map();
+
+// Caché de membresías por tenant (se verifica solo 1 vez al día)
+// Formato: Map<tenantId, { result: Object, checkedAt: timestamp }>
+const membershipCache = new Map();
+const MEMBERSHIP_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 horas en ms
 
 // Confirmaciones naturales que el bot entiende (constante a nivel de módulo)
 const CONFIRMACIONES_NATURALES = [
@@ -258,6 +264,42 @@ async function processMessage(tenantId, from, texto) {
     console.error(`⚠️ Error verificando estado del bot para tenant ${tenantId}:`, error);
     // En caso de error, NO responder (fail-safe)
     return null;
+  }
+  
+  // ====================================
+  // VALIDAR MEMBRESÍA DEL TENANT (1 vez al día)
+  // ====================================
+  try {
+    let membershipResult;
+    const cached = membershipCache.get(tenantId);
+    const now = Date.now();
+    
+    // Verificar si hay caché válido (menos de 24 horas)
+    if (cached && (now - cached.checkedAt) < MEMBERSHIP_CACHE_TTL) {
+      membershipResult = cached.result;
+      console.log(`📋 [Membresía] Usando caché para tenant ${tenantId} (verificado hace ${Math.round((now - cached.checkedAt) / 1000 / 60)} min)`);
+    } else {
+      // Verificar membresía y guardar en caché
+      membershipResult = await membershipService.verifyMembership(tenantId);
+      membershipCache.set(tenantId, { result: membershipResult, checkedAt: now });
+      console.log(`📋 [Membresía] Verificación fresca para tenant ${tenantId}:`, membershipResult);
+    }
+    
+    if (!membershipResult.isValid) {
+      console.log(`🔴 Membresía no válida para tenant ${tenantId}: ${membershipResult.reason}`);
+      
+      // No responder al cliente - simplemente ignorar el mensaje
+      return null;
+    }
+    
+    // Log de membresía activa (solo si es verificación fresca)
+    if (!cached && membershipResult.daysRemaining && membershipResult.daysRemaining <= 5) {
+      console.log(`⚠️ [Membresía] Tenant ${tenantId} - Solo ${membershipResult.daysRemaining} días restantes`);
+    }
+    
+  } catch (error) {
+    console.error(`⚠️ Error verificando membresía para tenant ${tenantId}:`, error);
+    // En caso de error, permitir el acceso (fail-open)
   }
   
   // ====================================
@@ -1197,8 +1239,24 @@ async function procesarMetodoPago(sesion, texto, textoOriginal) {
          '¿Cómo deseas pagar? 💳';
 }
 
+/**
+ * Invalida el caché de membresía para un tenant específico
+ * Útil cuando se activa/cambia un plan desde el dashboard
+ * @param {string} tenantId - ID del tenant
+ */
+function invalidarCacheMembership(tenantId) {
+  if (tenantId) {
+    membershipCache.delete(tenantId);
+    console.log(`🔄 [Membresía] Caché invalidado para tenant ${tenantId}`);
+  } else {
+    membershipCache.clear();
+    console.log(`🔄 [Membresía] Caché completo invalidado`);
+  }
+}
+
 module.exports = {
   processMessage, // Nuevo nombre para multi-tenant
   procesarMensaje: processMessage, // Alias para compatibilidad
-  invalidarCacheMenu // Para invalidar caché cuando se actualiza el menú desde dashboard
+  invalidarCacheMenu, // Para invalidar caché cuando se actualiza el menú desde dashboard
+  invalidarCacheMembership // Para invalidar caché de membresía cuando se activa/cambia plan
 };

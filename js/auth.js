@@ -223,6 +223,56 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 console.log('✅ Datos de usuario obtenidos:', { userId, tenantId: userData.tenantId });
 
+                // Verificar membresía del tenant
+                const tenantSnapshot = await firebase.database()
+                    .ref(`tenants/${userData.tenantId}/membership`)
+                    .once('value');
+                
+                const membership = tenantSnapshot.val();
+                console.log('📋 Membresía del tenant:', membership);
+                
+                let membershipStatus = 'active';
+                let membershipPlan = 'trial';
+                let daysRemaining = 0;
+                
+                if (membership) {
+                    membershipPlan = membership.plan || 'trial';
+                    
+                    // Verificar si el trial o plan ha expirado
+                    if (membershipPlan === 'trial' && membership.trialEndDate) {
+                        const trialEnd = new Date(membership.trialEndDate);
+                        const now = new Date();
+                        
+                        if (now > trialEnd) {
+                            membershipStatus = 'expired';
+                            console.log('⚠️ Trial expirado');
+                            
+                            // Actualizar estado en Firebase
+                            await firebase.database()
+                                .ref(`tenants/${userData.tenantId}/membership/status`)
+                                .set('expired');
+                        } else {
+                            membershipStatus = 'active';
+                            daysRemaining = Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24));
+                            console.log(`✅ Trial activo - ${daysRemaining} días restantes`);
+                        }
+                    } else if (membership.paidPlanEndDate) {
+                        // Verificar plan de pago
+                        const planEnd = new Date(membership.paidPlanEndDate);
+                        const now = new Date();
+                        
+                        if (now > planEnd) {
+                            membershipStatus = 'expired';
+                            await firebase.database()
+                                .ref(`tenants/${userData.tenantId}/membership/status`)
+                                .set('expired');
+                        } else {
+                            membershipStatus = membership.status || 'active';
+                            daysRemaining = Math.ceil((planEnd - now) / (1000 * 60 * 60 * 24));
+                        }
+                    }
+                }
+
                 // Store user data in localStorage
                 localStorage.setItem('currentUserId', userId);
                 localStorage.setItem('currentTenantId', userData.tenantId);
@@ -230,6 +280,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 localStorage.setItem('userEmail', userData.email);
                 localStorage.setItem('userName', userData.name);
                 localStorage.setItem('businessName', userData.businessName);
+                
+                // Guardar datos de membresía
+                localStorage.setItem('membershipPlan', membershipPlan);
+                localStorage.setItem('membershipStatus', membershipStatus);
+                localStorage.setItem('membershipDaysRemaining', daysRemaining.toString());
 
                 console.log('✅ Datos guardados en localStorage');
                 
@@ -343,6 +398,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
 
                 // Create tenant data in database (nuevo registro)
+                // Calcular fecha de expiración del trial (30 días)
+                const trialStartDate = new Date();
+                const trialEndDate = new Date();
+                trialEndDate.setDate(trialEndDate.getDate() + 30);
+                
                 await firebase.database().ref('tenants/' + tenantId).set({
                     userId: userId,
                     email: email,
@@ -350,6 +410,17 @@ document.addEventListener('DOMContentLoaded', function() {
                         name: businessName,
                         phone: '',
                         whatsappConnected: false
+                    },
+                    // Información de membresía
+                    membership: {
+                        plan: 'trial', // trial, emprendedor, profesional, empresarial
+                        status: 'active', // active, expired, cancelled
+                        trialStartDate: trialStartDate.toISOString(),
+                        trialEndDate: trialEndDate.toISOString(),
+                        // Se llenará cuando elija un plan de pago
+                        paidPlanStartDate: null,
+                        paidPlanEndDate: null,
+                        lastPaymentDate: null
                     },
                     onboarding: {
                         steps: {

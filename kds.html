@@ -126,6 +126,13 @@
     <!-- Firebase Configuration (initializes Firebase) -->
     <script src="config.js"></script>
     
+    <!-- Membership Check -->
+    <script src="js/membership-check.js"></script>
+    <script>
+        // Verificar membresía antes de cargar KDS
+        MembershipCheck.init({ blockOnExpired: true });
+    </script>
+    
     <!-- KDS Script -->
     <script src="js/kds.js"></script>
 </body>
