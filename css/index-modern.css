@@ -490,6 +490,14 @@ section {
   background: var(--bg-card);
 }
 
+.pricing-subtitle {
+  text-align: center;
+  font-size: 18px;
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-xl);
+  margin-top: -20px;
+}
+
 .pricing-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -506,6 +514,9 @@ section {
   text-align: center;
   transition: var(--transition);
   box-shadow: var(--shadow);
+  position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 .pricing-card:hover {
@@ -525,10 +536,33 @@ section {
   transform: scale(1.05) translateY(-4px);
 }
 
+/* Plan Badge */
+.plan-badge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  padding: 4px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.plan-badge.popular {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
 .pricing-card h3 {
   font-size: 24px;
   font-weight: 800;
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+  margin-top: var(--spacing-md);
   color: var(--text-primary);
 }
 
@@ -536,13 +570,26 @@ section {
   font-size: 42px;
   font-weight: 800;
   color: var(--primary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.price-period {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.price-description {
+  font-size: 14px;
+  color: var(--text-secondary);
   margin-bottom: var(--spacing-lg);
 }
 
 .price-features {
   list-style: none;
-  margin-bottom: var(--spacing-xl);
+  margin-bottom: var(--spacing-lg);
   text-align: left;
+  flex-grow: 1;
 }
 
 .price-features li {
@@ -550,10 +597,33 @@ section {
   font-size: 14px;
   color: var(--text-secondary);
   border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
 }
 
 .price-features li:last-child {
   border-bottom: none;
+}
+
+.price-features li strong {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.check-icon {
+  color: var(--success);
+  flex-shrink: 0;
+}
+
+.plan-ideal {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-style: italic;
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-sm);
+  background: var(--bg-secondary);
+  border-radius: var(--border-radius-sm);
 }
 
 .pricing-card .cta-button {
@@ -561,11 +631,37 @@ section {
   justify-content: center;
   background: var(--primary);
   color: white;
+  margin-top: auto;
 }
 
 .pricing-card.featured .cta-button {
   background: white;
   color: var(--primary);
+}
+
+/* Pricing Benefits Bar */
+.pricing-benefits {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-xl);
+  margin-top: var(--spacing-3xl);
+  padding-top: var(--spacing-xl);
+  border-top: 1px solid var(--border);
+}
+
+.pricing-benefits .benefit-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.pricing-benefits .benefit-item svg {
+  color: var(--success);
+  flex-shrink: 0;
 }
 
 /* ===================================
@@ -857,8 +953,24 @@ footer {
     padding: var(--spacing-lg);
   }
   
-  .pricing-price {
+  .price {
     font-size: 32px;
+  }
+  
+  .pricing-subtitle {
+    font-size: 16px;
+    margin-top: -10px;
+  }
+  
+  .pricing-benefits {
+    flex-direction: column;
+    gap: var(--spacing-md);
+    align-items: center;
+  }
+  
+  .plan-badge {
+    font-size: 11px;
+    padding: 3px 12px;
   }
   
   /* Benefits */
