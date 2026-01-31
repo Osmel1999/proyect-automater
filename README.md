@@ -1,238 +1,187 @@
-# 🍕 KDS WhatsApp Bot - README Principal
+# KDS WhatsApp Bot
 
-**Sistema de pedidos por WhatsApp para restaurantes en Colombia**
+**Sistema de pedidos por WhatsApp para restaurantes**
+
+![Version](https://img.shields.io/badge/version-2.0-blue)
+![Status](https://img.shields.io/badge/status-production-green)
 
 ---
 
-## 📁 Estructura del Proyecto
+## Descripción
+
+KDS (Kitchen Display System) es una webapp completa para gestión de pedidos de restaurantes a través de WhatsApp. Incluye bot automatizado, panel de administración, display de cocina y sistema de pagos integrado.
+
+---
+
+## Estructura del Proyecto
 
 ```
 kds-webapp/
-├── 📱 WhatsApp Bot (Baileys)
-│   ├── server/ - Backend Node.js
-│   ├── whatsapp-connect.html - Conexión WhatsApp
-│   └── MIGRACION-BAILEYS-COMPLETADA.md
+├── Frontend
+│   ├── index.html          # Landing page
+│   ├── auth.html           # Autenticación
+│   ├── select.html         # Selección de restaurante
+│   ├── dashboard.html      # Panel de administración
+│   ├── kds.html            # Display de cocina
+│   ├── whatsapp-connect.html # Conexión WhatsApp
+│   ├── payment-success.html  # Confirmación de pago
+│   ├── privacy-policy.html   # Política de privacidad
+│   └── terms.html            # Términos de servicio
 │
-├── 💳 Sistema de Pagos (Wompi)
-│   └── Integracion-Wompi/ ⭐ NUEVO
-│       ├── README.md (empezar aquí)
-│       ├── SOLUCION-WOMPI-MARKETPLACE.md
-│       ├── RESPUESTA-WOMPI-SPLIT-PAYMENT.md
-│       └── ... (documentación completa)
+├── CSS (Sistema de diseño moderno)
+│   ├── index-modern.css    # Landing
+│   ├── auth-modern.css     # Autenticación
+│   ├── select-modern.css   # Selección
+│   ├── dashboard.css       # Dashboard
+│   ├── kds-modern.css      # KDS
+│   ├── whatsapp-connect.css # Conexión WhatsApp
+│   ├── success-modern.css  # Páginas de éxito
+│   ├── legal-modern.css    # Páginas legales
+│   └── animations.css      # Animaciones reutilizables
 │
-├── 🎨 Frontend
-│   ├── index.html - Página principal
-│   ├── auth.html - Autenticación
-│   ├── dashboard.html - Panel del restaurante
-│   ├── select.html - Selección de restaurante
-│   ├── kds.html - Display de cocina
-│   └── whatsapp-connect.html - Conexión WhatsApp
+├── JavaScript
+│   ├── auth.js             # Autenticación Firebase
+│   ├── select.js           # Lógica de selección
+│   ├── dashboard.js        # Panel de control
+│   ├── kds.js              # Display de cocina
+│   ├── whatsapp-connect.js # Conexión WhatsApp
+│   └── payment-success.js  # Confirmación de pago
 │
-└── 📚 Documentación
-    ├── docs/ - Arquitectura y guías
-    └── backups-eliminados/ - Archivos históricos
+├── Backend (server/)
+│   ├── index.js            # Servidor principal
+│   ├── routes/             # API endpoints
+│   └── services/           # Lógica de negocio
+│
+├── Documentación (docs/)
+│   ├── QUICK-START.md              # Guía rápida
+│   ├── AUTO-RECONNECTION-SYSTEM.md # Sistema de reconexión
+│   ├── HUMANIZACION-*.md           # Mensajes humanizados
+│   └── ESTADO-REDISENO-COMPLETO.md # Registro de cambios
+│
+├── Scripts (scripts/)
+│   └── Utilidades de administración
+│
+└── Integraciones
+    ├── Integracion-Multi-Gateway/  # Pagos multi-gateway
+    └── Integracion-Wompi/          # Wompi específico
 ```
 
 ---
 
-## 🚀 Estado del Proyecto
+## Características
 
-### ✅ Completado
+### Frontend
+- Sistema de diseño moderno y minimalista
+- Paleta de colores profesional (#F97316 naranja, #1E3A5F azul marino)
+- Tipografía Inter
+- Diseño 100% responsive (móvil, tablet, desktop)
+- Animaciones sutiles y elegantes
+- Iconos SVG inline
 
-- [x] **Migración a Baileys** - Bot WhatsApp funcional (gratis, sin Meta API)
-- [x] **Backend completo** - 11 endpoints REST + WebSocket
-- [x] **Frontend funcional** - Dashboard + KDS + WhatsApp Connect
-- [x] **Sistema dual** - Meta API (legacy) + Baileys (nuevo)
-- [x] **Análisis de pagos** - 9 opciones evaluadas
+### Bot WhatsApp (Baileys)
+- Conexión vía código QR
+- Reconexión automática
+- Mensajes humanizados
+- Soporte para texto, imágenes, ubicación
+- Persistencia de sesiones
 
-### 🔄 En Progreso
-
-- [ ] **Integración Wompi** - Sistema de pagos automático (diseño completo, implementación pendiente)
-- [ ] **Deploy producción** - Railway/Render
-
----
-
-## 💳 Sistema de Pagos (NUEVO)
-
-### 📍 **Empezar aquí:** `Integracion-Wompi/ARQUITECTURA-MULTI-GATEWAY.md`
-
-**Solución elegida:** Multi-Gateway Descentralizado ⭐
-
-#### ¿Qué es?
-Un sistema modular que:
-- 💰 Dinero va **100% directo** a la cuenta del restaurante
-- 🎯 Tú cobras **mensualidad fija** (no comisión por transacción)
-- 🔌 **Multi-gateway**: Wompi, Bold, PayU, MercadoPago, etc.
-- ✅ Validación **automática** vía webhook
-- 🔒 **Legal y fiscal limpio** (nunca tocas dinero ajeno)
-
-#### Cómo funciona:
-```
-Cliente paga $50.000
-    ↓
-Gateway del restaurante (Wompi/Bold/PayU)
-    ↓
-Restaurante recibe su dinero directo
-    ↓
-Webhook notifica → Bot procesa pedido automáticamente
-    ↓
-Tú cobras mensualidad ($50k-$150k según plan)
-```
-
-#### Documentos clave:
-1. **ARQUITECTURA-MULTI-GATEWAY.md** - Diseño modular completo ⭐ NUEVO
-2. **ANALISIS-CRITICO-WOMPI-REAL.md** - Por qué este modelo es el correcto
-3. **ANALISIS-OPCIONES-PAGO.md** - Comparativa de 9 métodos
+### Pagos
+- Multi-gateway: Wompi, Bold, PayU, MercadoPago
+- Dinero directo a cuenta del restaurante
+- Validación automática vía webhook
+- Modelo SaaS (mensualidad fija)
 
 ---
 
-## 📱 WhatsApp Bot (Baileys)
+## Inicio Rápido
 
-### Estado: ✅ Funcional y testeado
+### Requisitos
+- Node.js 18+
+- Firebase (Realtime Database)
+- Cuenta WhatsApp Business
 
-- **API:** 11 endpoints REST
-- **Eventos:** WebSocket tiempo real
-- **QR:** Conexión dinámica
-- **Sesiones:** Persistencia automática
-- **Mensajes:** Texto, imágenes, ubicación
-
-### Migración completada:
-- Meta API (caro, complejo) → Baileys (gratis, simple)
-- Ver: `MIGRACION-BAILEYS-COMPLETADA.md`
-
----
-
-## 🎯 Planes y Modelo de Negocio
-
-| Plan | WhatsApp | Pagos | Mensualidad | Gateways Soportados |
-|------|----------|-------|-------------|---------------------|
-| **Básico** | ✅ Baileys | Validación automática | $50.000 | Wompi, Bold |
-| **Premium** | ✅ Baileys | + KDS + Reportes | $100.000 | Wompi, Bold, PayU |
-| **Enterprise** | ✅ Baileys | + API + Soporte 24/7 | $150.000 | Todos los gateways |
-
-### Tu modelo de ingreso:
-- **Mensualidad fija** por restaurante ($50k-$150k según plan)
-- **Ingresos predecibles (MRR):** # Restaurantes × Mensualidad
-- **No dependes** del volumen de ventas del restaurante
-
-### El restaurante:
-- Elige su gateway preferido (Wompi, Bold, PayU, etc.)
-- Recibe **100% de su dinero** directo
-- Paga solo la comisión de su gateway (1.79% - 3.5%)
-- Paga tu mensualidad por el servicio SaaS
-
----
-
-## 🛠️ Tech Stack
-
-- **Backend:** Node.js + Express
-- **Database:** Firebase Firestore
-- **WhatsApp:** Baileys (no oficial, gratis)
-- **Pagos:** Multi-Gateway (Wompi, Bold, PayU, MercadoPago)
-- **Arquitectura:** Modular con adapters por gateway
-- **Frontend:** HTML/CSS/JS vanilla
-- **Deploy:** Railway / Render
-
----
-
-## 📚 Documentación Principal
-
-### Para empezar:
-1. **Integracion-Wompi/ARQUITECTURA-MULTI-GATEWAY.md** - Sistema modular de pagos ⭐
-2. **MIGRACION-BAILEYS-COMPLETADA.md** - Bot WhatsApp
-3. **Integracion-Wompi/ANALISIS-CRITICO-WOMPI-REAL.md** - Por qué este modelo
-
-### Para implementar:
-1. **ARQUITECTURA-MULTI-GATEWAY.md** - Código de adapters y webhook router
-2. **server/README.md** - Backend setup
-3. **CHECKLIST-DEPLOY-PRODUCCION.md** - Deploy
-
----
-
-## 🚀 Próximos Pasos
-
-### Fase 1: Implementar Core Multi-Gateway (2-3 semanas)
-1. Gateway Manager (abstracción)
-2. Wompi Adapter + Bold Adapter
-3. Webhook Router universal
-4. Onboarding UI (elegir gateway)
-5. Testing con restaurante piloto
-
-### Fase 2: Deploy Producción (1 semana)
-1. Deploy Railway/Render
-2. Configurar dominio
-3. SSL/HTTPS
-4. Monitoreo y logs
-
-### Fase 3: Expansión Gateways (continuo)
-1. Agregar PayU Adapter
-2. Agregar MercadoPago Adapter
-3. Dashboard comparador de comisiones
-4. Analytics multi-gateway
-
----
-
-## 💻 Instalación Local
+### Instalación
 
 ```bash
-# 1. Clonar repo
-git clone [tu-repo]
+# Clonar e instalar
 cd kds-webapp
-
-# 2. Instalar dependencias
 npm install
 
-# 3. Configurar variables de entorno
+# Configurar variables de entorno
 cp .env.example .env
 # Editar .env con tus credenciales
 
-# 4. Iniciar servidor
-npm start
+# Iniciar desarrollo
+npm run dev
+```
 
-# 5. Abrir navegador
-open http://localhost:3000
+### Variables de Entorno
+
+```env
+# Firebase
+FIREBASE_PROJECT_ID=tu-proyecto
+FIREBASE_CLIENT_EMAIL=...
+FIREBASE_PRIVATE_KEY=...
+FIREBASE_DATABASE_URL=...
+
+# WhatsApp
+WHATSAPP_SESSION_PATH=./sessions
+
+# Pagos (opcional)
+WOMPI_PUBLIC_KEY=...
+WOMPI_PRIVATE_KEY=...
 ```
 
 ---
 
-## 📞 Contacto y Soporte
+## Deploy
 
-- **Documentación:** Ver carpeta `docs/`
-- **Issues:** [GitHub Issues]
-- **Email:** soporte@kdsapp.site
+### Railway (recomendado)
 
----
+```bash
+railway login
+railway up
+```
 
-## 📊 Métricas de Éxito
+Configurar variables de entorno en el dashboard de Railway.
 
-### Bot WhatsApp:
-- ✅ Conexión: <5 segundos
-- ✅ Latencia: <1 segundo
-- ✅ Uptime: 99.9%
+### Docker
 
-### Pagos (objetivo con Wompi):
-- 🎯 Validación: <3 segundos (vs 5 min manual)
-- 🎯 Fraude: <0.1% (vs 5% manual)
-- 🎯 Abandono: <5%
-- 🎯 Satisfacción: >95%
+```bash
+docker build -t kds-webapp .
+docker run -p 3000:3000 kds-webapp
+```
 
 ---
 
-## 🎓 Lecciones Aprendidas
+## Documentación
 
-1. **Baileys > Meta API** para SaaS (gratis, simple, independiente)
-2. **Multi-Gateway > Gateway único** - Flexibilidad y menores comisiones
-3. **Mensualidad > Comisión** - Ingresos predecibles, menor riesgo legal
-4. **Arquitectura modular** - Fácil agregar nuevos gateways
-5. **Descentralizado** - Legal/fiscalmente limpio (nunca tocas dinero ajeno)
-
----
-
-## 📄 Licencia
-
-[Tu licencia aquí]
+| Documento | Descripción |
+|-----------|-------------|
+| `docs/QUICK-START.md` | Guía de inicio rápido |
+| `docs/AUTO-RECONNECTION-SYSTEM.md` | Sistema de reconexión WhatsApp |
+| `docs/HUMANIZACION-*.md` | Configuración de mensajes |
+| `Integracion-Multi-Gateway/README.md` | Sistema de pagos |
 
 ---
 
-**Última actualización:** 23 de enero de 2026  
-**Status:** Bot funcional ✅ | Pagos multi-gateway diseñado 🔄
+## Tecnologías
+
+- **Frontend:** HTML5, CSS3, JavaScript vanilla
+- **Backend:** Node.js, Express
+- **Base de datos:** Firebase Realtime Database
+- **WhatsApp:** Baileys (biblioteca WebSocket)
+- **Pagos:** Wompi, Bold, PayU
+- **Deploy:** Railway, Docker
+
+---
+
+## Licencia
+
+Proyecto privado. Todos los derechos reservados.
+
+---
+
+## Contacto
+
+Para soporte o consultas, contactar al equipo de desarrollo.

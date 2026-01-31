@@ -28,6 +28,9 @@ Thumbs.db
 firebase-debug.log
 firebaserc
 
+# Backups (archivos históricos)
+backups-eliminados/
+
 # Backups
 backup_*/
 archive_*/
