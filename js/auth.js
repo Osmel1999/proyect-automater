@@ -13,9 +13,58 @@ document.addEventListener('DOMContentLoaded', function() {
     
     console.log('✅ Firebase initialized:', firebase.app().name);
     
+    // Check URL params for register mode
+    const urlParams = new URLSearchParams(window.location.search);
+    const mode = urlParams.get('mode');
+    
     // Tabs functionality
     const tabs = document.querySelectorAll('.tab');
     const sections = document.querySelectorAll('.form-section');
+    
+    // If mode=register, switch to register tab and show trial modal
+    if (mode === 'register') {
+        // Switch to register tab
+        tabs.forEach(t => t.classList.remove('active'));
+        sections.forEach(s => s.classList.remove('active'));
+        
+        const registerTab = document.querySelector('[data-tab="register"]');
+        const registerSection = document.getElementById('registerSection');
+        
+        if (registerTab) registerTab.classList.add('active');
+        if (registerSection) registerSection.classList.add('active');
+        
+        // Show trial modal
+        const trialModal = document.getElementById('trialModal');
+        if (trialModal) {
+            setTimeout(() => {
+                trialModal.classList.add('active');
+            }, 300);
+        }
+    }
+    
+    // Trial modal close button
+    const closeTrialModalBtn = document.getElementById('closeTrialModal');
+    const trialModal = document.getElementById('trialModal');
+    
+    if (closeTrialModalBtn && trialModal) {
+        closeTrialModalBtn.addEventListener('click', () => {
+            trialModal.classList.remove('active');
+        });
+        
+        // Close on backdrop click
+        trialModal.addEventListener('click', (e) => {
+            if (e.target === trialModal) {
+                trialModal.classList.remove('active');
+            }
+        });
+        
+        // Close on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && trialModal.classList.contains('active')) {
+                trialModal.classList.remove('active');
+            }
+        });
+    }
 
         tabs.forEach(tab => {
             tab.addEventListener('click', () => {
