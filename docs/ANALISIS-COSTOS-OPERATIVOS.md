@@ -1,264 +1,272 @@
 # Análisis de Costos Operativos - KDS WhatsApp Bot
 
 **Fecha de análisis**: 31 de Enero 2026  
-**Última actualización**: 31 de Enero 2026 (con optimizaciones implementadas)
+**Última actualización**: 31 de Enero 2026 (con datos exactos de planes)
 
-> **Nota sobre terminología:**
+> **Terminología:**
 > - **Restaurante** = Usuario de tu plataforma (tenant) que paga mensualidad
 > - **Cliente final** = Persona que hace pedidos por WhatsApp al restaurante
+> - **Pedido** = Una transacción completa (varios mensajes de WhatsApp)
 
 ---
 
-## 🚀 OPTIMIZACIONES IMPLEMENTADAS
+## 1. Planes y Límites de los Servicios
 
-### ✅ KDS - Listeners Granulares (Ahorro ~80%)
+### Railway
 
-**Antes (ineficiente):**
-```javascript
-ordersRef.on('value', callback); // Descarga TODO en cada cambio
-```
+| Plan | Costo | Recursos | Almacenamiento |
+|------|-------|----------|----------------|
+| **Free** | $0 + $5 créditos (30 días trial) | 1 vCPU / 0.5 GB RAM | 0.5 GB |
+| **Hobby** | $5/mes mínimo | 48 vCPU / 48 GB RAM | 5 GB |
+| **Pro** | $20/mes mínimo | 1000 vCPU / 1 TB RAM | 1 TB |
 
-**Ahora (optimizado):**
-```javascript
-ordersRef.on('child_added', handleNew);    // Solo pedido nuevo
-ordersRef.on('child_changed', handleUpdate); // Solo pedido modificado
-ordersRef.on('child_removed', handleRemoved); // Solo notificación de eliminación
-```
+> Railway cobra por uso. Los $5 o $20 son el **mínimo**, si usas más recursos pagas más.
 
-**Archivo:** `app.js` - función `listenToOrders()`
+### Firebase (Realtime Database + Hosting)
 
-### ✅ Bot - Caché de Menú (Ahorro ~30%)
-
-**Antes:** Cada mensaje leía el menú de Firebase  
-**Ahora:** Menú cacheado por 5 minutos
-
-```javascript
-const menuCache = new Map();
-const MENU_CACHE_TTL = 5 * 60 * 1000; // 5 minutos
-```
-
-**Archivo:** `server/bot-logic.js` - función `obtenerMenuTenantCached()`
+| Concepto | Gratis (Spark) | De pago (Blaze) |
+|----------|----------------|-----------------|
+| **Conexiones simultáneas** | 100 | 200,000 |
+| **Almacenamiento DB** | 1 GB | 1 GB gratis, luego $5/GB |
+| **Descargas DB** | 10 GB/mes | 10 GB gratis, luego $1/GB |
+| **Hosting almacenamiento** | 10 GB | 10 GB gratis, luego $0.026/GB |
+| **Hosting transferencia** | 360 MB/día (~10.8 GB/mes) | 360 MB/día gratis, luego $0.15/GB |
 
 ---
 
-## 1. Resumen de Servicios Contratados
+## 2. Consumo por Cliente Final (1 Pedido)
 
-| Servicio | Tipo de cobro | Uso principal |
-|----------|---------------|---------------|
-| **Railway** | Fijo mensual | Backend Node.js + Bot WhatsApp |
-| **Firebase Hosting** | Por consumo | Frontend estático (HTML/CSS/JS) |
-| **Firebase Realtime Database** | Por consumo | Datos en tiempo real |
+### Flujo típico de un pedido (5-7 mensajes):
 
----
+| Paso | Mensaje | Lecturas Firebase | Escrituras | Datos |
+|------|---------|-------------------|------------|-------|
+| 1 | "Hola" | 2 (bot config + menú*) | 0 | ~2 KB |
+| 2 | Bot envía menú | 0 | 0 | 0 |
+| 3 | "Quiero 2 pizzas" | 1 (tiempo entrega) | 0 | ~1 KB |
+| 4 | "Calle 50 #20" | 0 (sesión en memoria) | 0 | 0 |
+| 5 | "Confirmar" | 0 | 1 (guardar pedido) | ~2 KB |
+| 6 | KDS recibe pedido | 0 | 0 | ~0.5 KB** |
+| 7 | Cambios estado (×2) | 0 | 2 | ~1 KB** |
+| **TOTAL** | - | **3 lecturas** | **3 escrituras** | **~6.5 KB** |
 
-## 2. Análisis de Consumo por Componente (POST-OPTIMIZACIÓN)
+*Menú cacheado 5 min, promedio 0.2 lecturas reales  
+**Con optimización de listeners granulares
 
-### 2.1 Bot WhatsApp (Optimizado con caché)
+### Costo por pedido en Firebase:
 
-**Operaciones Firebase por mensaje del cliente (OPTIMIZADO):**
+| Concepto | Consumo | Costo |
+|----------|---------|-------|
+| Lecturas (~3) | ~3 KB descarga | Incluido en 10 GB gratis |
+| Escrituras (~3) | ~3.5 KB subida | Incluido en 1 GB gratis |
+| **Total por pedido** | **~6.5 KB** | **$0 (dentro del gratis)** |
 
-| Operación | Antes | Ahora | Descripción |
-|-----------|-------|-------|-------------|
-| Verificar estado bot | 1 | 1 | `tenants/{id}/bot/config` |
-| Obtener menú | 1 | 0.2* | Cacheado 5 min |
-| Obtener tiempo entrega | 1 | 1 | `tenants/{id}/config/deliveryTime` |
-| Guardar pedido | 1 | 1 | `tenants/{id}/pedidos` |
-| **Total por mensaje** | **3 lecturas** | **~2.2 lecturas** | *Promediado |
+### Consumo Railway por pedido:
 
-*El menú se lee 1 vez cada 5 min, promediando ~0.2 lecturas por mensaje
-
-**Total por pedido completo: ~6 lecturas + 1 escritura** (antes: 9+1)
-
----
-
-### 2.2 KDS - Kitchen Display System (OPTIMIZADO)
-
-**Consumo con listeners granulares:**
-
-| Evento | Antes | Ahora | Ahorro |
-|--------|-------|-------|--------|
-| Nuevo pedido | 10 pedidos × 0.5KB = 5KB | Solo 1 pedido = 0.5KB | **90%** |
-| Cambio estado | 10 pedidos × 0.5KB = 5KB | Solo 1 pedido = 0.5KB | **90%** |
-| Pedido eliminado | 10 pedidos × 0.5KB = 5KB | Solo key = ~50 bytes | **99%** |
-
-**Estimación por restaurante activo (OPTIMIZADO):**
-
-| Actividad | Antes | Ahora | Ahorro |
-|-----------|-------|-------|--------|
-| Cada nuevo pedido | ~5 KB | ~0.5 KB | 90% |
-| Cada cambio estado | ~5 KB | ~0.5 KB | 90% |
-| Cada eliminación | ~5 KB | ~0.05 KB | 99% |
-| **Hora pico (40 eventos)** | **200 KB** | **20 KB** | **90%** |
+| Recurso | Consumo estimado |
+|---------|------------------|
+| CPU | ~0.001 vCPU-segundo |
+| RAM | ~5 MB pico (sesión activa) |
+| **Impacto en factura** | **Despreciable** |
 
 ---
 
-### 2.3 Dashboard - Consumo Moderado (sin cambios)
+## 3. Consumo por Restaurante (Proyección Mensual)
 
-| Operación | Lecturas | Descripción |
-|-----------|----------|-------------|
-| Cargar datos tenant | 1 | `tenants/{id}` completo |
-| Verificar WhatsApp | 0 | API call a Railway |
-| **Total al cargar** | **1** | - |
+### Escenario: Restaurante con 50 clientes finales/día
 
----
+| Métrica | Cálculo | Total/mes |
+|---------|---------|-----------|
+| Pedidos/mes | 50 × 30 días | **1,500 pedidos** |
+| Lecturas Firebase | 1,500 × 3 | **4,500 lecturas** |
+| Escrituras Firebase | 1,500 × 3 | **4,500 escrituras** |
+| Datos descargados | 1,500 × 6.5 KB | **~10 MB** |
+| Almacenamiento (pedidos activos) | ~50 pedidos × 2 KB | **~100 KB** |
+| Almacenamiento (historial mes) | 1,500 × 2 KB | **~3 MB** |
 
-## 3. Precios Firebase
+### Consumo KDS (12 horas/día abierto):
 
-### Firebase Realtime Database
+| Métrica | Cálculo | Total/mes |
+|---------|---------|-----------|
+| Eventos (nuevo + 2 cambios) | 1,500 × 3 | 4,500 eventos |
+| Datos por evento (optimizado) | 0.5 KB | ~2.25 MB |
+| Conexión inicial/día | 30 días | 30 conexiones |
 
-| Concepto | Gratis (Spark) | Precio (Blaze) |
-|----------|----------------|----------------|
-| **Almacenamiento** | 1 GB | $5/GB/mes |
-| **Descargas** | 10 GB/mes | $1/GB |
-| **Conexiones simultáneas** | 100 | Incluidas |
+### Consumo Dashboard (2 horas/día):
 
-### Firebase Hosting
+| Métrica | Total/mes |
+|---------|-----------|
+| Cargas de página | ~60 |
+| Configuraciones | ~20 escrituras |
 
-| Concepto | Gratis | Precio |
-|----------|--------|--------|
-| **Almacenamiento** | 10 GB | $0.026/GB |
-| **Transferencia** | 360 MB/día | $0.15/GB |
+### **TOTAL POR RESTAURANTE (50 pedidos/día):**
 
----
-
-## 4. Cálculo de Costos por Restaurante (POST-OPTIMIZACIÓN)
-
-### 4.1 Costo de Inscripción (Una vez por restaurante)
-
-| Concepto | Cantidad | Costo |
-|----------|----------|-------|
-| Lecturas | ~30 | ~$0.0005 |
-| Escrituras | ~20 | ~$0.0005 |
-| **Total inscripción** | - | **~$0.001** |
-
-### 4.2 Costo Mensual por Restaurante Activo
-
-**Supuestos restaurante típico:**
-- 50 pedidos/día (1,500/mes)
-- KDS abierto 12 horas/día
-- 10 pedidos activos simultáneos promedio
-
-#### Bot WhatsApp (OPTIMIZADO)
-
-| Concepto | Antes | Ahora |
-|----------|-------|-------|
-| Lecturas por pedido | 9 | 6 |
-| Total lecturas/mes | 13,500 | 9,000 |
-| **Ahorro** | - | **33%** |
-
-#### KDS (OPTIMIZADO)
-
-| Concepto | Antes | Ahora |
-|----------|-------|-------|
-| Datos por evento | 5 KB | 0.5 KB |
-| Eventos/mes | 4,500 | 4,500 |
-| Total datos/mes | 22.5 MB | 2.25 MB |
-| **Ahorro** | - | **90%** |
+| Concepto | Consumo/mes |
+|----------|-------------|
+| **Datos descargados (DB)** | ~15 MB |
+| **Almacenamiento (DB)** | ~5 MB acumulado |
+| **Hosting transferencia** | ~50 MB |
+| **Conexiones simultáneas pico** | 3-5 |
 
 ---
 
-### 4.3 Resumen de Costos OPTIMIZADOS
+## 4. Capacidad de Planes Gratuitos
 
-**Consumo mensual por restaurante (POST-OPTIMIZACIÓN):**
+### Firebase Spark (Gratis)
 
-| Métrica | Antes | Ahora | Ahorro |
-|---------|-------|-------|--------|
-| Lecturas totales | ~18,000 | ~9,500 | 47% |
-| Datos descargados | ~32 MB | ~5 MB | 84% |
-| Almacenamiento | ~50 MB | ~50 MB | - |
+| Límite | Capacidad | Restaurantes máx (50 pedidos/día c/u) |
+|--------|-----------|---------------------------------------|
+| **100 conexiones simultáneas** | 100 KDS/Dashboards abiertos | **~30-50 restaurantes*** |
+| **1 GB almacenamiento** | 1,000 MB | **~200 restaurantes** (5 MB c/u) |
+| **10 GB descargas/mes** | 10,000 MB | **~666 restaurantes** (15 MB c/u) |
 
-**Costo Firebase por restaurante/mes (OPTIMIZADO):**
+*El cuello de botella son las conexiones simultáneas (100 máx)
 
-| Concepto | Antes | Ahora |
-|----------|-------|-------|
-| Descargas | $0.032 | $0.005 |
-| Almacenamiento | $0.25 | $0.25 |
-| Hosting transfer | $0.015 | $0.015 |
-| **Total Firebase** | **$0.30** | **$0.27** |
+### Railway Free (Trial 30 días)
 
----
-
-## 5. Costo Railway (Fijo - sin cambios)
-
-| Restaurantes | Costo total | Costo/restaurante |
-|--------------|-------------|-------------------|
-| 10 | $20 | $2.00 |
-| 25 | $20 | $0.80 |
-| 50 | $20 | $0.40 |
-| 100 | $20 | $0.20 |
+| Límite | Capacidad | Restaurantes máx |
+|--------|-----------|------------------|
+| **$5 créditos** | ~500 horas de 0.5 GB RAM | **Ilimitados** (30 días) |
+| **0.5 GB RAM** | Suficiente para bot básico | **~20-30 restaurantes** activos |
+| **1 vCPU** | Procesamiento limitado | **~20-30 restaurantes** |
 
 ---
 
-## 6. Tabla Resumen Final (POST-OPTIMIZACIÓN)
+## 5. Capacidad por Plan de Pago
 
-### Costo de Inscripción
+### Firebase Blaze (Pago por uso)
+
+| Restaurantes | Descargas/mes | Costo Firebase | Notas |
+|--------------|---------------|----------------|-------|
+| 50 | 750 MB | **$0** | Dentro del gratis |
+| 100 | 1.5 GB | **$0** | Dentro del gratis |
+| 500 | 7.5 GB | **$0** | Dentro del gratis |
+| 666 | 10 GB | **$0** | Límite gratis |
+| 1,000 | 15 GB | **$5** | 5 GB extra × $1 |
+| 2,000 | 30 GB | **$20** | 20 GB extra × $1 |
+
+> **Importante:** Con Blaze tienes 200,000 conexiones simultáneas (vs 100 en Spark)
+
+### Railway Hobby ($5/mes)
+
+| Restaurantes | RAM necesaria | Costo Railway | Notas |
+|--------------|---------------|---------------|-------|
+| 10 | ~200 MB | **$5** | Muy holgado |
+| 50 | ~500 MB | **$5** | Cómodo |
+| 100 | ~1 GB | **$5-7** | Puede subir un poco |
+| 200 | ~2 GB | **$8-10** | Aún manejable |
+| 500 | ~4 GB | **$15-20** | Cerca del límite plan |
+
+### Railway Pro ($20/mes)
+
+| Restaurantes | RAM necesaria | Costo Railway |
+|--------------|---------------|---------------|
+| 500+ | ~4-8 GB | **$20** |
+| 1,000+ | ~8-16 GB | **$20-30** |
+| 5,000+ | ~32+ GB | **$50+** |
+
+---
+
+## 6. Tabla de Costos Finales
+
+### Costo por Cliente Final (1 pedido)
+
 | Concepto | Costo |
 |----------|-------|
-| **Total inscripción** | **~$0.001 (prácticamente $0)** |
+| Firebase | $0.000004 (~6.5 KB de 10 GB gratis) |
+| Railway | $0.00001 (despreciable) |
+| **TOTAL por pedido** | **~$0.00001** (prácticamente $0) |
 
-### Costo Mensual por Restaurante (OPTIMIZADO)
+### Costo por Restaurante/Mes (50 pedidos/día)
 
-| Restaurantes | Firebase | Railway | **Total/restaurante** | vs Antes |
-|--------------|----------|---------|----------------------|----------|
-| 10 | $0.27 | $2.00 | **$2.27** | -$0.01 |
-| 25 | $0.27 | $0.80 | **$1.07** | -$0.01 |
-| 50 | $0.27 | $0.40 | **$0.67** | -$0.01 |
-| 100 | $0.27 | $0.20 | **$0.47** | -$0.01 |
-
-### Margen de Ganancia (si cobras $50,000 COP/mes ≈ $12 USD por restaurante)
-
-| Restaurantes | Costo | Ganancia | **Margen** |
-|--------------|-------|----------|------------|
-| 10 | $2.27 | $9.73 | **81%** |
-| 25 | $1.07 | $10.93 | **91%** |
-| 50 | $0.67 | $11.33 | **94%** |
-| 100 | $0.47 | $11.53 | **96%** |
+| # Restaurantes | Firebase | Railway | **Total/restaurante** |
+|----------------|----------|---------|----------------------|
+| 10 | $0 | $0.50 | **$0.50** |
+| 25 | $0 | $0.20 | **$0.20** |
+| 50 | $0 | $0.10 | **$0.10** |
+| 100 | $0 | $0.05-0.07 | **$0.05-0.07** |
+| 500 | $0 | $0.03-0.04 | **$0.03-0.04** |
+| 1,000 | $5 | $0.02-0.03 | **$0.007-0.008** |
 
 ---
 
-## 7. Beneficios de las Optimizaciones
+## 7. Proyecciones de Rentabilidad
 
-### Reducción de Costos
-- **KDS:** 90% menos datos descargados
-- **Bot:** 33% menos lecturas de Firebase
-- **Total:** ~50% menos operaciones de lectura
+### Si cobras $50,000 COP/mes (~$12 USD) por restaurante:
 
-### Mejoras de Rendimiento
-- **KDS más rápido:** Solo procesa el pedido que cambió
-- **Bot más responsive:** Menú cacheado = respuesta instantánea
-- **Menos latencia:** Menos datos = más velocidad
-
-### Escalabilidad
-- **Antes:** 100 restaurantes costaban $48/mes en Firebase
-- **Ahora:** 100 restaurantes cuestan $27/mes en Firebase
-- **Ahorro anual con 100 restaurantes:** ~$252
+| Restaurantes | Ingreso/mes | Costos/mes | **Ganancia** | **Margen** |
+|--------------|-------------|------------|--------------|------------|
+| 10 | $120 | $5 (Railway) | **$115** | 96% |
+| 25 | $300 | $5 | **$295** | 98% |
+| 50 | $600 | $5-7 | **$593-595** | 99% |
+| 100 | $1,200 | $7-10 | **$1,190-1,193** | 99% |
+| 500 | $6,000 | $20-25 | **$5,975-5,980** | 99.6% |
+| 1,000 | $12,000 | $25-30 | **$11,970-11,975** | 99.7% |
 
 ---
 
-## 8. Proyección de Rentabilidad (OPTIMIZADO)
+## 8. Límites y Cuándo Escalar
 
-| Restaurantes | Ingreso/mes | Costos/mes | Ganancia/mes | **ROI** |
-|--------------|-------------|------------|--------------|---------|
-| 10 | $120 | $42.70 | $77.30 | **181%** |
-| 25 | $300 | $46.75 | $253.25 | **542%** |
-| 50 | $600 | $53.50 | $546.50 | **1022%** |
-| 100 | $1,200 | $67.00 | $1,133.00 | **1691%** |
+### Cuándo pasar de Firebase Spark → Blaze:
+
+| Señal | Acción |
+|-------|--------|
+| >30-50 restaurantes activos simultáneos | Migrar a Blaze (100 conexiones límite) |
+| >200 restaurantes totales | Migrar a Blaze (1 GB storage límite) |
+| >666 restaurantes (50 ped/día c/u) | Migrar a Blaze (10 GB descargas límite) |
+
+### Cuándo pasar de Railway Hobby → Pro:
+
+| Señal | Acción |
+|-------|--------|
+| >200-300 restaurantes | Considerar Pro |
+| RAM constante >4 GB | Migrar a Pro |
+| Necesitas réplicas/alta disponibilidad | Migrar a Pro |
 
 ---
 
-## 9. Archivos Modificados
+## 9. Resumen Ejecutivo
 
-| Archivo | Optimización | Ahorro |
-|---------|--------------|--------|
-| `app.js` | Listeners granulares en KDS | ~90% menos datos |
-| `server/bot-logic.js` | Caché de menú 5 min | ~33% menos lecturas |
+### Capacidad con planes GRATUITOS:
+
+| Servicio | Límite principal | Restaurantes máx |
+|----------|------------------|------------------|
+| Firebase Spark | 100 conexiones | **~30-50** |
+| Railway Free | 30 días trial | **~20-30** |
+| **Combinado** | - | **~20-30 restaurantes** |
+
+### Capacidad con planes MÍNIMOS ($5/mes total):
+
+| Servicio | Plan | Restaurantes máx |
+|----------|------|------------------|
+| Firebase Blaze | Pago por uso | **~500-666** (dentro del gratis) |
+| Railway Hobby | $5/mes | **~100-200** |
+| **Combinado** | $5/mes | **~100-200 restaurantes** |
+
+### Costos reales:
+
+| Escala | Costo total/mes | Costo por restaurante |
+|--------|-----------------|----------------------|
+| 10 restaurantes | $5 | $0.50 |
+| 50 restaurantes | $5-7 | $0.10-0.14 |
+| 100 restaurantes | $7-10 | $0.07-0.10 |
+| 500 restaurantes | $20-25 | $0.04-0.05 |
+
+### Conclusión:
+
+1. **Cada pedido cuesta ~$0.00001** - Prácticamente gratis
+2. **Cada restaurante (50 ped/día) cuesta $0.05-0.50/mes** dependiendo de escala
+3. **Con $5/mes puedes tener hasta 100-200 restaurantes**
+4. **Tu margen es >96%** desde el primer restaurante
+5. **El cuello de botella inicial es Railway** (RAM), no Firebase
 
 ---
 
-## 10. Conclusiones
+## 10. Optimizaciones Implementadas
 
-1. **Las optimizaciones reducen costos en ~50%** en operaciones de lectura
-2. **El modelo SaaS sigue siendo muy rentable** - Márgenes >90% con 25+ restaurantes
-3. **La escalabilidad mejoró significativamente** - Menos presión en Firebase
-4. **El costo de inscripción sigue siendo $0** - Sin cambios
-5. **El ahorro real aumenta con más restaurantes** - $252/año con 100 restaurantes
+| Optimización | Archivo | Ahorro |
+|--------------|---------|--------|
+| Listeners granulares KDS | `app.js` | 90% menos datos |
+| Caché de menú (5 min) | `server/bot-logic.js` | 33% menos lecturas |
+| Sesiones en memoria | `server/bot-logic.js` | 0 lecturas por mensaje intermedio |
+
+Estas optimizaciones permiten que cada pedido consuma solo **~6.5 KB** en lugar de ~20 KB sin optimizar.
