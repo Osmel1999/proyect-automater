@@ -3,6 +3,10 @@
 **Fecha de análisis**: 31 de Enero 2026  
 **Última actualización**: 31 de Enero 2026 (con optimizaciones implementadas)
 
+> **Nota sobre terminología:**
+> - **Restaurante** = Usuario de tu plataforma (tenant) que paga mensualidad
+> - **Cliente final** = Persona que hace pedidos por WhatsApp al restaurante
+
 ---
 
 ## 🚀 OPTIMIZACIONES IMPLEMENTADAS
@@ -117,9 +121,9 @@ const MENU_CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 
 ---
 
-## 4. Cálculo de Costos por Cliente (POST-OPTIMIZACIÓN)
+## 4. Cálculo de Costos por Restaurante (POST-OPTIMIZACIÓN)
 
-### 4.1 Costo de Inscripción (Una vez)
+### 4.1 Costo de Inscripción (Una vez por restaurante)
 
 | Concepto | Cantidad | Costo |
 |----------|----------|-------|
@@ -127,7 +131,7 @@ const MENU_CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 | Escrituras | ~20 | ~$0.0005 |
 | **Total inscripción** | - | **~$0.001** |
 
-### 4.2 Costo Mensual por Cliente Activo
+### 4.2 Costo Mensual por Restaurante Activo
 
 **Supuestos restaurante típico:**
 - 50 pedidos/día (1,500/mes)
@@ -163,7 +167,7 @@ const MENU_CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 | Datos descargados | ~32 MB | ~5 MB | 84% |
 | Almacenamiento | ~50 MB | ~50 MB | - |
 
-**Costo Firebase por cliente/mes (OPTIMIZADO):**
+**Costo Firebase por restaurante/mes (OPTIMIZADO):**
 
 | Concepto | Antes | Ahora |
 |----------|-------|-------|
@@ -176,8 +180,8 @@ const MENU_CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 
 ## 5. Costo Railway (Fijo - sin cambios)
 
-| Clientes | Costo total | Costo/cliente |
-|----------|-------------|---------------|
+| Restaurantes | Costo total | Costo/restaurante |
+|--------------|-------------|-------------------|
 | 10 | $20 | $2.00 |
 | 25 | $20 | $0.80 |
 | 50 | $20 | $0.40 |
@@ -192,19 +196,19 @@ const MENU_CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 |----------|-------|
 | **Total inscripción** | **~$0.001 (prácticamente $0)** |
 
-### Costo Mensual por Cliente (OPTIMIZADO)
+### Costo Mensual por Restaurante (OPTIMIZADO)
 
-| Clientes | Firebase | Railway | **Total/cliente** | vs Antes |
-|----------|----------|---------|-------------------|----------|
+| Restaurantes | Firebase | Railway | **Total/restaurante** | vs Antes |
+|--------------|----------|---------|----------------------|----------|
 | 10 | $0.27 | $2.00 | **$2.27** | -$0.01 |
 | 25 | $0.27 | $0.80 | **$1.07** | -$0.01 |
 | 50 | $0.27 | $0.40 | **$0.67** | -$0.01 |
 | 100 | $0.27 | $0.20 | **$0.47** | -$0.01 |
 
-### Margen de Ganancia ($50,000 COP/mes ≈ $12 USD)
+### Margen de Ganancia (si cobras $50,000 COP/mes ≈ $12 USD por restaurante)
 
-| Clientes | Costo | Ganancia | **Margen** |
-|----------|-------|----------|------------|
+| Restaurantes | Costo | Ganancia | **Margen** |
+|--------------|-------|----------|------------|
 | 10 | $2.27 | $9.73 | **81%** |
 | 25 | $1.07 | $10.93 | **91%** |
 | 50 | $0.67 | $11.33 | **94%** |
@@ -225,16 +229,16 @@ const MENU_CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 - **Menos latencia:** Menos datos = más velocidad
 
 ### Escalabilidad
-- **Antes:** 100 clientes costaban $48/mes en Firebase
-- **Ahora:** 100 clientes cuestan $27/mes en Firebase
-- **Ahorro anual con 100 clientes:** ~$252
+- **Antes:** 100 restaurantes costaban $48/mes en Firebase
+- **Ahora:** 100 restaurantes cuestan $27/mes en Firebase
+- **Ahorro anual con 100 restaurantes:** ~$252
 
 ---
 
 ## 8. Proyección de Rentabilidad (OPTIMIZADO)
 
-| Clientes | Ingreso/mes | Costos/mes | Ganancia/mes | **ROI** |
-|----------|-------------|------------|--------------|---------|
+| Restaurantes | Ingreso/mes | Costos/mes | Ganancia/mes | **ROI** |
+|--------------|-------------|------------|--------------|---------|
 | 10 | $120 | $42.70 | $77.30 | **181%** |
 | 25 | $300 | $46.75 | $253.25 | **542%** |
 | 50 | $600 | $53.50 | $546.50 | **1022%** |
@@ -254,7 +258,7 @@ const MENU_CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 ## 10. Conclusiones
 
 1. **Las optimizaciones reducen costos en ~50%** en operaciones de lectura
-2. **El modelo SaaS sigue siendo muy rentable** - Márgenes >90% con 25+ clientes
+2. **El modelo SaaS sigue siendo muy rentable** - Márgenes >90% con 25+ restaurantes
 3. **La escalabilidad mejoró significativamente** - Menos presión en Firebase
 4. **El costo de inscripción sigue siendo $0** - Sin cambios
-5. **El ahorro real aumenta con más clientes** - $252/año con 100 clientes
+5. **El ahorro real aumenta con más restaurantes** - $252/año con 100 restaurantes
