@@ -4,19 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard - KDS Platform</title>
-  <meta name="description" content="Configuracion y gestion de tu restaurante">
+  <meta name="description" content="Configuración y gestión de tu restaurante">
   <link rel="icon" type="image/png" href="assets/images/kds-logo.png">
   
-  <!-- Estilos externos -->
+  <!-- Dashboard Styles -->
   <link rel="stylesheet" href="css/dashboard.css">
-  
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+  <link rel="stylesheet" href="css/animations.css">
 </head>
 <body>
   <!-- Header -->
-  <div class="header">
+  <div class="header animate-fade-in-down">
     <div class="header-left">
       <div class="logo">KDS</div>
       <div class="tenant-name" id="tenant-name">Cargando...</div>
@@ -30,16 +27,32 @@
       
       <!-- Disconnect WhatsApp Button -->
       <button class="btn-disconnect" id="btn-disconnect-whatsapp" style="display: none;" onclick="disconnectWhatsApp()">
+        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+        </svg>
         Desconectar WhatsApp
       </button>
       
       <!-- Connect WhatsApp Button -->
       <button class="btn-connect" id="btn-connect-whatsapp" style="display: none;" onclick="connectWhatsApp()">
+        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+        </svg>
         Conectar WhatsApp
       </button>
       
-      <a href="/kds.html" class="btn-secondary" id="kdsBtn">Ver KDS</a>
-      <a href="/select.html" class="btn-secondary">Inicio</a>
+      <a href="/kds.html" class="btn-secondary" id="kdsBtn">
+        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+        </svg>
+        Ver KDS
+      </a>
+      <a href="/select.html" class="btn-secondary">
+        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+        </svg>
+        Inicio
+      </a>
     </div>
   </div>
 
@@ -47,13 +60,17 @@
   <div class="container">
     <div id="loading-container" class="loading">
       <div class="spinner"></div>
-      <p>Cargando tu configuracion...</p>
+      <p>Cargando tu configuración...</p>
     </div>
 
-    <!-- Bot Control Card - Solo visible cuando onboarding esta completo -->
+    <!-- Bot Control Card -->
     <div id="bot-control-container" style="display: none;">
-      <div class="bot-control-card" id="bot-control-card">
-        <div class="bot-control-icon" id="bot-control-icon">Bot</div>
+      <div class="bot-control-card card-animated hover-lift" id="bot-control-card">
+        <div class="bot-control-icon">
+          <svg width="36" height="36" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+          </svg>
+        </div>
         <div class="bot-control-content">
           <div class="bot-control-title">Bot de WhatsApp</div>
           <div class="bot-control-status" id="bot-status-text">
@@ -68,14 +85,31 @@
           <span class="bot-toggle-label" id="bot-toggle-label">OFF</span>
         </div>
       </div>
+
+      <!-- Warning cuando el onboarding está incompleto -->
+      <div class="bot-warning" id="bot-warning">
+        <div class="bot-warning-title">
+          <span>⚠️</span>
+          <span>Completa tu configuración primero</span>
+        </div>
+        <div class="bot-warning-text">
+          Para activar el bot, debes completar al menos el 75% del onboarding (menú configurado y mensajes personalizados).
+          Esto asegura que tus clientes tengan una buena experiencia al usar el bot.
+        </div>
+      </div>
     </div>
 
     <!-- Wizard (hidden initially) -->
     <div id="wizard-container" style="display: none;">
-      <div class="wizard-card">
-        <div class="wizard-header">
-          <h1 class="wizard-title">Bienvenido a KDS Platform!</h1>
-          <p class="wizard-subtitle">Completa estos pasos para empezar a recibir pedidos automaticamente</p>
+      <div class="wizard-card animate-fade-in-scale">
+        <div class="wizard-header animate-fade-in-up">
+          <h1 class="wizard-title">
+            <svg class="icon-lg" style="display: inline-block; vertical-align: middle; margin-right: 8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+            ¡Bienvenido a KDS Platform!
+          </h1>
+          <p class="wizard-subtitle">Completa estos pasos para empezar a recibir pedidos automáticamente</p>
         </div>
 
         <!-- Progress Bar -->
@@ -93,49 +127,65 @@
         <div class="steps">
           <!-- Step 1: WhatsApp -->
           <div class="step-item" id="step-1">
-            <div class="step-icon">1</div>
+            <div class="step-icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+              </svg>
+            </div>
             <div class="step-content">
               <div class="step-title">1. Conectar WhatsApp</div>
-              <div class="step-description">Vincula tu numero de WhatsApp Business para recibir pedidos</div>
+              <div class="step-description">Vincula tu número de WhatsApp Business para recibir pedidos</div>
             </div>
             <div class="step-action">
-              <button class="btn-step" onclick="connectWhatsAppStep()">Conectar</button>
+              <button class="btn-step" onclick="connectWhatsAppStep()">Conectar →</button>
             </div>
           </div>
 
           <!-- Step 2: Menu -->
           <div class="step-item" id="step-2">
-            <div class="step-icon">2</div>
+            <div class="step-icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+              </svg>
+            </div>
             <div class="step-content">
-              <div class="step-title">2. Configurar tu menu</div>
+              <div class="step-title">2. Configurar tu menú</div>
               <div class="step-description">Agrega los productos que tus clientes pueden ordenar (5 min)</div>
             </div>
             <div class="step-action">
-              <button class="btn-step" onclick="openMenuConfig()">Configurar</button>
+              <button class="btn-step" onclick="openMenuConfig()">Configurar →</button>
             </div>
           </div>
 
           <!-- Step 3: Messages -->
           <div class="step-item" id="step-3">
-            <div class="step-icon">3</div>
+            <div class="step-icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+              </svg>
+            </div>
             <div class="step-content">
               <div class="step-title">3. Personalizar mensajes</div>
-              <div class="step-description">Ajusta los mensajes automaticos que envia el bot (3 min)</div>
+              <div class="step-description">Ajusta los mensajes automáticos que envía el bot (3 min)</div>
             </div>
             <div class="step-action">
-              <button class="btn-step" onclick="openMessagesConfig()">Personalizar</button>
+              <button class="btn-step" onclick="openMessagesConfig()">Personalizar →</button>
             </div>
           </div>
 
           <!-- Step 4: Activate Bot -->
           <div class="step-item" id="step-4">
-            <div class="step-icon">4</div>
+            <div class="step-icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+              </svg>
+            </div>
             <div class="step-content">
               <div class="step-title">4. Activar el bot</div>
-              <div class="step-description">Enciende el bot para empezar a recibir pedidos automaticamente</div>
+              <div class="step-description">Enciende el bot para empezar a recibir pedidos automáticamente</div>
             </div>
             <div class="step-action">
-              <button class="btn-step" id="activate-bot-btn" onclick="activateBotStep()" disabled>Activar</button>
+              <button class="btn-step" id="activate-bot-btn" onclick="activateBotStep()" disabled>Activar →</button>
             </div>
           </div>
         </div>
@@ -155,7 +205,7 @@
           <div class="stat-card">
             <div class="stat-icon">
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
               </svg>
             </div>
             <div class="stat-content">
@@ -265,7 +315,7 @@
             <button class="btn-primary" onclick="openMenuConfig()">+ Agregar Producto</button>
           </div>
           <div id="menu-list-preview" class="menu-preview-grid">
-            <p style="color: #718096;">Cargando menu...</p>
+            <p style="color: #718096;">Cargando menú...</p>
           </div>
         </div>
       </div>
@@ -286,12 +336,12 @@
       </div>
       <div class="modal-body">
         <p style="margin-bottom: 24px; color: #718096;">
-          Agrega los productos de tu menu. Los clientes podran ordenarlos por WhatsApp.
+          Agrega los productos de tu menú. Los clientes podrán ordenarlos por WhatsApp.
         </p>
 
         <div class="form-group">
           <label class="form-label">Nombre del producto</label>
-          <input type="text" class="form-input" id="item-name" placeholder="Ej: Hamburguesa Clasica">
+          <input type="text" class="form-input" id="item-name" placeholder="Ej: Hamburguesa Clásica">
         </div>
 
         <div class="form-group">
@@ -300,12 +350,12 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label">Descripcion (opcional)</label>
+          <label class="form-label">Descripción (opcional)</label>
           <input type="text" class="form-input" id="item-description" placeholder="Carne, lechuga, tomate...">
         </div>
 
         <div class="form-group">
-          <label class="form-label">Categoria</label>
+          <label class="form-label">Categoría</label>
           <select class="form-select" id="item-category">
             <option value="Entradas">Entradas</option>
             <option value="Platos Principales">Platos Principales</option>
@@ -322,7 +372,7 @@
       </div>
       <div class="modal-footer">
         <button class="btn-secondary" onclick="closeMenuModal()">Cancelar</button>
-        <button class="btn-primary" onclick="saveMenu()">Guardar Menu</button>
+        <button class="btn-primary" onclick="saveMenu()">Guardar Menú</button>
       </div>
     </div>
   </div>
@@ -346,20 +396,20 @@
 
         <div class="form-group">
           <label class="form-label">Mensaje de Bienvenida</label>
-          <textarea class="form-textarea" id="msg-welcome" placeholder="Hola! Bienvenido a [Nombre Restaurante]..."></textarea>
-          <div class="form-help">Se envia cuando un cliente escribe por primera vez</div>
+          <textarea class="form-textarea" id="msg-welcome" placeholder="¡Hola! 👋 Bienvenido a [Nombre Restaurante]..."></textarea>
+          <div class="form-help">Se envía cuando un cliente escribe por primera vez</div>
         </div>
 
         <div class="form-group">
-          <label class="form-label">Mensaje de Confirmacion de Pedido</label>
-          <textarea class="form-textarea" id="msg-confirmation" placeholder="Pedido confirmado! Tu orden esta siendo preparada..."></textarea>
-          <div class="form-help">Se envia despues de que el cliente confirma su pedido</div>
+          <label class="form-label">Mensaje de Confirmación de Pedido</label>
+          <textarea class="form-textarea" id="msg-confirmation" placeholder="✅ ¡Pedido confirmado! Tu orden está siendo preparada..."></textarea>
+          <div class="form-help">Se envía después de que el cliente confirma su pedido</div>
         </div>
 
         <div class="form-group">
           <label class="form-label">Mensaje de Despedida</label>
-          <textarea class="form-textarea" id="msg-goodbye" placeholder="Gracias por tu pedido! Esperamos verte pronto..."></textarea>
-          <div class="form-help">Se envia al finalizar la conversacion</div>
+          <textarea class="form-textarea" id="msg-goodbye" placeholder="¡Gracias por tu pedido! 🙏 Esperamos verte pronto..."></textarea>
+          <div class="form-help">Se envía al finalizar la conversación</div>
         </div>
       </div>
       <div class="modal-footer">
@@ -373,17 +423,12 @@
   <div class="modal-overlay" id="test-modal">
     <div class="modal">
       <div class="modal-header">
-        <h2 class="modal-title">
-          <svg class="icon-lg" style="display: inline-block; vertical-align: middle; margin-right: 8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-          </svg>
-          Probar el Bot
-        </h2>
+        <h2 class="modal-title">🧪 Probar el Bot</h2>
         <button class="modal-close" onclick="closeTestModal()">×</button>
       </div>
       <div class="modal-body">
         <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 16px; color: #2d3748;">
-          Tu numero de WhatsApp Business
+          📱 Tu número de WhatsApp Business
         </h3>
         <div style="background: #f7fafc; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
           <div style="font-size: 24px; font-weight: 700; color: #667eea;" id="test-phone-number">
@@ -392,28 +437,28 @@
         </div>
 
         <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 16px; color: #2d3748;">
-          Como probar el bot
+          ✅ Cómo probar el bot
         </h3>
         <ol style="padding-left: 20px; color: #4a5568; line-height: 1.8;">
-          <li><strong>Abre WhatsApp</strong> en tu telefono</li>
-          <li><strong>Envia un mensaje</strong> al numero de arriba</li>
-          <li><strong>Escribe:</strong> "Hola" o "Menu"</li>
-          <li><strong>El bot respondera</strong> con el menu automaticamente</li>
+          <li><strong>Abre WhatsApp</strong> en tu teléfono</li>
+          <li><strong>Envía un mensaje</strong> al número de arriba</li>
+          <li><strong>Escribe:</strong> "Hola" o "Menú"</li>
+          <li><strong>El bot responderá</strong> con el menú automáticamente</li>
           <li><strong>Haz un pedido de prueba</strong> siguiendo las instrucciones</li>
           <li><strong>Revisa que aparezca</strong> en el KDS (pantalla de cocina)</li>
         </ol>
 
         <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 16px; border-radius: 4px; margin-top: 24px;">
-          <strong style="color: #856404; display: block; margin-bottom: 8px;">Nota importante:</strong>
+          <strong style="color: #856404; display: block; margin-bottom: 8px;">⚠️ Nota importante:</strong>
           <p style="color: #856404; font-size: 14px; line-height: 1.6; margin: 0;">
-            Si tu app aun no esta aprobada por Meta, es posible que el bot no responda aun. 
-            Una vez Meta apruebe tu aplicacion, el bot empezara a funcionar automaticamente.
+            Si tu app aún no está aprobada por Meta, es posible que el bot no responda aún. 
+            Una vez Meta apruebe tu aplicación, el bot empezará a funcionar automáticamente.
           </p>
         </div>
       </div>
       <div class="modal-footer">
         <button class="btn-secondary" onclick="closeTestModal()">Cerrar</button>
-        <button class="btn-primary" onclick="markTestCompleted()">Ya probe el bot</button>
+        <button class="btn-primary" onclick="markTestCompleted()">Ya probé el bot ✓</button>
       </div>
     </div>
   </div>
@@ -422,25 +467,20 @@
   <div class="modal-overlay" id="payment-modal">
     <div class="modal">
       <div class="modal-header">
-        <h2 class="modal-title">
-          <svg class="icon-lg" style="display: inline-block; vertical-align: middle; margin-right: 8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
-          </svg>
-          Configurar Pagos Online
-        </h2>
+        <h2 class="modal-title">💳 Configurar Pagos Online</h2>
         <button class="modal-close" onclick="closePaymentModal()">×</button>
       </div>
       <div class="modal-body">
         <p style="margin-bottom: 24px; color: #718096;">
-          Acepta pagos con tarjeta de credito/debito a traves de Wompi. Tus clientes pagaran online antes de confirmar el pedido.
+          Acepta pagos con tarjeta de crédito/débito a través de Wompi. Tus clientes pagarán online antes de confirmar el pedido.
         </p>
 
-        <!-- Toggle de activacion -->
+        <!-- Toggle de activación -->
         <div class="form-group">
           <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px; background: #f7fafc; border-radius: 8px; margin-bottom: 24px;">
             <div>
               <label class="form-label" style="margin-bottom: 4px;">Habilitar Pagos Online</label>
-              <div class="form-help">Los clientes deberan pagar antes de confirmar su pedido</div>
+              <div class="form-help">Los clientes deberán pagar antes de confirmar su pedido</div>
             </div>
             <div class="bot-toggle" id="payment-toggle" onclick="togglePaymentEnabled()">
               <div class="bot-toggle-slider"></div>
@@ -448,16 +488,16 @@
           </div>
         </div>
 
-        <!-- Campos de credenciales (visibles solo si esta habilitado) -->
+        <!-- Campos de credenciales (visibles solo si está habilitado) -->
         <div id="payment-credentials-section" style="display: none;">
           <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: #2d3748;">
-            Credenciales de Wompi
+            🔑 Credenciales de Wompi
           </h3>
           
           <div class="form-group">
-            <label class="form-label">Public Key (Llave Publica)</label>
+            <label class="form-label">Public Key (Llave Pública)</label>
             <input type="text" class="form-input" id="payment-public-key" placeholder="pub_test_..." autocomplete="off">
-            <div class="form-help">Comienza con pub_test_ (pruebas) o pub_prod_ (produccion)</div>
+            <div class="form-help">Comienza con pub_test_ (pruebas) o pub_prod_ (producción)</div>
           </div>
 
           <div class="form-group">
@@ -478,9 +518,9 @@
             <div class="form-help">Usado para validar webhooks</div>
           </div>
 
-          <!-- Boton para probar credenciales -->
+          <!-- Botón para probar credenciales -->
           <button class="btn-secondary" onclick="testPaymentCredentials()" style="width: 100%; margin-bottom: 24px;" id="btn-test-credentials">
-            Probar Credenciales
+            🧪 Probar Credenciales
           </button>
 
           <!-- Resultado de la prueba -->
@@ -493,10 +533,10 @@
 
           <!-- Webhook URL -->
           <div style="background: #ebf8ff; border-left: 4px solid #4299e1; padding: 16px; border-radius: 4px; margin-bottom: 24px;">
-            <h4 style="color: #2c5282; margin-bottom: 12px; font-weight: 600;">URL del Webhook</h4>
+            <h4 style="color: #2c5282; margin-bottom: 12px; font-weight: 600;">📡 URL del Webhook</h4>
             <p style="color: #2c5282; font-size: 13px; margin-bottom: 12px; line-height: 1.6;">
-              Copia esta URL y configurala en tu cuenta de Wompi (Panel - Eventos - Agregar Evento). 
-              Esta URL permitira que Wompi notifique automaticamente cuando se apruebe un pago.
+              Copia esta URL y configúrala en tu cuenta de Wompi (Panel → Eventos → Agregar Evento). 
+              Esta URL permitirá que Wompi notifique automáticamente cuando se apruebe un pago.
             </p>
             <div style="display: flex; gap: 8px; align-items: center;">
               <input 
@@ -512,33 +552,33 @@
                 onclick="copyWebhookUrl()" 
                 style="flex-shrink: 0;"
               >
-                Copiar
+                📋 Copiar
               </button>
             </div>
           </div>
 
-          <!-- Guia rapida -->
+          <!-- Guía rápida -->
           <div style="background: #fffaf0; border-left: 4px solid #f6ad55; padding: 16px; border-radius: 4px;">
-            <h4 style="color: #7c2d12; margin-bottom: 8px; font-weight: 600;">Donde encuentro mis credenciales?</h4>
+            <h4 style="color: #7c2d12; margin-bottom: 8px; font-weight: 600;">📚 ¿Dónde encuentro mis credenciales?</h4>
             <ol style="padding-left: 20px; color: #7c2d12; font-size: 13px; line-height: 1.8; margin: 0;">
               <li>Ingresa a tu cuenta de Wompi (<a href="https://comercios.wompi.co/login" target="_blank" style="color: #c05621; text-decoration: underline;">comercios.wompi.co</a>)</li>
-              <li>Ve a <strong>Desarrollo - Programadores - Llaves del API</strong></li>
-              <li>Copia las llaves y pegalas arriba</li>
-              <li>Para webhooks: <strong>Desarrollo - Programadores - Pega la URL de arriba en URL de Eventos</strong></li>
+              <li>Ve a <strong>Desarrollo → Programadores → Llaves del API</strong></li>
+              <li>Copia las llaves y pégalas arriba</li>
+              <li>Para webhooks: <strong>Desarrollo → Programadores → Pega la URL de arriba en URL de Eventos</strong></li>
             </ol>
           </div>
         </div>
 
-        <!-- Mensaje cuando esta deshabilitado -->
+        <!-- Mensaje cuando está deshabilitado -->
         <div id="payment-disabled-message" style="background: #f7fafc; padding: 24px; border-radius: 8px; text-align: center; color: #718096;">
-          <div style="font-size: 48px; margin-bottom: 16px;">Locked</div>
+          <div style="font-size: 48px; margin-bottom: 16px;">🔒</div>
           <p style="font-weight: 600; color: #4a5568; margin-bottom: 8px;">Pagos Online Deshabilitados</p>
           <p style="font-size: 14px;">Activa el interruptor arriba para configurar pagos con tarjeta.</p>
         </div>
       </div>
       <div class="modal-footer">
         <button class="btn-secondary" onclick="closePaymentModal()">Cancelar</button>
-        <button class="btn-primary" onclick="savePaymentConfig()" id="btn-save-payment">Guardar Configuracion</button>
+        <button class="btn-primary" onclick="savePaymentConfig()" id="btn-save-payment">Guardar Configuración</button>
       </div>
     </div>
   </div>
@@ -547,17 +587,12 @@
   <div class="modal-overlay" id="delivery-time-modal">
     <div class="modal">
       <div class="modal-header">
-        <h2 class="modal-title">
-          <svg class="icon-lg" style="display: inline-block; vertical-align: middle; margin-right: 8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-          Configurar Tiempo de Entrega
-        </h2>
+        <h2 class="modal-title">🕒 Configurar Tiempo de Entrega</h2>
         <button class="modal-close" onclick="closeDeliveryTimeModal()">×</button>
       </div>
       <div class="modal-body">
         <p style="margin-bottom: 24px; color: #718096;">
-          Configura el tiempo estimado de entrega que se mostrara a tus clientes al confirmar su pedido.
+          Configura el tiempo estimado de entrega que se mostrará a tus clientes al confirmar su pedido.
         </p>
 
         <div class="form-group">
@@ -576,15 +611,15 @@
             <strong>Vista previa del mensaje:</strong>
           </p>
           <p style="color: #667eea; font-weight: 500;" id="delivery-time-preview">
-            Tiempo estimado: 30-40 minutos
+            🕒 Tiempo estimado: 30-40 minutos
           </p>
         </div>
 
         <div style="background: #e6fffa; border-left: 4px solid #38b2ac; padding: 16px; border-radius: 4px; margin-top: 16px;">
-          <strong style="color: #234e52; display: block; margin-bottom: 8px;">Recomendacion</strong>
+          <strong style="color: #234e52; display: block; margin-bottom: 8px;">💡 Recomendación</strong>
           <p style="color: #234e52; font-size: 14px; line-height: 1.6; margin: 0;">
-            Es mejor sobreestimar el tiempo de entrega. Si entregas antes, el cliente se sorprendera gratamente. 
-            Si te atrasas, puede generar insatisfaccion.
+            Es mejor sobreestimar el tiempo de entrega. Si entregas antes, el cliente se sorprenderá gratamente. 
+            Si te atrasas, puede generar insatisfacción.
           </p>
         </div>
       </div>
@@ -595,7 +630,21 @@
     </div>
   </div>
 
-  <!-- JavaScript externo -->
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+  
+  <!-- Firebase Configuration (initializes Firebase) -->
+  <script src="config.js"></script>
+  
+  <!-- Membership Check -->
+  <script src="js/membership-check.js"></script>
+  <script>
+    // Verificar membresía antes de cargar Dashboard
+    MembershipCheck.init({ blockOnExpired: true });
+  </script>
+  
+  <!-- Dashboard Script -->
   <script src="js/dashboard.js"></script>
 </body>
 </html>
