@@ -179,20 +179,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Load onboarding state
         if (tenantData.onboarding) {
-          onboardingState = tenantData.onboarding.steps || onboardingState;
+          // Cargar solo las 4 propiedades conocidas
+          const steps = tenantData.onboarding.steps || {};
+          onboardingState = {
+            whatsapp_connected: steps.whatsapp_connected || false,
+            menu_configured: steps.menu_configured || false,
+            messages_customized: steps.messages_customized || false,
+            bot_tested: steps.bot_tested || false
+          };
           
-          // PRIORIDAD: Usar el progreso guardado en Firebase si existe
-          if (typeof tenantData.onboarding.progress === 'number') {
-            onboardingPercentage = tenantData.onboarding.progress;
-            console.log(`📊 Progreso de onboarding leído desde Firebase: ${onboardingPercentage}%`);
-          } else {
-            // Si no existe, calcularlo y guardarlo
-            const completed = Object.values(onboardingState).filter(v => v === true).length;
-            const total = Object.keys(onboardingState).length;
-            onboardingPercentage = Math.round((completed / total) * 100);
-            console.log(`📊 Progreso de onboarding calculado (no existía en Firebase): ${onboardingPercentage}%`);
-            
-            // Guardar el progreso calculado en Firebase
+          // Recalcular el progreso basado en las 4 propiedades
+          const knownSteps = ['whatsapp_connected', 'menu_configured', 'messages_customized', 'bot_tested'];
+          const completed = knownSteps.filter(step => onboardingState[step] === true).length;
+          onboardingPercentage = Math.round((completed / 4) * 100);
+          console.log(`📊 Progreso de onboarding calculado: ${onboardingPercentage}% (${completed}/4 pasos)`);
+          
+          // Actualizar el progreso en Firebase si es diferente
+          if (tenantData.onboarding.progress !== onboardingPercentage) {
             await firebase.database().ref(`tenants/${tenantId}/onboarding/progress`).set(onboardingPercentage);
           }
         } else {
@@ -357,8 +360,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Update progress
     function updateProgress() {
-      const completed = Object.values(onboardingState).filter(v => v === true).length;
-      const total = Object.keys(onboardingState).length;
+      // Solo contar las 4 propiedades conocidas del onboarding
+      const knownSteps = ['whatsapp_connected', 'menu_configured', 'messages_customized', 'bot_tested'];
+      const completed = knownSteps.filter(step => onboardingState[step] === true).length;
+      const total = knownSteps.length; // Siempre 4
       const percentage = Math.round((completed / total) * 100);
       onboardingPercentage = percentage; // Guardar globalmente
 
@@ -430,14 +435,23 @@ document.addEventListener('DOMContentLoaded', function() {
     // Save onboarding state
     async function saveOnboardingState() {
       try {
-        // Calcular porcentaje
-        const completed = Object.values(onboardingState).filter(v => v === true).length;
-        const total = Object.keys(onboardingState).length;
+        // Calcular porcentaje usando solo las 4 propiedades conocidas
+        const knownSteps = ['whatsapp_connected', 'menu_configured', 'messages_customized', 'bot_tested'];
+        const completed = knownSteps.filter(step => onboardingState[step] === true).length;
+        const total = knownSteps.length;
         const percentage = Math.round((completed / total) * 100);
         
+        // Guardar solo las 4 propiedades conocidas para evitar propiedades extra
+        const cleanOnboardingState = {
+          whatsapp_connected: onboardingState.whatsapp_connected || false,
+          menu_configured: onboardingState.menu_configured || false,
+          messages_customized: onboardingState.messages_customized || false,
+          bot_tested: onboardingState.bot_tested || false
+        };
+        
         await firebase.database().ref(`tenants/${tenantId}/onboarding`).set({
-          completed: Object.values(onboardingState).every(v => v === true),
-          steps: onboardingState,
+          completed: percentage === 100,
+          steps: cleanOnboardingState,
           progress: percentage, // ← GUARDAR EL PORCENTAJE
           lastUpdated: new Date().toISOString()
         });
