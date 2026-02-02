@@ -225,6 +225,171 @@ function getPlanLimits(plan) {
   return PLAN_LIMITS[plan] || PLAN_LIMITS.trial;
 }
 
+// ====================================
+// SISTEMA DE LÍMITES DE PEDIDOS DIARIOS
+// ====================================
+
+/**
+ * Obtiene la fecha actual en formato YYYY-MM-DD (timezone local Colombia)
+ * @returns {string} Fecha en formato YYYY-MM-DD
+ */
+function getTodayDateString() {
+  const now = new Date();
+  // Ajustar a timezone Colombia (UTC-5)
+  const colombiaOffset = -5 * 60; // minutos
+  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+  const colombiaTime = new Date(utc + (colombiaOffset * 60000));
+  
+  return colombiaTime.toISOString().split('T')[0];
+}
+
+/**
+ * Cuenta los pedidos del día actual para un tenant
+ * @param {string} tenantId - ID del tenant
+ * @returns {Promise<number>} Número de pedidos del día
+ */
+async function countTodayOrders(tenantId) {
+  try {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayStartTimestamp = todayStart.getTime();
+    
+    // Obtener pedidos del tenant desde el inicio del día
+    const pedidosSnapshot = await firebaseService.database
+      .ref(`tenants/${tenantId}/pedidos`)
+      .orderByChild('timestamp')
+      .startAt(todayStartTimestamp)
+      .once('value');
+    
+    const pedidos = pedidosSnapshot.val();
+    const count = pedidos ? Object.keys(pedidos).length : 0;
+    
+    console.log(`📊 [MembershipService] Pedidos hoy para tenant ${tenantId}: ${count}`);
+    
+    return count;
+  } catch (error) {
+    console.error(`❌ [MembershipService] Error contando pedidos del día:`, error);
+    return 0; // En caso de error, permitir (fail-open)
+  }
+}
+
+/**
+ * Verifica si un tenant puede crear un nuevo pedido según su plan
+ * @param {string} tenantId - ID del tenant
+ * @returns {Promise<Object>} Resultado de la verificación
+ */
+async function canCreateOrder(tenantId) {
+  try {
+    // 1. Verificar que la membresía esté activa
+    const membershipStatus = await verifyMembership(tenantId);
+    
+    if (!membershipStatus.isValid) {
+      return {
+        allowed: false,
+        reason: 'membership_invalid',
+        message: membershipStatus.message,
+        membershipStatus
+      };
+    }
+    
+    // 2. Obtener el plan y sus límites
+    const plan = membershipStatus.plan || MEMBERSHIP_PLANS.TRIAL;
+    const limits = getPlanLimits(plan);
+    
+    // 3. Si el límite es Infinity, siempre permitir
+    if (limits.ordersPerDay === Infinity) {
+      return {
+        allowed: true,
+        plan,
+        ordersToday: 0, // No contamos si no hay límite
+        ordersLimit: Infinity,
+        message: 'Sin límite de pedidos'
+      };
+    }
+    
+    // 4. Contar pedidos del día
+    const ordersToday = await countTodayOrders(tenantId);
+    
+    // 5. Verificar si está dentro del límite
+    if (ordersToday >= limits.ordersPerDay) {
+      console.warn(`⚠️ [MembershipService] Tenant ${tenantId} alcanzó límite diario: ${ordersToday}/${limits.ordersPerDay}`);
+      
+      return {
+        allowed: false,
+        reason: 'daily_limit_reached',
+        plan,
+        ordersToday,
+        ordersLimit: limits.ordersPerDay,
+        message: `Has alcanzado el límite de ${limits.ordersPerDay} pedidos diarios de tu plan ${plan}. Actualiza tu plan para recibir más pedidos.`
+      };
+    }
+    
+    // 6. Calcular pedidos restantes
+    const ordersRemaining = limits.ordersPerDay - ordersToday;
+    
+    return {
+      allowed: true,
+      plan,
+      ordersToday,
+      ordersLimit: limits.ordersPerDay,
+      ordersRemaining,
+      message: `Puedes crear ${ordersRemaining} pedidos más hoy`
+    };
+    
+  } catch (error) {
+    console.error(`❌ [MembershipService] Error verificando límite de pedidos:`, error);
+    // Fail-open: permitir en caso de error para no bloquear restaurantes
+    return {
+      allowed: true,
+      reason: 'error',
+      message: 'Error verificando límites - pedido permitido temporalmente'
+    };
+  }
+}
+
+/**
+ * Obtiene el uso actual del plan de un tenant
+ * Útil para mostrar en dashboard
+ * @param {string} tenantId - ID del tenant
+ * @returns {Promise<Object>} Información de uso del plan
+ */
+async function getPlanUsage(tenantId) {
+  try {
+    const membership = await getMembership(tenantId);
+    const plan = membership?.plan || MEMBERSHIP_PLANS.TRIAL;
+    const limits = getPlanLimits(plan);
+    const ordersToday = await countTodayOrders(tenantId);
+    
+    const ordersRemaining = limits.ordersPerDay === Infinity 
+      ? Infinity 
+      : Math.max(0, limits.ordersPerDay - ordersToday);
+    
+    const usagePercent = limits.ordersPerDay === Infinity 
+      ? 0 
+      : Math.round((ordersToday / limits.ordersPerDay) * 100);
+    
+    return {
+      plan,
+      limits,
+      usage: {
+        ordersToday,
+        ordersLimit: limits.ordersPerDay,
+        ordersRemaining,
+        usagePercent,
+        isAtLimit: ordersToday >= limits.ordersPerDay && limits.ordersPerDay !== Infinity
+      },
+      membership: {
+        status: membership?.status || MEMBERSHIP_STATUS.ACTIVE,
+        expiresAt: membership?.trialEndDate || membership?.paidPlanEndDate
+      }
+    };
+    
+  } catch (error) {
+    console.error(`❌ [MembershipService] Error obteniendo uso del plan:`, error);
+    return null;
+  }
+}
+
 module.exports = {
   MEMBERSHIP_PLANS,
   MEMBERSHIP_STATUS,
@@ -233,5 +398,10 @@ module.exports = {
   verifyMembership,
   updateMembershipStatus,
   activatePaidPlan,
-  getPlanLimits
+  getPlanLimits,
+  // Nuevas funciones de límites
+  countTodayOrders,
+  canCreateOrder,
+  getPlanUsage,
+  getTodayDateString
 };

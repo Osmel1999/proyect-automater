@@ -167,6 +167,14 @@ app.use('/api/payments', webhookRateLimiter, paymentRoutes);
 console.log('✅ Rutas de pagos registradas en /api/payments');
 
 // ====================================
+// RUTAS DE API - MEMBRESÍAS (Wompi + Recomendaciones)
+// ====================================
+
+const membershipRoutes = require('./routes/wompi-routes');
+app.use('/api/membership', membershipRoutes);
+console.log('✅ Rutas de membresías registradas en /api/membership');
+
+// ====================================
 // INICIALIZAR BOT LOGIC CON BAILEYS
 // ====================================
 

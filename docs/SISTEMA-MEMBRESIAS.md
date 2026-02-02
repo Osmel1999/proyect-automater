@@ -181,16 +181,99 @@ kds-webapp/
 
 ---
 
-## 8. Próximos Pasos
+## 8. Sistema de Límites de Pedidos Diarios
+
+**Implementado**: Enero 2026
+
+### Arquitectura
+
+El sistema de límites funciona como un **"portero"** al inicio de cada conversación nueva:
+
+```
+Cliente envía mensaje → ¿Conversación nueva? → ¿Límite alcanzado? → Bot responde o silencio
+                              ↓                       ↓
+                        Si es conversación      Si hay cupo: responde
+                        en curso: continúa      Si no hay: silencio total
+                        normalmente
+```
+
+### Flujo
+
+1. **Conversación nueva** (carrito vacío, sin estados pendientes):
+   - Se verifica el límite diario del plan
+   - Si está alcanzado → Bot **no responde** (silencio total)
+   - Si hay cupo → Conversación continúa normalmente
+
+2. **Conversación en curso** (cliente ya tiene carrito o está en proceso):
+   - **NO se verifica el límite**
+   - La conversación puede completarse normalmente
+   - Esto evita bloquear pedidos a mitad del flujo
+
+### Criterio para "Conversación Nueva"
+
+```javascript
+const esConversacionNueva = 
+  sesion.carrito.length === 0 && 
+  !sesion.esperandoConfirmacion && 
+  !sesion.esperandoDireccion && 
+  !sesion.esperandoTelefono && 
+  !sesion.esperandoMetodoPago && 
+  !sesion.pedidoPendiente;
+```
+
+### Límites por Plan
+
+| Plan | Pedidos/día | Comportamiento al límite |
+|------|-------------|--------------------------|
+| **Trial** | Ilimitado | Sin restricción |
+| **Emprendedor** | 25 | Bot silencioso para nuevas conversaciones |
+| **Profesional** | 50 | Bot silencioso para nuevas conversaciones |
+| **Empresarial** | 100 | Bot silencioso para nuevas conversaciones |
+
+### Funciones en membership-service.js
+
+```javascript
+// Contar pedidos del día
+await membershipService.countTodayOrders(tenantId);
+
+// Verificar si puede crear pedido
+await membershipService.canCreateOrder(tenantId);
+// Retorna: { allowed: boolean, reason?: string, ordersToday, ordersLimit, ordersRemaining }
+
+// Obtener uso del plan (para dashboard)
+await membershipService.getPlanUsage(tenantId);
+```
+
+### Logs del Sistema
+
+```
+🚫 [Límite] Tenant abc123 alcanzó límite diario (25/25). Ignorando mensaje de nueva conversación.
+⚠️ [Límite] Tenant abc123 - Quedan 3 pedidos del día
+🔄 [Límite] Conversación en curso para 573001234567 - No verificar límite
+```
+
+### Principio "Fail-Open"
+
+En caso de error al verificar límites:
+- El sistema **permite** el acceso (no bloquea restaurantes)
+- Se registra el error en logs
+- Esto evita pérdida de ventas por problemas técnicos
+
+---
+
+## 9. Próximos Pasos
 
 ### Pendientes de implementar:
 
-1. **Límites por plan** - Controlar la cantidad de pedidos/día según el plan
-2. **Pasarela de pago** - Integrar Wompi para cobros automáticos
-3. **Cambio de plan** - UI para upgrade/downgrade
-4. **Notificaciones por email** - Avisos antes de que expire el trial
-5. **Panel de administración** - Ver todos los tenants y sus membresías
-6. **Webhooks de pago** - Actualizar membresía automáticamente al pagar
+1. ~~**Límites por plan** - Controlar la cantidad de pedidos/día según el plan~~ ✅ Implementado
+2. ~~**Recolección de datos** - Analytics para comportamiento de usuarios~~ ✅ Implementado
+3. **Pasarela de pago (Membresías)** - Integrar Wompi para cobros de planes
+4. **Recomendación de plan** - Basada en datos del trial (usar `analyticsService.getTrialStats()`)
+5. **Cambio de plan** - UI para upgrade/downgrade
+6. **Notificaciones por email** - Avisos antes de que expire el trial
+7. **Panel de administración** - Ver todos los tenants y sus membresías
+8. **Webhooks de pago** - Actualizar membresía automáticamente al pagar
+9. **Dashboard de Analytics** - Visualización de datos recopilados
 
 ### Mejoras de UX:
 
@@ -201,7 +284,7 @@ kds-webapp/
 
 ---
 
-## 9. Testing
+## 10. Testing
 
 ### Simular trial expirado (para pruebas):
 
@@ -222,7 +305,7 @@ firebase.database().ref('tenants/TU_TENANT_ID/membership').update({
 
 ---
 
-## 10. Seguridad
+## 11. Seguridad
 
 ⚠️ **Importante**: La verificación en el frontend es solo para UX. La **verificación real** debe hacerse siempre en el backend (bot-logic.js y membership-service.js) para evitar que usuarios malintencionados bypaseen el control.
 

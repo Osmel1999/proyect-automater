@@ -8,6 +8,7 @@ const menuService = require('./menu-service');
 const firebaseService = require('./firebase-service');
 const tenantService = require('./tenant-service');
 const membershipService = require('./membership-service');
+const analyticsService = require('./analytics-service');
 const { parsearPedido, generarMensajeConfirmacion } = require('./pedido-parser');
 const paymentService = require('./payment-service');
 const paymentConfigService = require('./payments/payment-config-service');
@@ -300,6 +301,48 @@ async function processMessage(tenantId, from, texto) {
   } catch (error) {
     console.error(`⚠️ Error verificando membresía para tenant ${tenantId}:`, error);
     // En caso de error, permitir el acceso (fail-open)
+  }
+  
+  // ====================================
+  // 🚪 VERIFICAR LÍMITE DE PEDIDOS DIARIOS
+  // Solo para conversaciones NUEVAS (sin sesión activa)
+  // Las conversaciones en curso pueden completarse normalmente
+  // ====================================
+  const esConversacionNueva = 
+    sesion.carrito.length === 0 && 
+    !sesion.esperandoConfirmacion && 
+    !sesion.esperandoDireccion && 
+    !sesion.esperandoTelefono && 
+    !sesion.esperandoMetodoPago && 
+    !sesion.pedidoPendiente;
+  
+  if (esConversacionNueva) {
+    try {
+      const orderCheck = await membershipService.canCreateOrder(tenantId);
+      
+      if (!orderCheck.allowed && orderCheck.reason === 'daily_limit_reached') {
+        console.log(`🚫 [Límite] Tenant ${tenantId} alcanzó límite diario (${orderCheck.ordersToday}/${orderCheck.ordersLimit}). Ignorando mensaje de nueva conversación.`);
+        
+        // 📊 Registrar pedido perdido por límite
+        analyticsService.trackOrderLost(tenantId, telefono, orderCheck)
+          .catch(err => console.error('⚠️ Error tracking pedido perdido:', err));
+        
+        // No responder - simplemente ignorar el mensaje
+        // Esto evita que inicien nuevas conversaciones cuando el límite está alcanzado
+        return null;
+      }
+      
+      // Log informativo del estado del límite
+      if (orderCheck.ordersLimit !== Infinity && orderCheck.ordersRemaining <= 5) {
+        console.log(`⚠️ [Límite] Tenant ${tenantId} - Quedan ${orderCheck.ordersRemaining} pedidos del día`);
+      }
+      
+    } catch (error) {
+      console.error(`⚠️ Error verificando límite de pedidos para tenant ${tenantId}:`, error);
+      // Fail-open: permitir en caso de error para no bloquear restaurantes
+    }
+  } else {
+    console.log(`🔄 [Límite] Conversación en curso para ${telefono} - No verificar límite`);
   }
   
   // ====================================
@@ -686,6 +729,9 @@ async function confirmarPedido(sesion) {
   }
   
   try {
+    // Nota: La verificación de límites se hace al inicio de la conversación
+    // Las conversaciones en curso pueden completarse normalmente
+    
     // Obtener información del tenant
     const tenant = await tenantService.getTenantById(sesion.tenantId);
     const restaurantName = tenant.restaurant?.name || 'Restaurante';
@@ -838,6 +884,17 @@ async function confirmarPedido(sesion) {
     
     console.log(`✅ Pedido guardado para tenant ${sesion.tenantId}: #${numeroHex} (${pedidoKey})`);
     
+    // 📊 Registrar pedido completado (efectivo desde confirmarPedido)
+    analyticsService.trackOrderCompleted(sesion.tenantId, sesion.telefono, {
+      id: numeroHex,
+      key: pedidoKey,
+      items: Object.values(itemsAgrupados),
+      total: total,
+      direccion: sesion.direccion,
+      metodoPago: 'efectivo',
+      telefonoContacto: sesion.telefonoContacto,
+    }).catch(err => console.error('⚠️ Error tracking order completed:', err));
+    
     // Incrementar estadísticas del tenant
     await tenantService.incrementOrderStats(sesion.tenantId);
     
@@ -887,6 +944,9 @@ async function confirmarPedidoEfectivo(sesion, pedidoKey = null, numeroHex = nul
   }
   
   try {
+    // Nota: La verificación de límites se hace al inicio de la conversación
+    // Las conversaciones en curso pueden completarse normalmente
+    
     // Obtener información del tenant
     const tenant = await tenantService.getTenantById(sesion.tenantId);
     const restaurantName = tenant.restaurant?.name || 'Restaurante';
@@ -937,6 +997,17 @@ async function confirmarPedidoEfectivo(sesion, pedidoKey = null, numeroHex = nul
       pedidoKey = pedidoSnapshot.key;
       
       console.log(`✅ Pedido guardado (efectivo) para tenant ${sesion.tenantId}: #${numeroHex} (${pedidoKey})`);
+      
+      // 📊 Registrar pedido completado (efectivo)
+      analyticsService.trackOrderCompleted(sesion.tenantId, sesion.telefono, {
+        id: numeroHex,
+        key: pedidoKey,
+        items: Object.values(itemsAgrupados),
+        total: total,
+        direccion: sesion.direccion,
+        metodoPago: sesion.metodoPago || 'efectivo',
+        telefonoContacto: sesion.telefonoContacto,
+      }).catch(err => console.error('⚠️ Error tracking order completed:', err));
     } else {
       // Si ya existe el pedido, solo actualizar el estado
       await pedidoRef.child(pedidoKey).update({ 
