@@ -44,6 +44,23 @@ function formatearPrecio(precio) {
 }
 
 /**
+ * Agrupa items del carrito por producto y suma cantidades
+ * @param {Array} carrito - Array de items del carrito
+ * @returns {Array} Array de items agrupados con cantidades sumadas
+ */
+function agruparCarrito(carrito) {
+  const itemsAgrupados = {};
+  carrito.forEach(item => {
+    const key = item.numero || item.nombre;
+    if (!itemsAgrupados[key]) {
+      itemsAgrupados[key] = { ...item, cantidad: 0 };
+    }
+    itemsAgrupados[key].cantidad += item.cantidad || 1;
+  });
+  return Object.values(itemsAgrupados);
+}
+
+/**
  * Obtiene el tiempo de entrega configurado para el restaurante
  * @param {string} tenantId - ID del restaurante
  * @returns {Promise<string>} Texto del tiempo estimado (ej: "30-40 minutos")
@@ -219,6 +236,433 @@ async function obtenerMenuTenant(tenantId) {
   }
 }
 
+// ====================================
+// MODO PEDIDO RÁPIDO
+// Sistema de formulario para pedidos eficientes
+// ====================================
+
+/**
+ * Genera los mensajes de saludo y formulario para el modo pedido rápido
+ * Retorna un array con dos mensajes: saludo y formulario
+ * @param {string} tenantId - ID del tenant
+ * @param {boolean} incluirSaludo - Si incluir mensaje de bienvenida
+ * @returns {Promise<string[]>} Array con los mensajes a enviar
+ */
+async function generarMensajePedidoRapido(tenantId, incluirSaludo = true) {
+  try {
+    // Obtener nombre del restaurante
+    const tenantSnapshot = await firebaseService.database.ref(`tenants/${tenantId}/profile/businessName`).once('value');
+    const nombreRestaurante = tenantSnapshot.val() || 'nuestro restaurante';
+    
+    // Obtener mensaje de bienvenida personalizado
+    const messagesSnapshot = await firebaseService.database.ref(`tenants/${tenantId}/bot/messages`).once('value');
+    const messages = messagesSnapshot.val();
+    
+    // Mensaje 1: Saludo y explicación
+    let saludoMsg = '';
+    if (incluirSaludo) {
+      saludoMsg = messages?.welcome || `👋 *¡Hola! Bienvenido a ${nombreRestaurante}*`;
+    }
+    
+    const explicacionMsg = `${saludoMsg}
+
+📱 *Mira nuestro menú en el catálogo* 👆
+(Toca el ícono de tienda en este chat)
+
+📝 Para hacer tu pedido de forma rápida:
+1. Copia el formulario del siguiente mensaje
+2. Complétalo con tu pedido
+3. Envíalo de vuelta
+
+¡Es muy fácil! 👇`;
+
+    // Mensaje 2: Formulario para copiar
+    const formularioMsg = `━━━━━━━━━━━━━━━━━━
+📦 *MI PEDIDO:*
+• (escribe aquí los productos)
+
+📍 *DIRECCIÓN:*
+• (tu dirección completa)
+
+📞 *TELÉFONO:*
+• (número de contacto)
+
+💵 *PAGO:* Efectivo / Tarjeta
+━━━━━━━━━━━━━━━━━━`;
+
+    // Retornamos un objeto especial que indica múltiples mensajes
+    return {
+      type: 'multiple',
+      messages: [explicacionMsg, formularioMsg]
+    };
+    
+  } catch (error) {
+    console.error('Error generando mensaje de pedido rápido:', error);
+    // Fallback simple
+    return {
+      type: 'multiple', 
+      messages: [
+        '👋 *¡Hola! Bienvenido*\n\n📱 Mira nuestro menú en el catálogo y copia el formulario del siguiente mensaje para hacer tu pedido.',
+        `━━━━━━━━━━━━━━━━━━
+📦 *MI PEDIDO:*
+• (productos)
+
+📍 *DIRECCIÓN:*
+• (dirección)
+
+📞 *TELÉFONO:*
+• (teléfono)
+
+💵 *PAGO:* Efectivo / Tarjeta
+━━━━━━━━━━━━━━━━━━`
+      ]
+    };
+  }
+}
+
+/**
+ * Detecta si un mensaje tiene el formato de pedido rápido estructurado
+ * @param {string} texto - Mensaje a analizar
+ * @returns {boolean} True si parece formato de pedido rápido
+ */
+function esFormatoPedidoRapido(texto) {
+  const indicadores = [
+    'mi pedido:',
+    'pedido:',
+    'dirección:',
+    'direccion:',
+    'teléfono:',
+    'telefono:',
+    'pago:'
+  ];
+  
+  const textoLower = texto.toLowerCase();
+  const coincidencias = indicadores.filter(ind => textoLower.includes(ind));
+  
+  // Si tiene al menos 2 indicadores, es formato de pedido rápido
+  return coincidencias.length >= 2;
+}
+
+/**
+ * Parsea un mensaje con formato de pedido rápido estructurado
+ * @param {string} texto - Mensaje con formato estructurado
+ * @returns {Object} Objeto con pedido, direccion, telefono, metodoPago
+ */
+function parsearPedidoRapido(texto) {
+  const resultado = {
+    pedidoTexto: null,
+    direccion: null,
+    telefono: null,
+    metodoPago: null,
+    valido: false
+  };
+  
+  const lineas = texto.split('\n');
+  let seccionActual = null;
+  let contenidoSeccion = [];
+  
+  for (const linea of lineas) {
+    const lineaLower = linea.toLowerCase().trim();
+    const lineaOriginal = linea.trim();
+    
+    // Detectar inicio de sección
+    if (lineaLower.includes('pedido:') || lineaLower.includes('mi pedido:')) {
+      // Guardar sección anterior si existe
+      if (seccionActual && contenidoSeccion.length > 0) {
+        guardarSeccion(resultado, seccionActual, contenidoSeccion.join(' '));
+      }
+      seccionActual = 'pedido';
+      contenidoSeccion = [];
+      // Extraer contenido de la misma línea si existe
+      const match = lineaOriginal.match(/(?:mi )?pedido:\s*(.+)/i);
+      if (match && match[1] && !match[1].startsWith('•') && match[1].trim() !== '') {
+        contenidoSeccion.push(match[1].trim());
+      }
+    } else if (lineaLower.includes('dirección:') || lineaLower.includes('direccion:')) {
+      if (seccionActual && contenidoSeccion.length > 0) {
+        guardarSeccion(resultado, seccionActual, contenidoSeccion.join(' '));
+      }
+      seccionActual = 'direccion';
+      contenidoSeccion = [];
+      const match = lineaOriginal.match(/direcci[oó]n:\s*(.+)/i);
+      if (match && match[1] && !match[1].startsWith('•') && match[1].trim() !== '') {
+        contenidoSeccion.push(match[1].trim());
+      }
+    } else if (lineaLower.includes('teléfono:') || lineaLower.includes('telefono:')) {
+      if (seccionActual && contenidoSeccion.length > 0) {
+        guardarSeccion(resultado, seccionActual, contenidoSeccion.join(' '));
+      }
+      seccionActual = 'telefono';
+      contenidoSeccion = [];
+      const match = lineaOriginal.match(/tel[eé]fono:\s*(.+)/i);
+      if (match && match[1] && !match[1].startsWith('•') && match[1].trim() !== '') {
+        contenidoSeccion.push(match[1].trim());
+      }
+    } else if (lineaLower.includes('pago:')) {
+      if (seccionActual && contenidoSeccion.length > 0) {
+        guardarSeccion(resultado, seccionActual, contenidoSeccion.join(' '));
+      }
+      seccionActual = 'pago';
+      contenidoSeccion = [];
+      const match = lineaOriginal.match(/pago:\s*(.+)/i);
+      if (match && match[1]) {
+        contenidoSeccion.push(match[1].trim());
+      }
+    } else if (seccionActual && lineaOriginal && !lineaOriginal.match(/^[━═─]+$/)) {
+      // Agregar contenido a la sección actual (ignorar líneas decorativas)
+      let contenido = lineaOriginal.replace(/^[•\-\*]\s*/, '').trim();
+      // Ignorar placeholders
+      if (contenido && 
+          !contenido.includes('escribe aquí') && 
+          !contenido.includes('tu dirección') &&
+          !contenido.includes('número de contacto') &&
+          !contenido.includes('(productos)') &&
+          !contenido.includes('(dirección)') &&
+          !contenido.includes('(teléfono)') &&
+          contenido !== '') {
+        contenidoSeccion.push(contenido);
+      }
+    }
+  }
+  
+  // Guardar última sección
+  if (seccionActual && contenidoSeccion.length > 0) {
+    guardarSeccion(resultado, seccionActual, contenidoSeccion.join(' '));
+  }
+  
+  // Validar que tenga al menos pedido y dirección
+  resultado.valido = resultado.pedidoTexto && resultado.direccion;
+  
+  // Detectar método de pago
+  if (resultado.metodoPago) {
+    const pagoLower = resultado.metodoPago.toLowerCase();
+    if (pagoLower.includes('tarjeta') || pagoLower.includes('card') || pagoLower.includes('online')) {
+      resultado.metodoPago = 'tarjeta';
+    } else {
+      resultado.metodoPago = 'efectivo';
+    }
+  } else {
+    resultado.metodoPago = 'efectivo'; // Default
+  }
+  
+  console.log('📋 Pedido rápido parseado:', resultado);
+  return resultado;
+}
+
+/**
+ * Helper para guardar contenido en la sección correspondiente
+ */
+function guardarSeccion(resultado, seccion, contenido) {
+  if (!contenido || contenido.trim() === '') return;
+  
+  switch (seccion) {
+    case 'pedido':
+      resultado.pedidoTexto = contenido.trim();
+      break;
+    case 'direccion':
+      resultado.direccion = contenido.trim();
+      break;
+    case 'telefono':
+      resultado.telefono = contenido.trim();
+      break;
+    case 'pago':
+      resultado.metodoPago = contenido.trim();
+      break;
+  }
+}
+
+/**
+ * Procesa un pedido rápido completo (formato estructurado) y lo confirma directamente
+ * @param {string} tenantId - ID del tenant
+ * @param {Object} sesion - Sesión del usuario
+ * @param {string} textoOriginal - Mensaje original con el formato
+ * @returns {Promise<string|Object>} Mensaje de confirmación o error
+ */
+async function procesarPedidoRapidoCompleto(tenantId, sesion, textoOriginal) {
+  // Parsear el formulario
+  const datosPedido = parsearPedidoRapido(textoOriginal);
+  
+  if (!datosPedido.valido) {
+    return `⚠️ *Formulario incompleto*
+
+Parece que faltan datos en tu pedido. Asegúrate de incluir:
+• Los productos que deseas
+• Tu dirección de entrega
+
+📝 Escribe *hola* para recibir el formulario de nuevo.`;
+  }
+  
+  // Parsear los productos del texto del pedido
+  const menuTenant = await obtenerMenuTenantCached(tenantId);
+  const { parsearPedido } = require('./pedido-parser');
+  const resultadoParseo = parsearPedido(datosPedido.pedidoTexto, menuTenant);
+  
+  if (!resultadoParseo.exitoso || resultadoParseo.items.length === 0) {
+    return `⚠️ *No encontré los productos*
+
+No pude identificar los productos en tu pedido:
+"${datosPedido.pedidoTexto}"
+
+💡 Revisa el catálogo y asegúrate de escribir los nombres correctamente.
+📝 Escribe *hola* para recibir el formulario de nuevo.`;
+  }
+  
+  // Guardar los items en el carrito
+  sesion.carrito = [];
+  resultadoParseo.items.forEach(item => {
+    for (let i = 0; i < item.cantidad; i++) {
+      sesion.carrito.push({
+        numero: item.numero,
+        nombre: item.nombre,
+        precio: item.precio,
+        cantidad: 1
+      });
+    }
+  });
+  
+  // Guardar dirección, teléfono y método de pago
+  sesion.direccion = datosPedido.direccion;
+  sesion.telefonoContacto = datosPedido.telefono || sesion.telefono;
+  sesion.metodoPago = datosPedido.metodoPago || 'efectivo';
+  
+  // Calcular totales
+  const itemsAgrupados = agruparCarrito(sesion.carrito);
+  const total = sesion.carrito.reduce((sum, item) => sum + item.precio, 0);
+  
+  // Generar resumen para confirmación
+  let resumenItems = itemsAgrupados.map(item => 
+    `• ${item.cantidad}x ${item.nombre} - $${formatearPrecio(item.precio * item.cantidad)}`
+  ).join('\n');
+  
+  // Si es pago con tarjeta, generar link y crear pedido
+  if (sesion.metodoPago === 'tarjeta') {
+    try {
+      const paymentConfig = await paymentConfigService.getConfig(tenantId);
+      
+      if (!paymentConfig.enabled) {
+        // Pagos no configurados, solo efectivo
+        sesion.metodoPago = 'efectivo';
+        return await finalizarPedidoRapido(tenantId, sesion, itemsAgrupados, total);
+      }
+      
+      // Generar link de pago
+      const paymentResult = await paymentService.createPaymentLink(tenantId, sesion.telefono, total, itemsAgrupados);
+      
+      if (paymentResult.success) {
+        // Guardar datos para cuando confirme el pago
+        sesion.esperandoPago = true;
+        sesion.paymentData = {
+          items: itemsAgrupados,
+          total: total,
+          direccion: sesion.direccion,
+          telefono: sesion.telefonoContacto,
+          paymentUrl: paymentResult.url
+        };
+        
+        return `📦 *Resumen de tu pedido:*
+
+${resumenItems}
+
+💰 *Total: $${formatearPrecio(total)}*
+📍 *Entrega:* ${sesion.direccion}
+📱 *Teléfono:* ${sesion.telefonoContacto}
+
+💳 *Pagar con tarjeta:*
+👉 ${paymentResult.url}
+
+Una vez realices el pago, tu pedido será confirmado automáticamente.`;
+      }
+    } catch (error) {
+      console.error('Error generando link de pago:', error);
+      // Continuar con efectivo
+      sesion.metodoPago = 'efectivo';
+    }
+  }
+  
+  // Pago en efectivo - confirmar directamente
+  return await finalizarPedidoRapido(tenantId, sesion, itemsAgrupados, total);
+}
+
+/**
+ * Finaliza un pedido rápido y lo guarda en Firebase
+ */
+async function finalizarPedidoRapido(tenantId, sesion, itemsAgrupados, total) {
+  try {
+    // Generar ID de pedido corto
+    const orderId = Math.random().toString(16).substring(2, 8).toUpperCase();
+    
+    // Generar token de tracking
+    const trackingToken = generateTrackingToken();
+    
+    // Obtener nombre del restaurante
+    const tenantSnapshot = await firebaseService.database.ref(`tenants/${tenantId}/profile/businessName`).once('value');
+    const nombreRestaurante = tenantSnapshot.val() || 'Restaurante';
+    
+    // Crear objeto del pedido
+    const pedido = {
+      id: orderId,
+      tenantId: tenantId,
+      cliente: sesion.telefono,
+      telefonoContacto: sesion.telefonoContacto || sesion.telefono,
+      items: itemsAgrupados,
+      total: total,
+      direccion: sesion.direccion,
+      metodoPago: sesion.metodoPago,
+      estado: 'pendiente',
+      trackingToken: trackingToken,
+      fechaCreacion: new Date().toISOString(),
+      creadoPor: 'pedido_rapido'
+    };
+    
+    // Guardar en Firebase
+    await firebaseService.database.ref(`tenants/${tenantId}/pedidos/${orderId}`).set(pedido);
+    
+    console.log(`✅ Pedido rápido creado: ${orderId} para tenant ${tenantId}`);
+    
+    // Emitir evento WebSocket para KDS
+    if (global.baileysWebSocket) {
+      global.baileysWebSocket.emitToTenant(tenantId, 'nuevo-pedido', pedido);
+    }
+    
+    // Limpiar sesión
+    sesion.carrito = [];
+    sesion.esperandoConfirmacion = false;
+    sesion.pedidoPendiente = null;
+    sesion.direccion = null;
+    sesion.telefonoContacto = null;
+    sesion.metodoPago = null;
+    
+    // Obtener tiempo de entrega
+    const tiempoEntrega = await obtenerTiempoEntrega(tenantId);
+    
+    // Generar mensaje de confirmación
+    let resumenItems = itemsAgrupados.map(item => 
+      `• ${item.cantidad}x ${item.nombre}`
+    ).join('\n');
+    
+    return `🎉 *¡Pedido confirmado!*
+
+📋 *Número de pedido:* #${orderId}
+
+${resumenItems}
+
+💰 *Total:* $${formatearPrecio(total)}
+📍 *Dirección:* ${pedido.direccion}
+💵 *Pago:* ${sesion.metodoPago === 'tarjeta' ? 'Tarjeta' : 'Efectivo'}
+
+📦 *Sigue tu pedido aquí:*
+👉 https://kdsapp.site/track/${trackingToken}
+
+🕒 *Tiempo estimado:* ${tiempoEntrega}
+
+¡Gracias por tu pedido! 🙌`;
+    
+  } catch (error) {
+    console.error('Error finalizando pedido rápido:', error);
+    return '❌ Hubo un error al procesar tu pedido. Por favor intenta de nuevo o escribe *hola* para reiniciar.';
+  }
+}
+
 /**
  * Procesa un mensaje entrante y retorna la respuesta
  * @param {string} tenantId - ID del tenant (restaurante)
@@ -367,6 +811,21 @@ async function processMessage(tenantId, from, texto) {
     sesion.esperandoConfirmacion = false;
     sesion.pedidoPendiente = null;
     
+    // Verificar si el modo pedido rápido está activado
+    try {
+      const quickOrderSnapshot = await firebaseService.database.ref(`tenants/${tenantId}/bot/quickOrderMode`).once('value');
+      const quickOrderMode = quickOrderSnapshot.val() === true;
+      
+      if (quickOrderMode) {
+        // Modo Pedido Rápido: enviar saludo + formulario separado
+        return await generarMensajePedidoRapido(tenantId, texto === 'hola');
+      }
+    } catch (error) {
+      console.error('Error verificando modo pedido rápido:', error);
+      // Continuar con modo normal si hay error
+    }
+    
+    // Modo Conversacional (original)
     // Obtener mensaje de bienvenida personalizado
     try {
       const messagesSnapshot = await firebaseService.database.ref(`tenants/${tenantId}/bot/messages`).once('value');
@@ -425,6 +884,15 @@ async function processMessage(tenantId, from, texto) {
   // ✨ NUEVO: Si está esperando método de pago, procesar respuesta
   if (sesion.esperandoMetodoPago) {
     return await procesarMetodoPago(sesion, texto, textoOriginal);
+  }
+  
+  // ====================================
+  // ⚡ DETECCIÓN DE FORMATO PEDIDO RÁPIDO
+  // Si el mensaje tiene el formato estructurado, procesarlo directamente
+  // ====================================
+  if (esFormatoPedidoRapido(textoOriginal)) {
+    console.log('⚡ [Pedido Rápido] Formato estructurado detectado');
+    return await procesarPedidoRapidoCompleto(tenantId, sesion, textoOriginal);
   }
   
   // Confirmar pedido - Reconocer lenguaje natural para confirmación
@@ -522,82 +990,31 @@ async function processMessage(tenantId, from, texto) {
  */
 async function mostrarMenu(tenantId) {
   try {
-    // Obtener menú del tenant desde Firebase
-    const menuSnapshot = await firebaseService.database.ref(`tenants/${tenantId}/menu/items`).once('value');
-    const menuItems = menuSnapshot.val();
+    // Obtener nombre del restaurante
+    const tenantSnapshot = await firebaseService.database.ref(`tenants/${tenantId}/profile/businessName`).once('value');
+    const nombreRestaurante = tenantSnapshot.val() || 'nuestro restaurante';
     
-    console.log(`📋 Generando menú para tenant ${tenantId}`);
-    console.log(`   Items en Firebase:`, menuItems ? Object.keys(menuItems).length : 0);
+    console.log(`📋 Mostrando instrucciones de catalogo para tenant ${tenantId}`);
     
-    // Si no hay menú en Firebase, usar el menú hardcodeado como fallback
-    let items = [];
-    
-    if (menuItems && Object.keys(menuItems).length > 0) {
-      // Convertir objeto de Firebase a array
-      items = Object.values(menuItems).filter(item => item.available !== false);
-      console.log(`   ✅ Usando menú de Firebase: ${items.length} items`);
-    } else {
-      // Fallback: usar menú hardcodeado
-      items = menu.obtenerTodos();
-      console.log(`   ⚠️  Usando menú hardcodeado (fallback): ${items.length} items`);
-    }
-    
-    if (items.length === 0) {
-      return '❌ *Lo sentimos*\n\nEl menú aún no está disponible. Por favor contacta al restaurante.';
-    }
-    
-    let mensaje = '🍽️ *MENÚ DISPONIBLE*\n\n';
-    
-    // Agrupar por categoría
-    const categorias = {};
-    items.forEach((item, index) => {
-      const categoria = item.category || item.categoria || 'Otros';
-      if (!categorias[categoria]) {
-        categorias[categoria] = [];
-      }
-      // Agregar número si no tiene
-      if (!item.numero && !item.number) {
-        item.numero = String(index + 1);
-      }
-      categorias[categoria].push(item);
-    });
-    
-    // Mostrar por categorías
-    for (const [categoria, itemsCategoria] of Object.entries(categorias)) {
-      mensaje += `*${categoria.toUpperCase()}*\n`;
-      itemsCategoria.forEach(item => {
-        const numero = item.numero || item.number || '?';
-        const nombre = item.name || item.nombre || 'Sin nombre';
-        const precio = item.price || item.precio || 0;
-        const descripcion = item.description || item.descripcion || '';
-        
-        mensaje += `${numero}. ${nombre} - $${formatearPrecio(precio)}\n`;
-        if (descripcion) {
-          mensaje += `   _${descripcion}_\n`;
-        }
-      });
-      mensaje += '\n';
-    }
-    
-    mensaje += '━'.repeat(30) + '\n\n';
-    mensaje += '📝 *¿Cómo ordenar?*\n\n';
-    mensaje += '*Opción 1 - Lenguaje Natural:*\n';
+    // En lugar de mostrar el menu como texto, sugerimos ver el catalogo con imagenes
+    let mensaje = `📱 *VER MENU DE ${nombreRestaurante.toUpperCase()}*\n\n`;
+    mensaje += '👆 *Toca el icono de tienda* en la parte superior de este chat para ver nuestro catalogo con fotos.\n\n';
+    mensaje += '━'.repeat(25) + '\n\n';
+    mensaje += '📝 *¿Como ordenar?*\n\n';
+    mensaje += '*Opcion 1 - Lenguaje Natural:*\n';
     mensaje += 'Escribe tu pedido directamente:\n';
     mensaje += '_"Quiero 2 hamburguesas y 1 coca cola"_\n\n';
-    mensaje += '*Opción 2 - Por Número:*\n';
-    mensaje += 'Envía el número del item que deseas.\n';
-    mensaje += 'Ejemplo: *1* para agregar item #1\n\n';
-    mensaje += '━'.repeat(30) + '\n\n';
-    mensaje += '💡 Luego escribe *ver* para revisar\n';
+    mensaje += '*Opcion 2 - Por Nombre:*\n';
+    mensaje += 'Envia el nombre del producto.\n';
+    mensaje += 'Ejemplo: *pizza* para agregar una pizza\n\n';
+    mensaje += '━'.repeat(25) + '\n\n';
+    mensaje += '💡 Escribe *ver* para revisar tu carrito\n';
     mensaje += 'y *confirmar* para finalizar tu pedido.';
-    
-    console.log(`✅ Menú generado. Longitud: ${mensaje.length} caracteres`);
     
     return mensaje;
   } catch (error) {
-    console.error(`❌ Error generando menú para tenant ${tenantId}:`, error);
-    // Fallback en caso de error
-    return '❌ *Error temporal*\n\nNo pudimos cargar el menú. Por favor intenta de nuevo en un momento.';
+    console.error(`❌ Error en mostrarMenu para tenant ${tenantId}:`, error);
+    return '📱 *VER MENU*\n\n👆 Toca el icono de tienda en este chat para ver el catalogo con fotos.\n\nEscribe tu pedido cuando estes listo.';
   }
 }
 
@@ -685,17 +1102,9 @@ function verCarrito(sesion) {
   }
   
   // Agrupar items repetidos
-  const itemsAgrupados = {};
-  sesion.carrito.forEach(item => {
-    const key = item.numero;
-    if (!itemsAgrupados[key]) {
-      itemsAgrupados[key] = { ...item, cantidad: 0 };
-    }
-    itemsAgrupados[key].cantidad += 1;
-  });
+  const items = agruparCarrito(sesion.carrito);
   
   // Construir lista natural de items
-  const items = Object.values(itemsAgrupados);
   let listaItems = '';
   const numItems = items.length;
   
