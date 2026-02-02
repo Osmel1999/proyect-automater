@@ -15,6 +15,7 @@ const router = express.Router();
 const wompiService = require('../wompi-service');
 const membershipService = require('../membership-service');
 const planRecommendationService = require('../plan-recommendation-service');
+const notificationService = require('../notification-service');
 
 /**
  * GET /api/membership/plans
@@ -165,6 +166,10 @@ router.post('/webhook', async (req, res) => {
           status: 'APPROVED',
           createdAt: admin.database.ServerValue.TIMESTAMP
         });
+      
+      // 🔔 Notificar al dueño por WhatsApp
+      notificationService.notifyPaymentSuccess(paymentData.tenantId, paymentData.plan)
+        .catch(err => console.error('⚠️ Error enviando notificación de pago:', err));
       
       console.log(`✅ [Webhook] Plan ${paymentData.plan} activado para tenant ${paymentData.tenantId}`);
     });

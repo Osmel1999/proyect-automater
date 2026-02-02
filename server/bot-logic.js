@@ -9,6 +9,7 @@ const firebaseService = require('./firebase-service');
 const tenantService = require('./tenant-service');
 const membershipService = require('./membership-service');
 const analyticsService = require('./analytics-service');
+const notificationService = require('./notification-service');
 const { parsearPedido, generarMensajeConfirmacion } = require('./pedido-parser');
 const paymentService = require('./payment-service');
 const paymentConfigService = require('./payments/payment-config-service');
@@ -327,6 +328,11 @@ async function processMessage(tenantId, from, texto) {
         analyticsService.trackOrderLost(tenantId, telefono, orderCheck)
           .catch(err => console.error('⚠️ Error tracking pedido perdido:', err));
         
+        // 🔔 Notificar al dueño sobre pedido perdido
+        const lostToday = (orderCheck.ordersToday - orderCheck.ordersLimit) + 1;
+        notificationService.notifyLostOrders(tenantId, lostToday)
+          .catch(err => console.error('⚠️ Error enviando notificación de pedido perdido:', err));
+        
         // No responder - simplemente ignorar el mensaje
         // Esto evita que inicien nuevas conversaciones cuando el límite está alcanzado
         return null;
@@ -335,6 +341,12 @@ async function processMessage(tenantId, from, texto) {
       // Log informativo del estado del límite
       if (orderCheck.ordersLimit !== Infinity && orderCheck.ordersRemaining <= 5) {
         console.log(`⚠️ [Límite] Tenant ${tenantId} - Quedan ${orderCheck.ordersRemaining} pedidos del día`);
+        
+        // 🔔 Notificar cuando se acercan al 90% del límite
+        if (orderCheck.ordersRemaining <= Math.ceil(orderCheck.ordersLimit * 0.1)) {
+          notificationService.notifyApproachingLimit(tenantId, orderCheck.ordersToday, orderCheck.ordersLimit)
+            .catch(err => console.error('⚠️ Error enviando notificación de límite:', err));
+        }
       }
       
     } catch (error) {

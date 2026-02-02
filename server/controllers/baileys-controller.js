@@ -34,6 +34,15 @@ sessionManager.on('connected', (tenantId, phoneNumber) => {
   });
   // Limpiar QR al conectar
   qrStore.delete(tenantId);
+  
+  // 🔔 Enviar notificaciones pendientes
+  try {
+    const notificationService = require('../notification-service');
+    notificationService.sendPendingNotifications(tenantId)
+      .catch(err => logger.error(`[${tenantId}] Error enviando notificaciones pendientes:`, err));
+  } catch (err) {
+    // Ignorar si el servicio aún no está inicializado
+  }
 });
 
 // Escuchar eventos de desconexión

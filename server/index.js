@@ -182,9 +182,19 @@ console.log('✅ Rutas de membresías registradas en /api/membership');
 const baileys = require('./baileys');
 const botLogic = require('./bot-logic');
 const firebaseService = require('./firebase-service');
+const notificationService = require('./notification-service');
 const eventHandlers = baileys.getEventHandlers();
 
 console.log('🤖 Inicializando Bot Logic con Baileys...');
+
+// Inicializar servicio de notificaciones con baileys
+notificationService.init(baileys);
+console.log('🔔 Servicio de notificaciones inicializado');
+
+// Ejecutar verificación de membresías al iniciar (con delay para dar tiempo a conexiones)
+setTimeout(() => {
+  notificationService.checkAllMemberships();
+}, 30000); // 30 segundos después del inicio
 
 // Registrar callback global para procesar mensajes entrantes
 eventHandlers.onMessage('*', async (message) => {
