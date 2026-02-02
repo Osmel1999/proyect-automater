@@ -626,7 +626,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const base64 = await fileToBase64(file);
         
         // Enviar al backend para procesar con Gemini
-        const response = await fetch(`${API_URL}/api/menu/extract-from-image`, {
+        const response = await fetch('https://api.kdsapp.site/api/menu/extract-from-image', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
