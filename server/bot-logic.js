@@ -321,16 +321,16 @@ async function processMessage(tenantId, from, texto) {
     try {
       const orderCheck = await membershipService.canCreateOrder(tenantId);
       
-      if (!orderCheck.allowed && orderCheck.reason === 'daily_limit_reached') {
-        console.log(`🚫 [Límite] Tenant ${tenantId} alcanzó límite diario (${orderCheck.ordersToday}/${orderCheck.ordersLimit}). Ignorando mensaje de nueva conversación.`);
+      // Verificar límite mensual (antes era diario)
+      if (!orderCheck.allowed && orderCheck.reason === 'monthly_limit_reached') {
+        console.log(`🚫 [Límite] Tenant ${tenantId} alcanzó límite mensual (${orderCheck.ordersThisPeriod}/${orderCheck.ordersLimit}). Ignorando mensaje de nueva conversación.`);
         
         // 📊 Registrar pedido perdido por límite
         analyticsService.trackOrderLost(tenantId, telefono, orderCheck)
           .catch(err => console.error('⚠️ Error tracking pedido perdido:', err));
         
-        // 🔔 Notificar al dueño sobre pedido perdido
-        const lostToday = (orderCheck.ordersToday - orderCheck.ordersLimit) + 1;
-        notificationService.notifyLostOrders(tenantId, lostToday)
+        // 🔔 Notificar al dueño sobre pedido perdido (con enlace de pago)
+        notificationService.notifyLostOrderWithPaymentLink(tenantId, orderCheck)
           .catch(err => console.error('⚠️ Error enviando notificación de pedido perdido:', err));
         
         // No responder - simplemente ignorar el mensaje
@@ -339,12 +339,12 @@ async function processMessage(tenantId, from, texto) {
       }
       
       // Log informativo del estado del límite
-      if (orderCheck.ordersLimit !== Infinity && orderCheck.ordersRemaining <= 5) {
-        console.log(`⚠️ [Límite] Tenant ${tenantId} - Quedan ${orderCheck.ordersRemaining} pedidos del día`);
+      if (orderCheck.ordersLimit !== Infinity && orderCheck.ordersRemaining <= 100) {
+        console.log(`⚠️ [Límite] Tenant ${tenantId} - Quedan ${orderCheck.ordersRemaining} pedidos este mes (${orderCheck.usagePercent}% usado)`);
         
-        // 🔔 Notificar cuando se acercan al 90% del límite
-        if (orderCheck.ordersRemaining <= Math.ceil(orderCheck.ordersLimit * 0.1)) {
-          notificationService.notifyApproachingLimit(tenantId, orderCheck.ordersToday, orderCheck.ordersLimit)
+        // 🔔 Notificar cuando se acercan al 90% del límite mensual
+        if (orderCheck.usagePercent >= 90) {
+          notificationService.notifyApproachingMonthlyLimit(tenantId, orderCheck)
             .catch(err => console.error('⚠️ Error enviando notificación de límite:', err));
         }
       }

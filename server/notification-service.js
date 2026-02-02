@@ -1,21 +1,26 @@
 /**
  * Servicio de Notificaciones por WhatsApp
  * Envía notificaciones del sistema al dueño del restaurante usando su propio bot
+ * 
+ * ACTUALIZADO: Ahora usa límites MENSUALES e incluye enlaces de pago directos
  */
 
 const firebaseService = require('./firebase-service');
 const membershipService = require('./membership-service');
 
-// Referencia a baileys (se inyecta para evitar dependencias circulares)
+// Referencia a baileys y wompi (se inyecta para evitar dependencias circulares)
 let baileysService = null;
+let wompiService = null;
 
 /**
- * Inicializa el servicio con la referencia a baileys
+ * Inicializa el servicio con las referencias necesarias
  * @param {object} baileys - Servicio de baileys
+ * @param {object} wompi - Servicio de wompi (opcional)
  */
-function init(baileys) {
+function init(baileys, wompi = null) {
     baileysService = baileys;
-    console.log('✅ [NotificationService] Inicializado');
+    wompiService = wompi;
+    console.log('✅ [NotificationService] Inicializado' + (wompi ? ' con Wompi' : ''));
 }
 
 /**
@@ -162,6 +167,100 @@ async function logNotification(tenantId, message, type, status) {
 }
 
 // ============================================
+// FUNCIONES AUXILIARES PARA ENLACES DE PAGO
+// ============================================
+
+/**
+ * Obtiene el email del tenant para generar enlaces de pago
+ * @param {string} tenantId - ID del tenant
+ * @returns {Promise<string|null>} Email del tenant
+ */
+async function getTenantEmail(tenantId) {
+    try {
+        const snapshot = await firebaseService.database
+            .ref(`tenants/${tenantId}/config/email`)
+            .once('value');
+        
+        let email = snapshot.val();
+        
+        // Si no hay email en config, buscar en user
+        if (!email) {
+            const userSnapshot = await firebaseService.database
+                .ref(`tenants/${tenantId}/user/email`)
+                .once('value');
+            email = userSnapshot.val();
+        }
+        
+        return email;
+    } catch (error) {
+        console.error(`❌ [NotificationService] Error obteniendo email:`, error);
+        return null;
+    }
+}
+
+/**
+ * Genera un enlace de pago de Wompi para un plan específico
+ * @param {string} tenantId - ID del tenant
+ * @param {string} planName - Nombre del plan (emprendedor, profesional, empresarial)
+ * @returns {Promise<string|null>} URL del enlace de pago o null
+ */
+async function getPaymentLinkForPlan(tenantId, planName) {
+    try {
+        if (!wompiService) {
+            console.log(`⚠️ [NotificationService] Wompi no configurado, usando página de planes`);
+            return null;
+        }
+
+        const email = await getTenantEmail(tenantId);
+        if (!email) {
+            console.log(`⚠️ [NotificationService] No se encontró email para ${tenantId}`);
+            return null;
+        }
+
+        // Generar enlace de pago
+        const result = await wompiService.createPaymentLink(tenantId, planName, email);
+        
+        if (result.success && result.paymentUrl) {
+            console.log(`✅ [NotificationService] Enlace de pago generado para ${tenantId}: ${planName}`);
+            return result.paymentUrl;
+        }
+
+        return null;
+    } catch (error) {
+        console.error(`❌ [NotificationService] Error generando enlace de pago:`, error);
+        return null;
+    }
+}
+
+/**
+ * Obtiene el timestamp de la última notificación de un tipo
+ */
+async function getLastNotificationTime(tenantId, type) {
+    try {
+        const snapshot = await firebaseService.database
+            .ref(`tenants/${tenantId}/lastNotifications/${type}_timestamp`)
+            .once('value');
+        
+        return snapshot.val();
+    } catch (error) {
+        return null;
+    }
+}
+
+/**
+ * Guarda el timestamp de la última notificación de un tipo
+ */
+async function setLastNotificationTime(tenantId, type) {
+    try {
+        await firebaseService.database
+            .ref(`tenants/${tenantId}/lastNotifications/${type}_timestamp`)
+            .set(Date.now());
+    } catch (error) {
+        console.error(`❌ [NotificationService] Error guardando timestamp:`, error);
+    }
+}
+
+// ============================================
 // NOTIFICACIONES ESPECÍFICAS DE MEMBRESÍA
 // ============================================
 
@@ -195,31 +294,115 @@ async function notifyPlanExpiring(tenantId, daysRemaining) {
  * @param {string} tenantId - ID del tenant
  * @param {number} currentOrders - Pedidos actuales
  * @param {number} limit - Límite del plan
+ * @deprecated Usar notifyApproachingMonthlyLimit en su lugar
  */
 async function notifyApproachingLimit(tenantId, currentOrders, limit) {
-    const remaining = limit - currentOrders;
-    const percentage = Math.round((currentOrders / limit) * 100);
-
-    if (percentage >= 90 && remaining > 0) {
-        const message = `⚡ Llevas *${currentOrders}/${limit}* pedidos hoy (${percentage}%).\n\nTe quedan solo *${remaining} pedidos* en tu plan actual.\n\nActualiza tu plan para no perder ventas:\n👉 https://kdsapp.site/plans.html`;
-        return sendNotification(tenantId, message, 'warning');
-    }
+    // Redirigir a la versión mensual
+    const orderCheck = { ordersThisPeriod: currentOrders, ordersLimit: limit, usagePercent: Math.round((currentOrders / limit) * 100) };
+    return notifyApproachingMonthlyLimit(tenantId, orderCheck);
 }
 
 /**
- * Notifica que se perdieron pedidos por límite
+ * Notifica que se acercan al límite MENSUAL de pedidos
  * @param {string} tenantId - ID del tenant
- * @param {number} lostCount - Cantidad de pedidos perdidos hoy
+ * @param {Object} orderCheck - Datos del chequeo de límite
+ */
+async function notifyApproachingMonthlyLimit(tenantId, orderCheck) {
+    const { ordersThisPeriod, ordersLimit, usagePercent, daysRemaining } = orderCheck;
+    const remaining = ordersLimit - ordersThisPeriod;
+
+    // Solo notificar si está al 90% o más
+    if (usagePercent < 90) return;
+
+    // Verificar si ya notificamos hoy (anti-spam)
+    const alreadyNotified = await wasNotifiedToday(tenantId, 'approaching_limit');
+    if (alreadyNotified) return;
+
+    // Obtener el siguiente plan recomendado
+    const nextPlan = membershipService.getNextPlan(orderCheck.plan);
+    const planInfo = membershipService.PLAN_INFO[nextPlan];
+
+    let message = `⚡ *Estás por alcanzar tu límite mensual*\n\n`;
+    message += `Has usado *${ordersThisPeriod}/${ordersLimit}* pedidos (${usagePercent}%).\n`;
+    message += `Te quedan *${remaining} pedidos* para los próximos ${daysRemaining || 'pocos'} días.\n\n`;
+    
+    if (nextPlan && planInfo) {
+        message += `💡 *Recomendación:* Actualiza al plan *${planInfo.name}* (${planInfo.ordersPerMonth} pedidos/mes) para no perder ventas.\n\n`;
+        
+        // Generar enlace de pago si es posible
+        const paymentLink = await getPaymentLinkForPlan(tenantId, nextPlan);
+        if (paymentLink) {
+            message += `👉 Paga aquí: ${paymentLink}\n`;
+            message += `_(El nuevo plan dura 30 días desde el pago)_`;
+        } else {
+            message += `👉 Ver planes: https://kdsapp.site/plans.html`;
+        }
+    } else {
+        message += `👉 Contacta soporte para opciones personalizadas.`;
+    }
+
+    await markNotifiedToday(tenantId, 'approaching_limit');
+    return sendNotification(tenantId, message, 'warning');
+}
+
+/**
+ * Notifica que se perdieron pedidos por límite (versión legacy)
+ * @deprecated Usar notifyLostOrderWithPaymentLink en su lugar
  */
 async function notifyLostOrders(tenantId, lostCount) {
-    if (lostCount === 1) {
-        const message = `😔 Perdiste *1 pedido* hoy porque alcanzaste el límite de tu plan.\n\nCada pedido perdido es dinero que no entra a tu negocio.\n\nActualiza ahora:\n👉 https://kdsapp.site/plans.html`;
-        return sendNotification(tenantId, message, 'urgent');
-    } else if (lostCount > 1 && lostCount % 3 === 0) {
-        // Notificar cada 3 pedidos perdidos para no spamear
-        const message = `😔 Has perdido *${lostCount} pedidos* hoy por límite de plan.\n\n¿Cuánto dinero representa eso?\n\nActualiza tu plan:\n👉 https://kdsapp.site/plans.html`;
-        return sendNotification(tenantId, message, 'urgent');
+    // Redirigir a la versión con enlace de pago
+    const orderCheck = await membershipService.canCreateOrder(tenantId);
+    return notifyLostOrderWithPaymentLink(tenantId, orderCheck);
+}
+
+/**
+ * Notifica que se perdió un pedido por límite mensual - CON ENLACE DE PAGO
+ * @param {string} tenantId - ID del tenant
+ * @param {Object} orderCheck - Datos del chequeo de límite
+ */
+async function notifyLostOrderWithPaymentLink(tenantId, orderCheck) {
+    const { plan, ordersThisPeriod, ordersLimit, daysRemaining } = orderCheck;
+
+    // Verificar si ya notificamos recientemente (máximo 1 vez cada 3 horas)
+    const lastNotification = await getLastNotificationTime(tenantId, 'lost_order');
+    const threeHoursAgo = Date.now() - (3 * 60 * 60 * 1000);
+    if (lastNotification && lastNotification > threeHoursAgo) {
+        console.log(`📵 [NotificationService] Ya se notificó pedido perdido recientemente para ${tenantId}`);
+        return;
     }
+
+    // Obtener el siguiente plan recomendado
+    const nextPlan = membershipService.getNextPlan(plan);
+    const planInfo = membershipService.PLAN_INFO[nextPlan];
+
+    let message = `😔 *Perdiste un pedido*\n\n`;
+    message += `Alcanzaste el límite de *${ordersLimit} pedidos* de tu plan *${plan}*.\n`;
+    
+    if (daysRemaining > 0) {
+        message += `Tu plan actual se renueva en ${daysRemaining} días.\n\n`;
+    }
+
+    message += `💰 *Cada pedido perdido es dinero que no entra a tu negocio.*\n\n`;
+
+    if (nextPlan && planInfo) {
+        message += `✅ *Solución:* Actualiza al plan *${planInfo.name}*\n`;
+        message += `• ${planInfo.ordersPerMonth} pedidos por mes\n`;
+        message += `• Solo $${planInfo.price.toLocaleString('es-CO')} COP\n`;
+        message += `• Activo por 30 días desde el pago\n\n`;
+        
+        // Generar enlace de pago directo
+        const paymentLink = await getPaymentLinkForPlan(tenantId, nextPlan);
+        if (paymentLink) {
+            message += `👉 *Paga ahora:* ${paymentLink}`;
+        } else {
+            message += `� Ver planes: https://kdsapp.site/plans.html`;
+        }
+    } else {
+        message += `Has alcanzado el plan máximo. Contacta soporte para opciones empresariales personalizadas.`;
+    }
+
+    await setLastNotificationTime(tenantId, 'lost_order');
+    return sendNotification(tenantId, message, 'urgent');
 }
 
 /**
@@ -237,13 +420,26 @@ async function notifyPlanExpired(tenantId) {
  * @param {string} plan - Nombre del plan
  */
 async function notifyPaymentSuccess(tenantId, plan) {
-    const planNames = {
-        emprendedor: 'Emprendedor',
-        profesional: 'Profesional',
-        empresarial: 'Empresarial'
-    };
+    const planInfo = membershipService.PLAN_INFO[plan] || {};
+    const planName = planInfo.name || plan;
+    const ordersPerMonth = planInfo.ordersPerMonth || 'ilimitados';
     
-    const message = `✅ *¡Pago confirmado!*\n\nTu plan *${planNames[plan] || plan}* está activo por 30 días.\n\n¡Gracias por confiar en KDS! 🙌`;
+    // Calcular fecha de vencimiento (30 días desde hoy)
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + 30);
+    const endDateStr = endDate.toLocaleDateString('es-CO', { 
+        day: 'numeric', 
+        month: 'long', 
+        year: 'numeric' 
+    });
+
+    let message = `✅ *¡Pago confirmado!*\n\n`;
+    message += `Tu plan *${planName}* está ahora activo.\n\n`;
+    message += `📦 *${ordersPerMonth} pedidos* disponibles\n`;
+    message += `📅 Válido hasta: *${endDateStr}*\n`;
+    message += `_(30 días a partir de hoy)_\n\n`;
+    message += `¡Gracias por confiar en KDS! 🙌`;
+    
     return sendNotification(tenantId, message, 'info');
 }
 
@@ -336,13 +532,24 @@ module.exports = {
     sendNotification,
     sendPendingNotifications,
     
-    // Notificaciones específicas
-    notifyPlanExpiring,
+    // Notificaciones de límites (NUEVO: mensuales con enlace de pago)
+    notifyApproachingMonthlyLimit,
+    notifyLostOrderWithPaymentLink,
+    
+    // Notificaciones legacy (redirigen a las nuevas)
     notifyApproachingLimit,
     notifyLostOrders,
+    
+    // Notificaciones de membresía
+    notifyPlanExpiring,
     notifyPlanExpired,
     notifyPaymentSuccess,
     
     // Verificación de membresías
-    checkAllMemberships
+    checkAllMemberships,
+    
+    // Helpers
+    getTenantEmail,
+    getPaymentLinkForPlan
 };
+

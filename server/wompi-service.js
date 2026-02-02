@@ -30,28 +30,28 @@ const PLAN_PRICES = {
   empresarial: 15000000   // $150,000 COP
 };
 
-// Información de planes para mostrar
+// Información de planes para mostrar (LÍMITES MENSUALES)
 const PLAN_INFO = {
   emprendedor: {
     name: 'Plan Emprendedor',
     price: 90000,
     priceFormatted: '$90.000 COP/mes',
-    ordersPerDay: 25,
-    features: ['25 pedidos/día', 'Soporte por email', 'Dashboard básico']
+    ordersPerMonth: 750,
+    features: ['750 pedidos/mes', 'Soporte por email', 'Dashboard básico']
   },
   profesional: {
     name: 'Plan Profesional',
     price: 120000,
     priceFormatted: '$120.000 COP/mes',
-    ordersPerDay: 50,
-    features: ['50 pedidos/día', 'Soporte WhatsApp', 'Analytics básico']
+    ordersPerMonth: 1500,
+    features: ['1,500 pedidos/mes', 'Soporte WhatsApp', 'Analytics básico']
   },
   empresarial: {
     name: 'Plan Empresarial',
     price: 150000,
     priceFormatted: '$150.000 COP/mes',
-    ordersPerDay: 100,
-    features: ['100 pedidos/día', 'Soporte prioritario', 'Analytics avanzado']
+    ordersPerMonth: 3000,
+    features: ['3,000 pedidos/mes', 'Soporte prioritario', 'Analytics avanzado']
   }
 };
 

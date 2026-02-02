@@ -20,12 +20,20 @@ const MEMBERSHIP_STATUS = {
   CANCELLED: 'cancelled'
 };
 
-// Límites por plan (para uso futuro)
+// Límites por plan (MENSUALES - desde la fecha de pago, no del mes calendario)
+// Los 30 días comienzan cuando el usuario paga
 const PLAN_LIMITS = {
-  trial: { ordersPerDay: Infinity, support: 'email' }, // Sin límites durante trial
-  emprendedor: { ordersPerDay: 25, support: 'email' },
-  profesional: { ordersPerDay: 50, support: 'whatsapp' },
-  empresarial: { ordersPerDay: 100, support: 'whatsapp' }
+  trial: { ordersPerMonth: Infinity, ordersPerDay: Infinity, support: 'email' }, // Sin límites durante trial
+  emprendedor: { ordersPerMonth: 750, ordersPerDay: 25, support: 'email' },      // ~25/día promedio
+  profesional: { ordersPerMonth: 1500, ordersPerDay: 50, support: 'whatsapp' },  // ~50/día promedio
+  empresarial: { ordersPerMonth: 3000, ordersPerDay: 100, support: 'whatsapp' }  // ~100/día promedio
+};
+
+// Información de planes para notificaciones
+const PLAN_INFO = {
+  emprendedor: { name: 'Emprendedor', price: 90000, ordersPerMonth: 750 },
+  profesional: { name: 'Profesional', price: 120000, ordersPerMonth: 1500 },
+  empresarial: { name: 'Empresarial', price: 150000, ordersPerMonth: 3000 }
 };
 
 /**
@@ -226,7 +234,8 @@ function getPlanLimits(plan) {
 }
 
 // ====================================
-// SISTEMA DE LÍMITES DE PEDIDOS DIARIOS
+// SISTEMA DE LÍMITES DE PEDIDOS MENSUALES
+// Los 30 días comienzan desde que el usuario paga/activa el plan
 // ====================================
 
 /**
@@ -244,7 +253,40 @@ function getTodayDateString() {
 }
 
 /**
- * Cuenta los pedidos del día actual para un tenant
+ * Obtiene el timestamp de inicio del período de facturación actual
+ * Para planes de pago: desde paidPlanStartDate
+ * Para trials: desde trialStartDate o creación del tenant
+ * @param {string} tenantId - ID del tenant
+ * @returns {Promise<number>} Timestamp del inicio del período
+ */
+async function getBillingPeriodStart(tenantId) {
+  try {
+    const membership = await getMembership(tenantId);
+    if (!membership) return 0;
+    
+    // Plan de pago: usar fecha de inicio del plan
+    if (membership.paidPlanStartDate) {
+      return new Date(membership.paidPlanStartDate).getTime();
+    }
+    
+    // Trial: usar fecha de inicio del trial
+    if (membership.trialStartDate) {
+      return new Date(membership.trialStartDate).getTime();
+    }
+    
+    // Fallback: inicio del mes actual
+    const now = new Date();
+    now.setDate(1);
+    now.setHours(0, 0, 0, 0);
+    return now.getTime();
+  } catch (error) {
+    console.error(`❌ [MembershipService] Error obteniendo inicio de período:`, error);
+    return 0;
+  }
+}
+
+/**
+ * Cuenta los pedidos del día actual para un tenant (para estadísticas)
  * @param {string} tenantId - ID del tenant
  * @returns {Promise<number>} Número de pedidos del día
  */
@@ -254,7 +296,6 @@ async function countTodayOrders(tenantId) {
     todayStart.setHours(0, 0, 0, 0);
     const todayStartTimestamp = todayStart.getTime();
     
-    // Obtener pedidos del tenant desde el inicio del día
     const pedidosSnapshot = await firebaseService.database
       .ref(`tenants/${tenantId}/pedidos`)
       .orderByChild('timestamp')
@@ -262,19 +303,49 @@ async function countTodayOrders(tenantId) {
       .once('value');
     
     const pedidos = pedidosSnapshot.val();
+    return pedidos ? Object.keys(pedidos).length : 0;
+  } catch (error) {
+    console.error(`❌ [MembershipService] Error contando pedidos del día:`, error);
+    return 0;
+  }
+}
+
+/**
+ * Cuenta los pedidos del período de facturación actual (30 días desde pago)
+ * @param {string} tenantId - ID del tenant
+ * @returns {Promise<number>} Número de pedidos en el período
+ */
+async function countPeriodOrders(tenantId) {
+  try {
+    const periodStart = await getBillingPeriodStart(tenantId);
+    
+    if (periodStart === 0) {
+      console.warn(`⚠️ [MembershipService] No se encontró inicio de período para ${tenantId}`);
+      return 0;
+    }
+    
+    // Obtener pedidos desde el inicio del período
+    const pedidosSnapshot = await firebaseService.database
+      .ref(`tenants/${tenantId}/pedidos`)
+      .orderByChild('timestamp')
+      .startAt(periodStart)
+      .once('value');
+    
+    const pedidos = pedidosSnapshot.val();
     const count = pedidos ? Object.keys(pedidos).length : 0;
     
-    console.log(`📊 [MembershipService] Pedidos hoy para tenant ${tenantId}: ${count}`);
+    console.log(`📊 [MembershipService] Pedidos en período para tenant ${tenantId}: ${count}`);
     
     return count;
   } catch (error) {
-    console.error(`❌ [MembershipService] Error contando pedidos del día:`, error);
+    console.error(`❌ [MembershipService] Error contando pedidos del período:`, error);
     return 0; // En caso de error, permitir (fail-open)
   }
 }
 
 /**
  * Verifica si un tenant puede crear un nuevo pedido según su plan
+ * AHORA USA LÍMITES MENSUALES (desde fecha de pago)
  * @param {string} tenantId - ID del tenant
  * @returns {Promise<Object>} Resultado de la verificación
  */
@@ -296,44 +367,48 @@ async function canCreateOrder(tenantId) {
     const plan = membershipStatus.plan || MEMBERSHIP_PLANS.TRIAL;
     const limits = getPlanLimits(plan);
     
-    // 3. Si el límite es Infinity, siempre permitir
-    if (limits.ordersPerDay === Infinity) {
+    // 3. Si el límite mensual es Infinity, siempre permitir (trial)
+    if (limits.ordersPerMonth === Infinity) {
       return {
         allowed: true,
         plan,
-        ordersToday: 0, // No contamos si no hay límite
+        ordersThisPeriod: 0,
         ordersLimit: Infinity,
-        message: 'Sin límite de pedidos'
+        message: 'Sin límite de pedidos (período de prueba)'
       };
     }
     
-    // 4. Contar pedidos del día
-    const ordersToday = await countTodayOrders(tenantId);
+    // 4. Contar pedidos del período actual (30 días desde pago)
+    const ordersThisPeriod = await countPeriodOrders(tenantId);
     
-    // 5. Verificar si está dentro del límite
-    if (ordersToday >= limits.ordersPerDay) {
-      console.warn(`⚠️ [MembershipService] Tenant ${tenantId} alcanzó límite diario: ${ordersToday}/${limits.ordersPerDay}`);
+    // 5. Verificar si está dentro del límite mensual
+    if (ordersThisPeriod >= limits.ordersPerMonth) {
+      console.warn(`⚠️ [MembershipService] Tenant ${tenantId} alcanzó límite mensual: ${ordersThisPeriod}/${limits.ordersPerMonth}`);
       
       return {
         allowed: false,
-        reason: 'daily_limit_reached',
+        reason: 'monthly_limit_reached',
         plan,
-        ordersToday,
-        ordersLimit: limits.ordersPerDay,
-        message: `Has alcanzado el límite de ${limits.ordersPerDay} pedidos diarios de tu plan ${plan}. Actualiza tu plan para recibir más pedidos.`
+        ordersThisPeriod,
+        ordersLimit: limits.ordersPerMonth,
+        daysRemaining: membershipStatus.daysRemaining || 0,
+        message: `Has alcanzado el límite de ${limits.ordersPerMonth} pedidos de tu plan ${plan} este mes. Actualiza tu plan para seguir recibiendo pedidos.`
       };
     }
     
     // 6. Calcular pedidos restantes
-    const ordersRemaining = limits.ordersPerDay - ordersToday;
+    const ordersRemaining = limits.ordersPerMonth - ordersThisPeriod;
+    const usagePercent = Math.round((ordersThisPeriod / limits.ordersPerMonth) * 100);
     
     return {
       allowed: true,
       plan,
-      ordersToday,
-      ordersLimit: limits.ordersPerDay,
+      ordersThisPeriod,
+      ordersLimit: limits.ordersPerMonth,
       ordersRemaining,
-      message: `Puedes crear ${ordersRemaining} pedidos más hoy`
+      usagePercent,
+      daysRemaining: membershipStatus.daysRemaining || 0,
+      message: `Te quedan ${ordersRemaining} pedidos este mes`
     };
     
   } catch (error) {
@@ -349,7 +424,8 @@ async function canCreateOrder(tenantId) {
 
 /**
  * Obtiene el uso actual del plan de un tenant
- * Útil para mostrar en dashboard
+ * AHORA MUESTRA LÍMITES MENSUALES
+ * Útil para mostrar en dashboard y notificaciones
  * @param {string} tenantId - ID del tenant
  * @returns {Promise<Object>} Información de uso del plan
  */
@@ -358,29 +434,46 @@ async function getPlanUsage(tenantId) {
     const membership = await getMembership(tenantId);
     const plan = membership?.plan || MEMBERSHIP_PLANS.TRIAL;
     const limits = getPlanLimits(plan);
+    
+    // Pedidos de hoy (informativo)
     const ordersToday = await countTodayOrders(tenantId);
     
-    const ordersRemaining = limits.ordersPerDay === Infinity 
-      ? Infinity 
-      : Math.max(0, limits.ordersPerDay - ordersToday);
+    // Pedidos del período (para el límite real)
+    const ordersThisPeriod = await countPeriodOrders(tenantId);
     
-    const usagePercent = limits.ordersPerDay === Infinity 
+    const ordersRemaining = limits.ordersPerMonth === Infinity 
+      ? Infinity 
+      : Math.max(0, limits.ordersPerMonth - ordersThisPeriod);
+    
+    const usagePercent = limits.ordersPerMonth === Infinity 
       ? 0 
-      : Math.round((ordersToday / limits.ordersPerDay) * 100);
+      : Math.round((ordersThisPeriod / limits.ordersPerMonth) * 100);
+    
+    // Calcular días restantes del período
+    let daysRemaining = 0;
+    const expiresAt = membership?.trialEndDate || membership?.paidPlanEndDate;
+    if (expiresAt) {
+      const endDate = new Date(expiresAt);
+      const now = new Date();
+      daysRemaining = Math.max(0, Math.ceil((endDate - now) / (1000 * 60 * 60 * 24)));
+    }
     
     return {
       plan,
       limits,
       usage: {
-        ordersToday,
-        ordersLimit: limits.ordersPerDay,
+        ordersToday,           // Pedidos de hoy (informativo)
+        ordersThisPeriod,      // Pedidos del período actual
+        ordersLimit: limits.ordersPerMonth,
         ordersRemaining,
         usagePercent,
-        isAtLimit: ordersToday >= limits.ordersPerDay && limits.ordersPerDay !== Infinity
+        isAtLimit: ordersThisPeriod >= limits.ordersPerMonth && limits.ordersPerMonth !== Infinity,
+        daysRemaining
       },
       membership: {
         status: membership?.status || MEMBERSHIP_STATUS.ACTIVE,
-        expiresAt: membership?.trialEndDate || membership?.paidPlanEndDate
+        expiresAt,
+        startDate: membership?.paidPlanStartDate || membership?.trialStartDate
       }
     };
     
@@ -390,17 +483,37 @@ async function getPlanUsage(tenantId) {
   }
 }
 
+/**
+ * Sugiere el siguiente plan basado en el uso actual
+ * @param {string} currentPlan - Plan actual
+ * @returns {string|null} Nombre del siguiente plan o null si ya tiene el máximo
+ */
+function getNextPlan(currentPlan) {
+  const planOrder = ['trial', 'emprendedor', 'profesional', 'empresarial'];
+  const currentIndex = planOrder.indexOf(currentPlan);
+  
+  if (currentIndex === -1 || currentIndex >= planOrder.length - 1) {
+    return null; // Ya tiene el plan máximo
+  }
+  
+  return planOrder[currentIndex + 1];
+}
+
 module.exports = {
   MEMBERSHIP_PLANS,
   MEMBERSHIP_STATUS,
   PLAN_LIMITS,
+  PLAN_INFO,
   getMembership,
   verifyMembership,
   updateMembershipStatus,
   activatePaidPlan,
   getPlanLimits,
-  // Nuevas funciones de límites
+  getNextPlan,
+  // Funciones de límites
   countTodayOrders,
+  countPeriodOrders,
+  getBillingPeriodStart,
   canCreateOrder,
   getPlanUsage,
   getTodayDateString

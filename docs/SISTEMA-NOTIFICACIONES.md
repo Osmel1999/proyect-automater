@@ -2,6 +2,22 @@
 
 Sistema de notificaciones automáticas que usa el propio bot del restaurante para enviar alertas al dueño.
 
+## 🆕 Actualización: Límites Mensuales
+
+A partir de esta versión, los límites de pedidos son **MENSUALES** en lugar de diarios:
+
+| Plan | Límite Anterior | Límite Nuevo |
+|------|-----------------|--------------|
+| Emprendedor | 25/día | **750/mes** |
+| Profesional | 50/día | **1,500/mes** |
+| Empresarial | 100/día | **3,000/mes** |
+
+### Ventajas del cambio:
+- ✅ **Más justo**: El usuario paga por 30 días desde el pago, no días del calendario
+- ✅ **Flexible**: Si un día tiene 50 pedidos y otro 0, no hay problema
+- ✅ **Fácil de entender**: "Te quedan 450 de 750 pedidos este mes"
+- ✅ **Sin desperdicio**: Los pedidos no usados no se pierden al día siguiente
+
 ## Arquitectura
 
 El sistema usa el **mismo número de WhatsApp conectado del tenant** para enviar mensajes al dueño. Esto tiene varias ventajas:
@@ -28,31 +44,41 @@ No pierdas tus pedidos automáticos. Elige un plan:
 ```
 
 ### 2. Acercándose al Límite (`notifyApproachingLimit`)
-Se envía cuando el tenant usa más del 90% de su límite diario.
+Se envía cuando el tenant usa más del 90% de su límite mensual.
 
 ```
-🔔 *Notificación KDS*
+⚠️ *Notificación KDS*
 
-⚡ Llevas *23/25* pedidos hoy (92%).
+⚡ *Estás por alcanzar tu límite mensual*
 
-Te quedan solo *2 pedidos* en tu plan actual.
+Has usado *680/750* pedidos (91%).
+Te quedan *70 pedidos* para los próximos 12 días.
 
-Actualiza tu plan para no perder ventas:
-👉 https://kdsapp.site/plans.html
+💡 *Recomendación:* Actualiza al plan *Profesional* (1,500 pedidos/mes).
+
+👉 Paga aquí: https://checkout.wompi.co/l/abc123
+_(El nuevo plan dura 30 días desde el pago)_
 ```
 
-### 3. Pedidos Perdidos (`notifyLostOrders`)
-Se envía cuando se pierden pedidos por límite de plan (cada 3 pedidos perdidos para no spamear).
+### 3. Pedido Perdido con Enlace de Pago (`notifyLostOrderWithPaymentLink`)
+Se envía cuando se pierde un pedido por límite mensual (máximo 1 vez cada 3 horas).
 
 ```
 🚨 *Notificación KDS*
 
-😔 Has perdido *3 pedidos* hoy por límite de plan.
+😔 *Perdiste un pedido*
 
-¿Cuánto dinero representa eso?
+Alcanzaste el límite de *750 pedidos* de tu plan *emprendedor*.
+Tu plan actual se renueva en 12 días.
 
-Actualiza tu plan:
-👉 https://kdsapp.site/plans.html
+💰 *Cada pedido perdido es dinero que no entra a tu negocio.*
+
+✅ *Solución:* Actualiza al plan *Profesional*
+• 1,500 pedidos por mes
+• Solo $120.000 COP
+• Activo por 30 días desde el pago
+
+👉 *Paga ahora:* https://checkout.wompi.co/l/xyz456
 ```
 
 ### 4. Plan Expirado (`notifyPlanExpired`)
@@ -70,14 +96,18 @@ Para volver a recibir pedidos automáticos, elige un plan:
 ```
 
 ### 5. Pago Exitoso (`notifyPaymentSuccess`)
-Se envía cuando se confirma un pago.
+Se envía cuando se confirma un pago. Ahora incluye la fecha exacta de vencimiento.
 
 ```
 🔔 *Notificación KDS*
 
 ✅ *¡Pago confirmado!*
 
-Tu plan *Profesional* está activo por 30 días.
+Tu plan *Profesional* está ahora activo.
+
+📦 *1,500 pedidos* disponibles
+📅 Válido hasta: *5 de marzo de 2026*
+_(30 días a partir de hoy)_
 
 ¡Gracias por confiar en KDS! 🙌
 ```

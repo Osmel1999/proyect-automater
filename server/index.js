@@ -183,13 +183,14 @@ const baileys = require('./baileys');
 const botLogic = require('./bot-logic');
 const firebaseService = require('./firebase-service');
 const notificationService = require('./notification-service');
+const wompiService = require('./wompi-service');
 const eventHandlers = baileys.getEventHandlers();
 
 console.log('🤖 Inicializando Bot Logic con Baileys...');
 
-// Inicializar servicio de notificaciones con baileys
-notificationService.init(baileys);
-console.log('🔔 Servicio de notificaciones inicializado');
+// Inicializar servicio de notificaciones con baileys y wompi
+notificationService.init(baileys, wompiService);
+console.log('🔔 Servicio de notificaciones inicializado (con Wompi para enlaces de pago)');
 
 // Ejecutar verificación de membresías al iniciar (con delay para dar tiempo a conexiones)
 setTimeout(() => {
