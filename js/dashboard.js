@@ -587,12 +587,108 @@ document.addEventListener('DOMContentLoaded', function() {
         await saveOnboardingState();
 
         closeMenuModal();
-        alert('✅ Menú guardado exitosamente');
+        alert('Menu guardado exitosamente');
       } catch (error) {
         console.error('Error saving menu:', error);
-        alert('Error al guardar el menú');
+        alert('Error al guardar el menu');
       }
     }
+
+    // ====================================
+    // EXTRACCION DE MENU CON IA (Gemini Vision)
+    // ====================================
+    
+    async function handleMenuImageUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const statusEl = document.getElementById('menu-upload-status');
+      
+      // Validar tipo de archivo
+      if (!file.type.startsWith('image/')) {
+        statusEl.innerHTML = '<span style="color: #ff6b6b;">Por favor selecciona una imagen valida</span>';
+        return;
+      }
+
+      // Validar tamano (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        statusEl.innerHTML = '<span style="color: #ff6b6b;">La imagen es muy grande. Maximo 10MB</span>';
+        return;
+      }
+
+      statusEl.innerHTML = '<span>Procesando imagen con IA...</span>';
+
+      try {
+        // Convertir a base64
+        const base64 = await fileToBase64(file);
+        
+        // Enviar al backend para procesar con Gemini
+        const response = await fetch(`${API_URL}/api/menu/extract-from-image`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            image: base64,
+            mimeType: file.type,
+            tenantId: tenantId
+          })
+        });
+
+        const result = await response.json();
+
+        if (!result.success) {
+          throw new Error(result.error || 'Error al procesar la imagen');
+        }
+
+        if (result.items.length === 0) {
+          statusEl.innerHTML = '<span style="color: #ff6b6b;">No se encontraron productos en la imagen. Intenta con otra foto.</span>';
+          return;
+        }
+
+        // Mostrar preview de items extraidos
+        statusEl.innerHTML = `<span style="color: #4ade80;">Se encontraron ${result.items.length} productos</span>`;
+        
+        // Agregar items al menu actual
+        const confirmAdd = confirm(`Se encontraron ${result.items.length} productos.\n\nDeseas agregarlos al menu?\n\n(Podras editarlos despues)`);
+        
+        if (confirmAdd) {
+          // Agregar al array de menuItems
+          result.items.forEach(item => {
+            menuItems.push({
+              id: item.id || `item_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+              name: item.name,
+              price: item.price,
+              description: item.description || '',
+              category: item.category || 'General',
+              available: true
+            });
+          });
+          
+          renderMenuItems();
+          statusEl.innerHTML = `<span style="color: #4ade80;">Se agregaron ${result.items.length} productos. Revisa y guarda el menu.</span>`;
+        }
+
+      } catch (error) {
+        console.error('Error procesando imagen:', error);
+        statusEl.innerHTML = `<span style="color: #ff6b6b;">Error: ${error.message}</span>`;
+      }
+
+      // Limpiar input para permitir subir la misma imagen de nuevo
+      event.target.value = '';
+    }
+
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+      });
+    }
+
+    // Exponer funcion globalmente
+    window.handleMenuImageUpload = handleMenuImageUpload;
 
     // Messages Config
     function openMessagesConfig() {
@@ -1134,6 +1230,81 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ====================================
+    // MODO PEDIDO RÁPIDO
+    // ====================================
+    let quickOrderMode = false;
+
+    /**
+     * Carga el estado del modo pedido rápido desde Firebase
+     */
+    async function loadQuickOrderState() {
+      try {
+        const snapshot = await firebase.database().ref(`tenants/${tenantId}/bot/quickOrderMode`).once('value');
+        quickOrderMode = snapshot.val() === true;
+        updateQuickOrderUI();
+      } catch (error) {
+        console.error('Error cargando estado de pedido rápido:', error);
+      }
+    }
+
+    /**
+     * Actualiza la UI del toggle de pedido rápido
+     */
+    function updateQuickOrderUI() {
+      const toggle = document.getElementById('quick-order-toggle');
+      const label = document.getElementById('quick-order-toggle-label');
+      const statusLabel = document.getElementById('quick-order-status-label');
+      const statusText = document.getElementById('quick-order-status-text');
+      const infoBox = document.getElementById('quick-order-info');
+
+      if (!toggle || !label) return;
+
+      if (quickOrderMode) {
+        toggle.classList.add('active');
+        label.textContent = 'ON';
+        statusLabel.textContent = 'Activado - Clientes reciben formulario';
+        statusText.classList.add('active');
+        statusText.classList.remove('inactive');
+        if (infoBox) infoBox.style.display = 'block';
+      } else {
+        toggle.classList.remove('active');
+        label.textContent = 'OFF';
+        statusLabel.textContent = 'Desactivado - Modo conversacional';
+        statusText.classList.remove('active');
+        statusText.classList.add('inactive');
+        if (infoBox) infoBox.style.display = 'none';
+      }
+    }
+
+    /**
+     * Toggle del modo pedido rápido
+     */
+    async function toggleQuickOrder() {
+      const newState = !quickOrderMode;
+      quickOrderMode = newState;
+
+      try {
+        await firebase.database().ref(`tenants/${tenantId}/bot/quickOrderMode`).set(quickOrderMode);
+        console.log(`✅ Modo pedido rápido: ${quickOrderMode ? 'ACTIVADO' : 'DESACTIVADO'}`);
+        updateQuickOrderUI();
+
+        if (quickOrderMode) {
+          alert('⚡ Modo Pedido Rápido activado\n\nAhora el bot enviará un formulario para que los clientes hagan su pedido de forma rápida y estructurada.');
+        } else {
+          alert('💬 Modo Conversacional activado\n\nEl bot usará el flujo tradicional de conversación para tomar los pedidos.');
+        }
+      } catch (error) {
+        console.error('Error actualizando modo pedido rápido:', error);
+        alert('Error al actualizar. Por favor intenta de nuevo.');
+        quickOrderMode = !quickOrderMode;
+        updateQuickOrderUI();
+      }
+    }
+
+    // Cargar estado al iniciar
+    loadQuickOrderState();
+
+    // ====================================
     // EXPOSE FUNCTIONS TO GLOBAL SCOPE
     // Para que funcionen con onclick inline
     // ====================================
@@ -1162,5 +1333,6 @@ document.addEventListener('DOMContentLoaded', function() {
     window.openDeliveryTimeConfig = openDeliveryTimeConfig;
     window.closeDeliveryTimeModal = closeDeliveryTimeModal;
     window.saveDeliveryTime = saveDeliveryTime;
+    window.toggleQuickOrder = toggleQuickOrder;
 
 }); // End of DOMContentLoaded

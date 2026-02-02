@@ -196,6 +196,14 @@ app.use('/api/tracking', trackingRoutes);
 console.log('📦 Rutas de tracking registradas en /api/tracking');
 
 // ====================================
+// RUTAS DE API - EXTRACCION DE MENU CON IA
+// ====================================
+
+const menuExtractRoutes = require('./routes/menu-extract-routes');
+app.use('/api/menu', menuExtractRoutes);
+console.log('🤖 Rutas de extraccion de menu registradas en /api/menu');
+
+// ====================================
 // INICIALIZAR BOT LOGIC CON BAILEYS
 // ====================================
 
@@ -247,6 +255,47 @@ eventHandlers.onMessage('*', async (message) => {
     if (response) {
       console.log(`🔍 [DEBUG] Enviando respuesta a ${from}`);
       
+      // Manejar respuestas múltiples (Modo Pedido Rápido y otros casos)
+      if (response.type === 'multiple' && Array.isArray(response.messages)) {
+        console.log(`📨 [DEBUG] Enviando ${response.messages.length} mensajes múltiples`);
+        
+        let allSuccess = true;
+        for (let i = 0; i < response.messages.length; i++) {
+          const msg = response.messages[i];
+          const messageToSend = typeof msg === 'string' ? { text: msg } : msg;
+          
+          console.log(`🔍 [DEBUG] Enviando mensaje ${i + 1}/${response.messages.length}:`, 
+            messageToSend.text?.substring(0, 50) + '...');
+          
+          // Enviar con humanización (solo marcar como leído en el último mensaje)
+          const result = await baileys.sendMessage(
+            tenantId, 
+            from, 
+            messageToSend, 
+            { 
+              humanize: true,
+              messageKey: i === response.messages.length - 1 ? messageKey : null
+            }
+          );
+          
+          if (!result || !result.success) {
+            console.error(`❌ Error enviando mensaje ${i + 1}:`, result);
+            allSuccess = false;
+          } else {
+            console.log(`✅ Mensaje ${i + 1} enviado correctamente`);
+          }
+          
+          // Pequeña pausa entre mensajes para evitar rate limiting
+          if (i < response.messages.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        }
+        
+        console.log(`📨 Envío múltiple completado: ${allSuccess ? 'Todos exitosos' : 'Algunos fallaron'}`);
+        return allSuccess ? true : null;
+      }
+      
+      // Respuesta simple (un solo mensaje)
       // Convertir el texto de respuesta a un objeto de mensaje
       const messageToSend = typeof response === 'string' ? { text: response } : response;
       
