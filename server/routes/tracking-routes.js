@@ -132,10 +132,17 @@ function getEstadoInfo(estado) {
       step: 1
     },
     'preparando': {
-      label: 'En Preparación',
-      description: 'El chef está preparando tu pedido',
-      icon: '👨‍🍳',
+      label: 'En Preparacion',
+      description: 'El chef esta preparando tu pedido',
+      icon: 'chef',
       color: '#3b82f6',
+      step: 2
+    },
+    'cocinando': {
+      label: 'En Preparacion',
+      description: 'Tu pedido esta siendo preparado en cocina',
+      icon: 'fire',
+      color: '#f97316',
       step: 2
     },
     'listo': {
@@ -179,42 +186,43 @@ function buildTimeline(pedido) {
     {
       estado: 'pendiente',
       label: 'Pedido Recibido',
-      icon: '📋',
+      icon: 'clipboard',
       completed: true,
       timestamp: pedido.timestamp
     },
     {
       estado: 'preparando',
-      label: 'En Preparación',
-      icon: '👨‍🍳',
-      completed: ['preparando', 'listo', 'enviado', 'entregado'].includes(pedido.estado),
-      timestamp: pedido.preparandoAt || null
+      label: 'En Preparacion',
+      icon: 'fire',
+      completed: ['preparando', 'cocinando', 'listo', 'enviado', 'entregado'].includes(pedido.estado),
+      timestamp: pedido.inicioCocinado || pedido.preparandoAt || null
     },
     {
       estado: 'listo',
-      label: 'Listo para Envío',
-      icon: '✅',
+      label: 'Listo para Envio',
+      icon: 'check',
       completed: ['listo', 'enviado', 'entregado'].includes(pedido.estado),
-      timestamp: pedido.listoAt || null
+      timestamp: pedido.horaListo || pedido.listoAt || null
     },
     {
       estado: 'enviado',
       label: 'En Camino',
-      icon: '🛵',
+      icon: 'truck',
       completed: ['enviado', 'entregado'].includes(pedido.estado),
       timestamp: pedido.enviadoAt || null
     },
     {
       estado: 'entregado',
       label: 'Entregado',
-      icon: '🎉',
+      icon: 'star',
       completed: pedido.estado === 'entregado',
       timestamp: pedido.entregadoAt || null
     }
   ];
   
-  // Marcar el estado actual
-  const currentIndex = timeline.findIndex(t => t.estado === pedido.estado);
+  // Marcar el estado actual (cocinando equivale a preparando)
+  const estadoActual = pedido.estado === 'cocinando' ? 'preparando' : pedido.estado;
+  const currentIndex = timeline.findIndex(t => t.estado === estadoActual);
   if (currentIndex >= 0) {
     timeline[currentIndex].current = true;
   }
