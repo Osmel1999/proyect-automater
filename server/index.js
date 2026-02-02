@@ -67,6 +67,11 @@ app.use((req, res, next) => {
   next();
 });
 
+// Ruta para tracking de pedidos - sirve track.html con cualquier token
+app.get('/track/:token', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'track.html'));
+});
+
 // Middleware para rutas limpias (sin .html)
 // Permite acceder a /whatsapp-connect en lugar de /whatsapp-connect.html
 app.use((req, res, next) => {
