@@ -601,6 +601,69 @@ document.addEventListener('DOMContentLoaded', function() {
     // EXTRACCION DE MENU CON IA (Gemini Vision)
     // ====================================
     
+    /**
+     * Comprime y redimensiona una imagen para enviarla a la IA
+     * @param {File} file - Archivo de imagen original
+     * @param {number} maxWidth - Ancho maximo (default 1500px)
+     * @param {number} quality - Calidad de compresion 0-1 (default 0.8)
+     * @returns {Promise<{base64: string, mimeType: string, originalSize: number, compressedSize: number}>}
+     */
+    async function compressImage(file, maxWidth = 1500, quality = 0.8) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        
+        reader.onload = (e) => {
+          const img = new Image();
+          img.src = e.target.result;
+          
+          img.onload = () => {
+            // Calcular nuevas dimensiones manteniendo proporcion
+            let width = img.width;
+            let height = img.height;
+            
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+            
+            // Crear canvas para redimensionar
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            // Convertir a WebP (o JPEG si WebP no es soportado)
+            let mimeType = 'image/webp';
+            let base64 = canvas.toDataURL(mimeType, quality);
+            
+            // Fallback a JPEG si WebP no funciona
+            if (base64.length < 50) {
+              mimeType = 'image/jpeg';
+              base64 = canvas.toDataURL(mimeType, quality);
+            }
+            
+            const compressedSize = Math.round((base64.length * 3) / 4); // Tamano aproximado en bytes
+            
+            resolve({
+              base64,
+              mimeType,
+              originalSize: file.size,
+              compressedSize,
+              width,
+              height
+            });
+          };
+          
+          img.onerror = () => reject(new Error('Error al cargar la imagen'));
+        };
+        
+        reader.onerror = () => reject(new Error('Error al leer el archivo'));
+      });
+    }
+
     async function handleMenuImageUpload(event) {
       const file = event.target.files[0];
       if (!file) return;
@@ -609,21 +672,27 @@ document.addEventListener('DOMContentLoaded', function() {
       
       // Validar tipo de archivo
       if (!file.type.startsWith('image/')) {
-        statusEl.innerHTML = '<span style="color: #ff6b6b;">Por favor selecciona una imagen valida</span>';
+        statusEl.innerHTML = '<span style="color: #ff6b6b;">Por favor selecciona una imagen valida (JPG, PNG, WebP)</span>';
         return;
       }
 
-      // Validar tamano (max 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        statusEl.innerHTML = '<span style="color: #ff6b6b;">La imagen es muy grande. Maximo 10MB</span>';
+      // Validar tamano original (max 20MB antes de comprimir)
+      if (file.size > 20 * 1024 * 1024) {
+        statusEl.innerHTML = '<span style="color: #ff6b6b;">La imagen es muy grande. Maximo 20MB</span>';
         return;
       }
 
-      statusEl.innerHTML = '<span>Procesando imagen con IA...</span>';
+      const originalSizeMB = (file.size / 1024 / 1024).toFixed(2);
+      statusEl.innerHTML = `<span>Optimizando imagen (${originalSizeMB}MB)...</span>`;
 
       try {
-        // Convertir a base64
-        const base64 = await fileToBase64(file);
+        // Comprimir imagen
+        const compressed = await compressImage(file, 1500, 0.8);
+        const compressedSizeKB = Math.round(compressed.compressedSize / 1024);
+        
+        console.log(`Imagen comprimida: ${originalSizeMB}MB -> ${compressedSizeKB}KB (${compressed.width}x${compressed.height})`);
+        
+        statusEl.innerHTML = `<span>Analizando menu con IA (${compressedSizeKB}KB)...</span>`;
         
         // Enviar al backend para procesar con Gemini
         const response = await fetch('https://api.kdsapp.site/api/menu/extract-from-image', {
@@ -632,11 +701,23 @@ document.addEventListener('DOMContentLoaded', function() {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            image: base64,
-            mimeType: file.type,
+            image: compressed.base64,
+            mimeType: compressed.mimeType,
             tenantId: tenantId
           })
         });
+
+        // Manejar errores de red/servidor
+        if (!response.ok) {
+          if (response.status === 413) {
+            throw new Error('La imagen sigue siendo muy grande. Intenta con una foto mas pequena.');
+          } else if (response.status === 500) {
+            throw new Error('Error del servidor. Intenta de nuevo en unos segundos.');
+          } else if (response.status === 0 || !response.status) {
+            throw new Error('Error de conexion. Verifica tu internet e intenta de nuevo.');
+          }
+          throw new Error(`Error del servidor (${response.status})`);
+        }
 
         const result = await response.json();
 
@@ -645,7 +726,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if (result.items.length === 0) {
-          statusEl.innerHTML = '<span style="color: #ff6b6b;">No se encontraron productos en la imagen. Intenta con otra foto.</span>';
+          statusEl.innerHTML = '<span style="color: #ff6b6b;">No se encontraron productos. Asegurate de que la foto muestre claramente el menu con nombres y precios.</span>';
           return;
         }
 
@@ -674,20 +755,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
       } catch (error) {
         console.error('Error procesando imagen:', error);
-        statusEl.innerHTML = `<span style="color: #ff6b6b;">Error: ${error.message}</span>`;
+        
+        // Mensajes de error amigables
+        let errorMsg = error.message;
+        if (error.message === 'Failed to fetch' || error.message === 'Load failed') {
+          errorMsg = 'Error de conexion. Verifica tu internet e intenta de nuevo.';
+        }
+        
+        statusEl.innerHTML = `<span style="color: #ff6b6b;">${errorMsg}</span>`;
       }
 
       // Limpiar input para permitir subir la misma imagen de nuevo
       event.target.value = '';
-    }
-
-    function fileToBase64(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = error => reject(error);
-      });
     }
 
     // Exponer funcion globalmente
