@@ -16,17 +16,44 @@ document.addEventListener('DOMContentLoaded', function() {
     // Check authentication and PIN
     const currentUserId = localStorage.getItem('currentUserId');
     const currentTenantId = localStorage.getItem('currentTenantId');
+    const userEmail = localStorage.getItem('userEmail');
     
     console.log('🔑 Authentication check:', {
         userId: currentUserId,
-        tenantId: currentTenantId
+        tenantId: currentTenantId,
+        email: userEmail
     });
+    
+    // Verificar si es admin y mostrar botón
+    checkIfAdmin(userEmail);
     
     // Verify user is authenticated
     if (!currentUserId || !currentTenantId) {
       alert('Debes iniciar sesión primero');
       window.location.href = '/auth.html';
       return;
+    }
+
+    /**
+     * Verifica si el usuario es admin y muestra el botón
+     */
+    async function checkIfAdmin(email) {
+      if (!email) return;
+      
+      try {
+        const response = await fetch(`https://api.kdsapp.site/api/admin/check/${encodeURIComponent(email)}`);
+        const data = await response.json();
+        
+        if (data.isAdmin) {
+          const adminBtn = document.getElementById('btn-admin');
+          if (adminBtn) {
+            adminBtn.style.display = 'flex';
+            console.log('🛡️ Admin access enabled');
+          }
+        }
+      } catch (error) {
+        console.log('Admin check skipped:', error.message);
+      }
     }
 
     // Global variables

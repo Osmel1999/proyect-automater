@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administración - KDS</title>
+    <link rel="icon" type="image/png" href="assets/images/favicon.png">
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+    <!-- PIN Modal -->
+    <div class="modal-overlay" id="pinModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>🔐 Verificación de Administrador</h2>
+            </div>
+            <div class="modal-body">
+                <p>Ingresa tu PIN de administrador para continuar:</p>
+                <div class="pin-input-container">
+                    <input type="password" id="pinInput" maxlength="4" placeholder="••••" autocomplete="off">
+                </div>
+                <p class="error-message" id="pinError"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="window.location.href='dashboard.html'">Cancelar</button>
+                <button class="btn btn-primary" onclick="verifyPin()">Verificar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content (hidden until PIN verified) -->
+    <div class="admin-container" id="adminContent" style="display: none;">
+        <!-- Header -->
+        <header class="admin-header">
+            <div class="header-left">
+                <h1>🛡️ Panel de Administración</h1>
+                <span class="admin-badge">Admin</span>
+            </div>
+            <div class="header-right">
+                <span id="adminEmail"></span>
+                <button class="btn btn-secondary btn-sm" onclick="logout()">Salir</button>
+            </div>
+        </header>
+
+        <!-- Stats Cards -->
+        <section class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon blue">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value" id="totalTenants">-</span>
+                    <span class="stat-label">Total Restaurantes</span>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon green">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value" id="activeTenants">-</span>
+                    <span class="stat-label">Activos</span>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon purple">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                        <line x1="1" y1="10" x2="23" y2="10"/>
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value" id="paidTenants">-</span>
+                    <span class="stat-label">De Pago</span>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon orange">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value" id="expiringTenants">-</span>
+                    <span class="stat-label">Por Vencer (7d)</span>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon red">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="15" y1="9" x2="9" y2="15"/>
+                        <line x1="9" y1="9" x2="15" y2="15"/>
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value" id="expiredTenants">-</span>
+                    <span class="stat-label">Expirados</span>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon teal">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value" id="connectedBots">-</span>
+                    <span class="stat-label">Bots Conectados</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Revenue Section -->
+        <section class="revenue-section">
+            <h2>💰 Ingresos</h2>
+            <div class="revenue-cards">
+                <div class="revenue-card">
+                    <span class="revenue-label">Este Mes</span>
+                    <span class="revenue-value" id="revenueThisMonth">$0</span>
+                </div>
+                <div class="revenue-card">
+                    <span class="revenue-label">Mes Anterior</span>
+                    <span class="revenue-value secondary" id="revenueLastMonth">$0</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tenants Table -->
+        <section class="tenants-section">
+            <div class="section-header">
+                <h2>📋 Restaurantes</h2>
+                <div class="filters">
+                    <select id="filterPlan" onchange="filterTenants()">
+                        <option value="all">Todos los planes</option>
+                        <option value="trial">Trial</option>
+                        <option value="emprendedor">Emprendedor</option>
+                        <option value="profesional">Profesional</option>
+                        <option value="empresarial">Empresarial</option>
+                    </select>
+                    <select id="filterStatus" onchange="filterTenants()">
+                        <option value="all">Todos los estados</option>
+                        <option value="active">Activos</option>
+                        <option value="expired">Expirados</option>
+                        <option value="expiring">Por vencer</option>
+                    </select>
+                    <input type="search" id="searchTenant" placeholder="Buscar..." oninput="filterTenants()">
+                </div>
+            </div>
+            
+            <div class="table-container">
+                <table class="tenants-table">
+                    <thead>
+                        <tr>
+                            <th>Restaurante</th>
+                            <th>Plan</th>
+                            <th>Estado</th>
+                            <th>Días Rest.</th>
+                            <th>Pedidos</th>
+                            <th>WhatsApp</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tenantsTableBody">
+                        <tr>
+                            <td colspan="7" class="loading">Cargando...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Tenant Detail Modal -->
+        <div class="modal-overlay" id="tenantModal" style="display: none;">
+            <div class="modal modal-large">
+                <div class="modal-header">
+                    <h2 id="tenantModalTitle">Detalles del Restaurante</h2>
+                    <button class="close-btn" onclick="closeTenantModal()">&times;</button>
+                </div>
+                <div class="modal-body" id="tenantModalBody">
+                    <!-- Se llena dinámicamente -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Extend Plan Modal -->
+        <div class="modal-overlay" id="extendModal" style="display: none;">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2>📅 Extender/Activar Plan</h2>
+                    <button class="close-btn" onclick="closeExtendModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>Restaurante: <strong id="extendTenantName"></strong></p>
+                    <input type="hidden" id="extendTenantId">
+                    
+                    <div class="form-group">
+                        <label>Plan:</label>
+                        <select id="extendPlan">
+                            <option value="emprendedor">Emprendedor ($90.000)</option>
+                            <option value="profesional">Profesional ($120.000)</option>
+                            <option value="empresarial">Empresarial ($150.000)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Días:</label>
+                        <input type="number" id="extendDays" value="30" min="1" max="365">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Razón (opcional):</label>
+                        <input type="text" id="extendReason" placeholder="Ej: Cortesía por problema técnico">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeExtendModal()">Cancelar</button>
+                    <button class="btn btn-primary" onclick="confirmExtend()">Activar Plan</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notify Modal -->
+        <div class="modal-overlay" id="notifyModal" style="display: none;">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2>📱 Enviar Notificación</h2>
+                    <button class="close-btn" onclick="closeNotifyModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>Restaurante: <strong id="notifyTenantName"></strong></p>
+                    <input type="hidden" id="notifyTenantId">
+                    
+                    <div class="form-group">
+                        <label>Tipo:</label>
+                        <select id="notifyType">
+                            <option value="info">ℹ️ Información</option>
+                            <option value="warning">⚠️ Advertencia</option>
+                            <option value="urgent">🚨 Urgente</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Mensaje:</label>
+                        <textarea id="notifyMessage" rows="4" placeholder="Escribe el mensaje..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeNotifyModal()">Cancelar</button>
+                    <button class="btn btn-primary" onclick="sendNotification()">Enviar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/admin.js"></script>
+</body>
+</html>

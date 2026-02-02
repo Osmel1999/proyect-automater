@@ -175,6 +175,14 @@ app.use('/api/membership', membershipRoutes);
 console.log('✅ Rutas de membresías registradas en /api/membership');
 
 // ====================================
+// RUTAS DE API - PANEL DE ADMINISTRACIÓN
+// ====================================
+
+const adminRoutes = require('./routes/admin-routes');
+app.use('/api/admin', adminRoutes);
+console.log('🛡️ Rutas de admin registradas en /api/admin');
+
+// ====================================
 // INICIALIZAR BOT LOGIC CON BAILEYS
 // ====================================
 
