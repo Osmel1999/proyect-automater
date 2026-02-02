@@ -183,6 +183,14 @@ app.use('/api/admin', adminRoutes);
 console.log('🛡️ Rutas de admin registradas en /api/admin');
 
 // ====================================
+// RUTAS DE API - TRACKING DE PEDIDOS
+// ====================================
+
+const trackingRoutes = require('./routes/tracking-routes');
+app.use('/api/tracking', trackingRoutes);
+console.log('📦 Rutas de tracking registradas en /api/tracking');
+
+// ====================================
 // INICIALIZAR BOT LOGIC CON BAILEYS
 // ====================================
 

@@ -13,6 +13,7 @@ const notificationService = require('./notification-service');
 const { parsearPedido, generarMensajeConfirmacion } = require('./pedido-parser');
 const paymentService = require('./payment-service');
 const paymentConfigService = require('./payments/payment-config-service');
+const { generateTrackingToken } = require('./routes/tracking-routes');
 
 // Almacenamiento en memoria de sesiones de usuario por tenant
 // Formato: Map<tenantId_telefono, sesion>
@@ -870,6 +871,9 @@ async function confirmarPedido(sesion) {
     console.log(`\n💵 [confirmarPedido] Cliente eligió pagar en efectivo`);
     console.log(`   Creando pedido en KDS inmediatamente...`);
     
+    // Generar tracking token para seguimiento del pedido
+    const trackingToken = generateTrackingToken(sesion.tenantId, numeroHex + Date.now());
+    
     // Crear pedido normal
     const pedido = {
       id: numeroHex,
@@ -887,6 +891,7 @@ async function confirmarPedido(sesion) {
       restaurante: restaurantName,
       paymentStatus: 'PENDING',
       metodoPago: 'efectivo',
+      trackingToken: trackingToken, // 📦 Token para seguimiento
     };
     
     // Guardar en Firebase bajo el path del tenant
@@ -927,6 +932,11 @@ async function confirmarPedido(sesion) {
     mensaje += `📱 Teléfono de contacto: ${telefonoFormateado}\n`;
     mensaje += `💰 Total: $${formatearPrecio(total)}\n`;
     mensaje += `💵 Método de pago: Efectivo\n\n`;
+    
+    // 📦 Link de seguimiento del pedido
+    mensaje += `📦 *Sigue tu pedido aquí:*\n`;
+    mensaje += `👉 https://kdsapp.site/track/${trackingToken}\n\n`;
+    
     mensaje += `Ya lo enviamos a la cocina de ${restaurantName}. 🛵\n\n`;
     
     // Obtener tiempo de entrega configurado
@@ -985,8 +995,14 @@ async function confirmarPedidoEfectivo(sesion, pedidoKey = null, numeroHex = nul
     
     const pedidoRef = firebaseService.database.ref(`tenants/${sesion.tenantId}/pedidos`);
     
+    // Generar tracking token para seguimiento del pedido
+    let trackingToken = null;
+    
     // Si no se pasó pedidoKey, crear el pedido ahora
     if (!pedidoKey) {
+      // Generar tracking token único
+      trackingToken = generateTrackingToken(sesion.tenantId, numeroHex + Date.now());
+      
       const pedido = {
         id: numeroHex,
         tenantId: sesion.tenantId,
@@ -1003,6 +1019,7 @@ async function confirmarPedidoEfectivo(sesion, pedidoKey = null, numeroHex = nul
         restaurante: restaurantName,
         paymentStatus: 'CASH', // ✨ Pago en efectivo
         metodoPago: sesion.metodoPago || 'efectivo',
+        trackingToken: trackingToken, // 📦 Token para seguimiento
       };
       
       const pedidoSnapshot = await pedidoRef.push(pedido);
@@ -1052,6 +1069,13 @@ async function confirmarPedidoEfectivo(sesion, pedidoKey = null, numeroHex = nul
     mensaje += `📱 Teléfono de contacto: ${telefonoFormateado}\n`;
     mensaje += `💰 Total: $${formatearPrecio(total)}\n`;
     mensaje += `💵 Forma de pago: *${sesion.metodoPago === 'efectivo' ? 'Efectivo' : 'Efectivo/Transferencia'}*\n\n`;
+    
+    // 📦 Link de seguimiento del pedido
+    if (trackingToken) {
+      mensaje += `📦 *Sigue tu pedido aquí:*\n`;
+      mensaje += `👉 https://kdsapp.site/track/${trackingToken}\n\n`;
+    }
+    
     mensaje += '━'.repeat(30) + '\n\n';
     mensaje += `Ya lo enviamos a la cocina de ${restaurantName}. 👨‍🍳\n\n`;
     mensaje += '💵 *Pago:*\n';
