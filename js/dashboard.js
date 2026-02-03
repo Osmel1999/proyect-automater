@@ -1312,6 +1312,103 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ====================================
+    // COSTO DE ENVÍO / DOMICILIO
+    // ====================================
+    function openDeliveryCostConfig() {
+      document.getElementById('delivery-cost-modal').classList.add('active');
+      loadDeliveryCost();
+    }
+
+    function closeDeliveryCostModal() {
+      document.getElementById('delivery-cost-modal').classList.remove('active');
+    }
+
+    async function loadDeliveryCost() {
+      try {
+        const snapshot = await firebase.database().ref(`tenants/${tenantId}/config/deliveryCost`).once('value');
+        const deliveryCost = snapshot.val();
+
+        if (deliveryCost) {
+          document.getElementById('delivery-cost-value').value = deliveryCost.cost || 0;
+          document.getElementById('free-delivery-min').value = deliveryCost.freeDeliveryMin || '';
+        } else {
+          // Valores por defecto
+          document.getElementById('delivery-cost-value').value = 5000;
+          document.getElementById('free-delivery-min').value = '';
+        }
+
+        updateDeliveryCostPreview();
+      } catch (error) {
+        console.error('Error loading delivery cost:', error);
+      }
+    }
+
+    function updateDeliveryCostPreview() {
+      const cost = parseInt(document.getElementById('delivery-cost-value').value) || 0;
+      const freeMin = parseInt(document.getElementById('free-delivery-min').value) || 0;
+      
+      const formattedCost = cost.toLocaleString('es-CO');
+      let preview = '';
+      
+      if (cost === 0) {
+        preview = '🚚 ¡Envío GRATIS!';
+      } else {
+        preview = `🚚 Costo de envío: $${formattedCost}`;
+        if (freeMin > 0) {
+          preview += ` (Gratis en pedidos mayores a $${freeMin.toLocaleString('es-CO')})`;
+        }
+      }
+      
+      document.getElementById('delivery-cost-preview').textContent = preview;
+    }
+
+    async function saveDeliveryCost() {
+      const cost = parseInt(document.getElementById('delivery-cost-value').value) || 0;
+      const freeMin = parseInt(document.getElementById('free-delivery-min').value) || 0;
+
+      console.log(`💾 [saveDeliveryCost] Intentando guardar: cost=${cost}, freeMin=${freeMin}, tenantId=${tenantId}`);
+
+      // Validaciones
+      if (cost < 0) {
+        return alert('El costo de envío no puede ser negativo');
+      }
+
+      if (freeMin < 0) {
+        return alert('El monto mínimo para envío gratis no puede ser negativo');
+      }
+
+      try {
+        const path = `tenants/${tenantId}/config/deliveryCost`;
+        console.log(`📡 [saveDeliveryCost] Guardando en Firebase path: ${path}`);
+        
+        // Guardar en Firebase
+        await firebase.database().ref(path).set({
+          cost: cost,
+          freeDeliveryMin: freeMin || null,
+          updatedAt: Date.now()
+        });
+
+        console.log(`✅ [saveDeliveryCost] Guardado exitosamente`);
+        
+        const formattedCost = cost.toLocaleString('es-CO');
+        alert(`✅ Costo de envío actualizado: $${formattedCost}`);
+        closeDeliveryCostModal();
+      } catch (error) {
+        console.error('❌ [saveDeliveryCost] Error:', error);
+        alert('Error al guardar el costo de envío: ' + error.message);
+      }
+    }
+
+    // Setup delivery cost preview event listeners
+    const costInput = document.getElementById('delivery-cost-value');
+    const freeMinInput = document.getElementById('free-delivery-min');
+    
+    if (costInput && freeMinInput) {
+        costInput.addEventListener('input', updateDeliveryCostPreview);
+        freeMinInput.addEventListener('input', updateDeliveryCostPreview);
+    }
+
+    // ====================================
     // MODO PEDIDO RÁPIDO
     // ====================================
     let quickOrderMode = false;
@@ -1415,6 +1512,9 @@ document.addEventListener('DOMContentLoaded', function() {
     window.openDeliveryTimeConfig = openDeliveryTimeConfig;
     window.closeDeliveryTimeModal = closeDeliveryTimeModal;
     window.saveDeliveryTime = saveDeliveryTime;
+    window.openDeliveryCostConfig = openDeliveryCostConfig;
+    window.closeDeliveryCostModal = closeDeliveryCostModal;
+    window.saveDeliveryCost = saveDeliveryCost;
     window.toggleQuickOrder = toggleQuickOrder;
 
 }); // End of DOMContentLoaded

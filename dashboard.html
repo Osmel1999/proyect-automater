@@ -337,6 +337,16 @@
               <h3>Tiempo de Entrega</h3>
               <p>Configurar tiempo estimado de entrega</p>
             </div>
+            <div class="action-card" onclick="openDeliveryCostConfig()">
+              <div class="action-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+              </div>
+              <h3>Costo de Envío</h3>
+              <p>Configurar precio del domicilio</p>
+            </div>
             <div class="action-card" onclick="window.location.href='plans.html'">
               <div class="action-icon">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -697,6 +707,59 @@
       <div class="modal-footer">
         <button class="btn-secondary" onclick="closeDeliveryTimeModal()">Cancelar</button>
         <button class="btn-primary" onclick="saveDeliveryTime()">Guardar Tiempo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Delivery Cost Config -->
+  <div class="modal-overlay" id="delivery-cost-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">🚚 Configurar Costo de Envío</h2>
+        <button class="modal-close" onclick="closeDeliveryCostModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 24px; color: #718096;">
+          Configura el costo de envío/domicilio que se aplicará a los pedidos de tus clientes.
+        </p>
+
+        <div class="form-group">
+          <label class="form-label">Costo de Envío</label>
+          <div style="display: flex; gap: 12px; align-items: center;">
+            <span style="color: #4a5568; font-weight: 500; font-size: 18px;">$</span>
+            <input type="number" class="form-input" id="delivery-cost-value" placeholder="5000" min="0" step="500" style="flex: 1;">
+          </div>
+          <div class="form-help">Ingresa 0 si ofreces envío gratis</div>
+        </div>
+
+        <div class="form-group" style="margin-top: 16px;">
+          <label class="form-label">Mínimo para envío gratis (opcional)</label>
+          <div style="display: flex; gap: 12px; align-items: center;">
+            <span style="color: #4a5568; font-weight: 500; font-size: 18px;">$</span>
+            <input type="number" class="form-input" id="free-delivery-min" placeholder="50000" min="0" step="1000" style="flex: 1;">
+          </div>
+          <div class="form-help">Deja vacío si no aplicas envío gratis por monto mínimo</div>
+        </div>
+
+        <div style="background: #f7fafc; padding: 16px; border-radius: 8px; margin-top: 16px;">
+          <p style="font-size: 14px; color: #4a5568; margin-bottom: 8px;">
+            <strong>Vista previa del mensaje:</strong>
+          </p>
+          <p style="color: #667eea; font-weight: 500;" id="delivery-cost-preview">
+            🚚 Costo de envío: $5,000
+          </p>
+        </div>
+
+        <div style="background: #e6fffa; border-left: 4px solid #38b2ac; padding: 16px; border-radius: 4px; margin-top: 16px;">
+          <strong style="color: #234e52; display: block; margin-bottom: 8px;">💡 Sugerencia</strong>
+          <p style="color: #234e52; font-size: 14px; line-height: 1.6; margin: 0;">
+            Ofrecer envío gratis a partir de cierto monto puede incentivar a tus clientes a pedir más productos.
+          </p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeDeliveryCostModal()">Cancelar</button>
+        <button class="btn-primary" onclick="saveDeliveryCost()">Guardar Costo</button>
       </div>
     </div>
   </div>
