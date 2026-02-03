@@ -312,20 +312,20 @@ async function generarMensajePedidoRapido(tenantId, incluirSaludo = true) {
     // Mensaje 1: Saludo y explicación
     let saludoMsg = '';
     if (incluirSaludo) {
-      saludoMsg = messages?.welcome || `Hola! Bienvenido a ${nombreRestaurante}`;
+      saludoMsg = messages?.welcome || `👋 Hola! Bienvenido a ${nombreRestaurante}`;
     }
     
     const explicacionMsg = `${saludoMsg}
 
-Mira nuestro menu en el catalogo
-(Toca el icono de tienda en este chat)
+📋 Mira nuestro menu en el catalogo
+(Toca el icono de tienda 🛒 en este chat)
 
-Para hacer tu pedido de forma rapida:
-1. Copia el formulario del siguiente mensaje
-2. Completalo con tu pedido
-3. Envialo de vuelta
+⚡ Para hacer tu pedido de forma rapida:
+1️⃣ Copia el formulario del siguiente mensaje
+2️⃣ Completalo con tu pedido
+3️⃣ Envialo de vuelta
 
-Es muy facil!`;
+Es muy facil! 😊`;
 
     // Mensaje 2: Formulario para copiar (con o sin opcion de tarjeta)
     const opcionPago = pagoTarjetaHabilitado ? 'Efectivo / Tarjeta' : 'Efectivo';
@@ -625,24 +625,24 @@ No pude identificar los productos en tu pedido:
   };
   
   // Mostrar resumen y pedir confirmación
-  return `*Resumen de tu pedido:*
+  return `📋 *Resumen de tu pedido:*
 
 ${resumenItems}
 
 ----------------------
-Subtotal: $${formatearPrecio(subtotal)}
+💰 Subtotal: $${formatearPrecio(subtotal)}
 ${lineaEnvio}
-*Total:* $${formatearPrecio(total)}
-Direccion: ${sesion.direccion}
-Telefono: ${sesion.telefonoContacto}
-Pago: ${sesion.metodoPago === 'tarjeta' ? 'Tarjeta' : 'Efectivo'}
+💳 *Total:* $${formatearPrecio(total)}
+📍 Direccion: ${sesion.direccion}
+📱 Telefono: ${sesion.telefonoContacto}
+💵 Pago: ${sesion.metodoPago === 'tarjeta' ? 'Tarjeta 💳' : 'Efectivo 💵'}
 ----------------------
 
-Todo esta correcto?
+✅ Todo esta correcto?
 
 *Confirmar* - Escribe *si* o *confirmar*
-*Editar* - Escribe *editar* o *cambiar*
-*Cancelar* - Escribe *cancelar* o *no*`;
+✏️ *Editar* - Escribe *editar* o *cambiar*
+❌ *Cancelar* - Escribe *cancelar* o *no*`;
 }
 
 /**
@@ -745,18 +745,18 @@ async function procesarConfirmacionRapida(tenantId, sesion, texto) {
             // Linea de envio
             let lineaEnvioMsg = pedido.costoEnvio > 0 ? `Envio: $${formatearPrecio(pedido.costoEnvio)}` : 'Envio: GRATIS';
             
-            return `*Pedido confirmado!*
+            return `✅ *Pedido confirmado!*
 
 ${resumenItems}
 
-Subtotal: $${formatearPrecio(pedido.subtotal)}
+💰 Subtotal: $${formatearPrecio(pedido.subtotal)}
 ${lineaEnvioMsg}
-*Total: $${formatearPrecio(pedido.total)}*
+💳 *Total: $${formatearPrecio(pedido.total)}*
 
-*Pagar con tarjeta:*
+💳 *Pagar con tarjeta:*
 ${paymentResult.paymentLink}
 
-Una vez realices el pago, tu pedido sera enviado a cocina automaticamente.`;
+⏳ Una vez realices el pago, tu pedido sera enviado a cocina automaticamente.`;
           } else {
             // Si falla crear el link, eliminar pedido temporal y continuar con efectivo
             await firebaseService.database.ref(`orders/${orderId}`).remove();
@@ -789,11 +789,11 @@ Una vez realices el pago, tu pedido sera enviado a cocina automaticamente.`;
     sesion.telefonoContacto = null;
     sesion.metodoPago = null;
     
-    return `*Pedido cancelado*
+    return `❌ *Pedido cancelado*
 
-No te preocupes, tu pedido ha sido cancelado.
+No te preocupes, tu pedido ha sido cancelado. 😊
 
-Escribe *hola* cuando quieras hacer un nuevo pedido.`;
+Escribe *hola* 👋 cuando quieras hacer un nuevo pedido.`;
   }
   
   // EDITAR PEDIDO
@@ -803,7 +803,7 @@ Escribe *hola* cuando quieras hacer un nuevo pedido.`;
     sesion.pedidoRapidoPendiente = null;
     sesion.carrito = [];
     
-    return `*Vamos a editar tu pedido*
+    return `✏️ *Vamos a editar tu pedido*
 
 Por favor, envia nuevamente el formulario con los cambios que deseas:
 
@@ -820,16 +820,16 @@ ${sesion.telefonoContacto || 'tu numero'}
 *PAGO:* Efectivo
 ----------------------
 
-Copia, edita y envia el formulario con tus cambios.`;
+📝 Copia, edita y envia el formulario con tus cambios.`;
   }
   
   // No entendió la respuesta
-  return `No entendi tu respuesta.
+  return `🤔 No entendi tu respuesta.
 
 Por favor responde:
-- *si* o *confirmar* - para confirmar el pedido
-- *editar* o *cambiar* - para modificar el pedido  
-- *cancelar* o *no* - para cancelar el pedido`;
+✅ *si* o *confirmar* - para confirmar el pedido
+✏️ *editar* o *cambiar* - para modificar el pedido  
+❌ *cancelar* o *no* - para cancelar el pedido`;
 }
 
 /**
@@ -899,26 +899,26 @@ async function finalizarPedidoRapido(tenantId, sesion, itemsAgrupados, subtotal,
     ).join('\n');
     
     // Linea de envio para el mensaje
-    let lineaEnvioMsg = costoEnvio > 0 ? `Envio: $${formatearPrecio(costoEnvio)}` : 'Envio: GRATIS';
+    let lineaEnvioMsg = costoEnvio > 0 ? `🚚 Envio: $${formatearPrecio(costoEnvio)}` : '🚚 Envio: GRATIS';
     
-    return `*Pedido confirmado!*
+    return `✅ *Pedido confirmado!*
 
-Numero de pedido: #${orderId}
+📦 Numero de pedido: #${orderId}
 
 ${resumenItems}
 
-Subtotal: $${formatearPrecio(subtotal)}
+💰 Subtotal: $${formatearPrecio(subtotal)}
 ${lineaEnvioMsg}
-*Total:* $${formatearPrecio(total)}
-Direccion: ${pedido.direccion}
-Pago: ${sesion.metodoPago === 'tarjeta' ? 'Tarjeta' : 'Efectivo'}
+💳 *Total:* $${formatearPrecio(total)}
+📍 Direccion: ${pedido.direccion}
+💵 Pago: ${sesion.metodoPago === 'tarjeta' ? 'Tarjeta 💳' : 'Efectivo 💵'}
 
-Sigue tu pedido aqui:
+🔍 Sigue tu pedido aqui:
 ${process.env.BASE_URL || 'https://kdsapp.site'}/track/${trackingToken}
 
-Tiempo estimado: ${tiempoEntrega}
+⏱️ Tiempo estimado: ${tiempoEntrega}
 
-Gracias por tu pedido!`;
+🙏 Gracias por tu pedido!`;
     
   } catch (error) {
     console.error('Error finalizando pedido rapido:', error);
