@@ -6,6 +6,9 @@
 (function() {
   'use strict';
 
+  // Constantes
+  const CONTROLLER_TIMEOUT_MS = 10000; // 10 segundos para esperar el controller
+
   // Verificar soporte de Service Worker
   if (!('serviceWorker' in navigator)) {
     console.warn('⚠️ Service Workers no soportados en este navegador');
@@ -175,11 +178,11 @@
             }
           }, 500);
           
-          // Timeout después de 10 segundos
+          // Timeout después de CONTROLLER_TIMEOUT_MS
           setTimeout(() => {
             clearInterval(checkInterval);
             resolve();
-          }, 10000);
+          }, CONTROLLER_TIMEOUT_MS);
         });
       }
       

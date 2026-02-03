@@ -15,6 +15,9 @@ const logger = pino({ level: 'info' });
 const EventEmitter = require('events');
 const crypto = require('crypto');
 
+// Constantes
+const ALLOWED_HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD'];
+
 class TunnelManager extends EventEmitter {
   constructor() {
     super();
@@ -229,8 +232,7 @@ class TunnelManager extends EventEmitter {
     
     // Validate HTTP method
     const method = (options.method || 'GET').toUpperCase();
-    const allowedMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD'];
-    if (!allowedMethods.includes(method)) {
+    if (!ALLOWED_HTTP_METHODS.includes(method)) {
       throw new Error(`Invalid HTTP method: ${method}`);
     }
     

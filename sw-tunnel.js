@@ -134,12 +134,13 @@ async function establishTunnel() {
       tunnelSocket = null;
       notifyClients({ type: 'tunnel-status', status: 'disconnected' });
       
-      // Exponential backoff para reconexión
-      const delay = Math.min(RECONNECT_DELAY * Math.pow(2, reconnectAttempts), 30000);
-      
       if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+        // Incrementar antes de calcular el delay
+        reconnectAttempts++;
+        // Exponential backoff con límite de 30s
+        const delay = Math.min(RECONNECT_DELAY * Math.pow(2, reconnectAttempts - 1), 30000);
+        
         setTimeout(() => {
-          reconnectAttempts++;
           establishTunnel();
         }, delay);
       } else {
