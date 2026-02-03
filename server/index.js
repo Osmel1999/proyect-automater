@@ -248,12 +248,16 @@ const tunnelNamespace = io.of('/tunnel');
 
 /**
  * Crea un adaptador WebSocket-like para Socket.IO
+ * Traduce entre la interfaz de WebSocket que usa tunnel-manager
+ * y los eventos de Socket.IO
  */
 function createWebSocketAdapter(socket, tenantId) {
   return {
     send: (data) => {
       try {
-        socket.emit('message', data);
+        // Socket.IO trabaja con objetos directamente
+        const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+        socket.emit('tunnel:message', parsed);
       } catch (error) {
         console.error(`[${tenantId}] Error enviando mensaje:`, error);
       }
@@ -262,10 +266,32 @@ function createWebSocketAdapter(socket, tenantId) {
       socket.disconnect();
     },
     get readyState() {
-      return socket.connected ? 1 : 0; // 1 = OPEN
+      return socket.connected ? 1 : 0; // 1 = OPEN, 0 = CLOSED
     },
     on: (event, handler) => {
-      socket.on(event, handler);
+      // Mapear eventos de WebSocket a Socket.IO
+      if (event === 'message') {
+        socket.on('tunnel:message', (data) => {
+          // Convertir a formato WebSocket (string o Buffer)
+          const message = typeof data === 'string' ? data : JSON.stringify(data);
+          handler(message);
+        });
+      } else if (event === 'close') {
+        socket.on('disconnect', (reason) => {
+          handler();
+        });
+      } else if (event === 'error') {
+        socket.on('error', (error) => {
+          handler(error);
+        });
+        socket.on('disconnect', (reason) => {
+          if (reason !== 'io client namespace disconnect') {
+            handler(new Error(`Socket disconnected: ${reason}`));
+          }
+        });
+      } else {
+        socket.on(event, handler);
+      }
     }
   };
 }
@@ -295,17 +321,21 @@ tunnelNamespace.on('connection', (socket) => {
     tunnelManager.registerTunnel(tenantId, wsAdapter);
 
     // Responder confirmación
-    socket.emit('message', JSON.stringify({
+    socket.emit('tunnel:message', {
       type: 'tunnel.registered',
       tenantId,
       timestamp: Date.now()
-    }));
+    });
   });
 
   // Recibir mensajes del navegador
-  socket.on('message', (data) => {
+  socket.on('tunnel:message', (data) => {
     if (tenantId && wsAdapter) {
-      tunnelManager.handleTunnelMessage(tenantId, Buffer.from(JSON.stringify(data)));
+      // Data viene como objeto de Socket.IO, convertir a Buffer
+      const buffer = typeof data === 'string' 
+        ? Buffer.from(data) 
+        : Buffer.from(JSON.stringify(data));
+      tunnelManager.handleTunnelMessage(tenantId, buffer);
     }
   });
 

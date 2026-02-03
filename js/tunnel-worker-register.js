@@ -160,11 +160,46 @@
   /**
    * Comunicación con Service Worker
    */
-  function setupCommunication() {
-    if (!navigator.serviceWorker.controller) {
-      setTimeout(setupCommunication, 1000);
-      return;
+  async function setupCommunication() {
+    try {
+      // Esperar a que el Service Worker esté completamente listo
+      await navigator.serviceWorker.ready;
+      
+      if (!navigator.serviceWorker.controller) {
+        // Esperar a que el controller esté disponible
+        await new Promise((resolve) => {
+          const checkInterval = setInterval(() => {
+            if (navigator.serviceWorker.controller) {
+              clearInterval(checkInterval);
+              resolve();
+            }
+          }, 500);
+          
+          // Timeout después de 10 segundos
+          setTimeout(() => {
+            clearInterval(checkInterval);
+            resolve();
+          }, 10000);
+        });
+      }
+      
+      if (!navigator.serviceWorker.controller) {
+        console.warn('⚠️ Service Worker controller no disponible');
+        return;
+      }
+
+      // Enviar tenantId al Service Worker
+      sendTenantIdToWorker();
+      
+    } catch (error) {
+      console.error('❌ Error configurando comunicación:', error);
     }
+  }
+  
+  /**
+   * Enviar tenant ID al Service Worker
+   */
+  function sendTenantIdToWorker() {
 
     // Escuchar mensajes del Service Worker
     navigator.serviceWorker.addEventListener('message', (event) => {

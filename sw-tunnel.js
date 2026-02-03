@@ -36,6 +36,38 @@ self.addEventListener('activate', (event) => {
 });
 
 /**
+ * Validar que una URL es segura para hacer proxy
+ * Previene SSRF (Server-Side Request Forgery)
+ */
+function isValidProxyUrl(url) {
+  try {
+    const urlObj = new URL(url);
+    
+    // Solo permitir protocolos seguros
+    if (!['http:', 'https:'].includes(urlObj.protocol)) {
+      return false;
+    }
+    
+    // Bloquear IPs internas (prevenir SSRF)
+    const hostname = urlObj.hostname;
+    
+    // Bloquear localhost
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0') {
+      return false;
+    }
+    
+    // Bloquear rangos de IP privada
+    if (/^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.)/.test(hostname)) {
+      return false;
+    }
+    
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Establecer túnel con Railway usando Socket.IO
  */
 async function establishTunnel() {
@@ -102,9 +134,14 @@ async function establishTunnel() {
       tunnelSocket = null;
       notifyClients({ type: 'tunnel-status', status: 'disconnected' });
       
+      // Exponential backoff para reconexión
+      const delay = Math.min(RECONNECT_DELAY * Math.pow(2, reconnectAttempts), 30000);
+      
       if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-        reconnectAttempts++;
-        setTimeout(establishTunnel, RECONNECT_DELAY * reconnectAttempts);
+        setTimeout(() => {
+          reconnectAttempts++;
+          establishTunnel();
+        }, delay);
       } else {
         console.error('❌ [SW] Máximo de intentos de reconexión alcanzado');
         notifyClients({ type: 'tunnel-status', status: 'failed' });
@@ -129,6 +166,11 @@ async function handleProxyRequest(data) {
   const { requestId, url, method, headers, body } = data;
 
   try {
+    // Validar URL antes de hacer la petición (seguridad SSRF)
+    if (!isValidProxyUrl(url)) {
+      throw new Error('Invalid or unsafe URL');
+    }
+
     // Hacer la petición desde el navegador (usa IP del dispositivo)
     const response = await fetch(url, {
       method: method || 'GET',
