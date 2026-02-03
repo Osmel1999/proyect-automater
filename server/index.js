@@ -246,10 +246,35 @@ console.log('🌐 Ruta de proxy stats registrada en /api/proxy/stats');
  */
 const tunnelNamespace = io.of('/tunnel');
 
+/**
+ * Crea un adaptador WebSocket-like para Socket.IO
+ */
+function createWebSocketAdapter(socket, tenantId) {
+  return {
+    send: (data) => {
+      try {
+        socket.emit('message', data);
+      } catch (error) {
+        console.error(`[${tenantId}] Error enviando mensaje:`, error);
+      }
+    },
+    close: () => {
+      socket.disconnect();
+    },
+    get readyState() {
+      return socket.connected ? 1 : 0; // 1 = OPEN
+    },
+    on: (event, handler) => {
+      socket.on(event, handler);
+    }
+  };
+}
+
 tunnelNamespace.on('connection', (socket) => {
   console.log('🌐 Nueva conexión de túnel recibida:', socket.id);
   
   let tenantId = null;
+  let wsAdapter = null;
 
   // Evento de inicialización del túnel
   socket.on('tunnel.init', (data) => {
@@ -263,25 +288,10 @@ tunnelNamespace.on('connection', (socket) => {
 
     console.log(`🌐 [${tenantId}] Registrando túnel desde navegador`);
     
+    // Crear adaptador WebSocket-like
+    wsAdapter = createWebSocketAdapter(socket, tenantId);
+    
     // Registrar túnel en el manager
-    // Adaptador: Socket.IO -> WebSocket-like interface
-    const wsAdapter = {
-      send: (data) => {
-        try {
-          socket.emit('message', data);
-        } catch (error) {
-          console.error(`[${tenantId}] Error enviando mensaje:`, error);
-        }
-      },
-      close: () => {
-        socket.disconnect();
-      },
-      readyState: socket.connected ? 1 : 0, // 1 = OPEN
-      on: (event, handler) => {
-        socket.on(event, handler);
-      }
-    };
-
     tunnelManager.registerTunnel(tenantId, wsAdapter);
 
     // Responder confirmación
@@ -294,8 +304,7 @@ tunnelNamespace.on('connection', (socket) => {
 
   // Recibir mensajes del navegador
   socket.on('message', (data) => {
-    if (tenantId) {
-      const ws = { send: (msg) => socket.emit('message', msg), readyState: socket.connected ? 1 : 0 };
+    if (tenantId && wsAdapter) {
       tunnelManager.handleTunnelMessage(tenantId, Buffer.from(JSON.stringify(data)));
     }
   });

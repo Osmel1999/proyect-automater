@@ -45,6 +45,26 @@ async function loadBaileys() {
   return baileysPromise;
 }
 
+// node-fetch para fallback (precarga para evitar import en error path)
+let nodeFetch = null;
+let nodeFetchPromise = null;
+
+async function loadNodeFetch() {
+  if (nodeFetch) return nodeFetch;
+  if (!nodeFetchPromise) {
+    nodeFetchPromise = import('node-fetch').then((module) => {
+      nodeFetch = module.default;
+      return module.default;
+    });
+  }
+  return nodeFetchPromise;
+}
+
+// Precargar node-fetch al inicio
+loadNodeFetch().catch(() => {
+  logger.warn('node-fetch no disponible para fallback');
+});
+
 class SessionManager extends EventEmitter {
   constructor() {
     super();
@@ -214,8 +234,8 @@ class SessionManager extends EventEmitter {
             logger.error(`[${tenantId}] ❌ Error en petición por túnel:`, error.message);
             logger.warn(`[${tenantId}] ⚠️ Fallback a conexión directa`);
             
-            // Fallback: usar fetch normal
-            const fetch = (await import('node-fetch')).default;
+            // Fallback: usar fetch precargado
+            const fetch = await loadNodeFetch();
             return fetch(url, options);
           }
         };

@@ -195,7 +195,8 @@ class TunnelManager extends EventEmitter {
     }
 
     // Generar ID único para esta petición
-    const requestId = `${tenantId}-${Date.now()}-${++this.requestIdCounter}`;
+    // Usando crypto.randomUUID() para evitar colisiones en alta concurrencia
+    const requestId = `${tenantId}-${crypto.randomUUID()}`;
 
     // Preparar mensaje de petición
     const request = {
