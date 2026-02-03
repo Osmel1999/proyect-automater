@@ -128,25 +128,40 @@ class SessionManager extends EventEmitter {
         saveCreds = authState.saveCreds;
       }
 
-      // 🌐 ESTRATEGIA HÍBRIDA DE PROXY (Mejor de ambos mundos)
-      // 1. Iniciar SIN proxy para generar QR rápidamente
-      // 2. Aplicar proxy DESPUÉS de conectar para protección anti-ban
+      // 🌐 ESTRATEGIA DE PROXY INTELIGENTE
+      // ISP Proxy: Usar desde el inicio (estable, no causa timeout)
+      // Residential Proxy: Modo híbrido (puede causar timeout si se usa desde inicio)
+      // Sin proxy: Conexión directa
+      
       const PROXY_ENABLED = process.env.ENABLE_PROXY !== 'false';
-      const USE_HYBRID_PROXY = process.env.USE_HYBRID_PROXY !== 'false'; // Activado por defecto
+      const PROXY_TYPE = process.env.PROXY_TYPE || 'none';
+      const USE_HYBRID_PROXY = process.env.USE_HYBRID_PROXY !== 'false';
       
       let proxyAgent = null;
+      let useHybridMode = false;
       
-      if (PROXY_ENABLED && !USE_HYBRID_PROXY) {
-        // Modo legacy: proxy desde el inicio (puede causar timeout en QR)
-        proxyAgent = proxyManager.getProxyAgent(tenantId);
-        if (proxyAgent) {
-          logger.info(`[${tenantId}] 🔐 Usando proxy desde inicio (modo legacy)`);
+      if (PROXY_ENABLED) {
+        // ISP Proxy: Siempre desde el inicio (IP estable, no timeout)
+        if (PROXY_TYPE === 'isp') {
+          proxyAgent = proxyManager.getProxyAgent(tenantId);
+          if (proxyAgent) {
+            logger.info(`[${tenantId}] 🌐 ISP Proxy: Usando desde inicio (IP estable)`);
+          }
         }
-      } else if (PROXY_ENABLED && USE_HYBRID_PROXY) {
-        // Modo híbrido: proxy solo después de conectar (RECOMENDADO)
-        logger.info(`[${tenantId}] 🎯 Modo híbrido activado: QR sin proxy, mensajes con proxy`);
+        // Residential/Datacenter: Modo híbrido si está habilitado
+        else if (USE_HYBRID_PROXY) {
+          useHybridMode = true;
+          logger.info(`[${tenantId}] 🎯 Modo híbrido: QR sin proxy, mensajes con proxy`);
+        }
+        // Legacy: Proxy desde inicio
+        else {
+          proxyAgent = proxyManager.getProxyAgent(tenantId);
+          if (proxyAgent) {
+            logger.info(`[${tenantId}] 🔐 Usando proxy desde inicio (modo legacy)`);
+          }
+        }
       } else {
-        logger.warn(`[${tenantId}] ⚠️ Proxy deshabilitado - usando IP directa del servidor`);
+        logger.warn(`[${tenantId}] ⚠️ Proxy deshabilitado - usando IP directa`);
       }
 
       // Configurar socket de Baileys
@@ -232,28 +247,20 @@ class SessionManager extends EventEmitter {
         } else if (connection === 'open') {
           logger.info(`[${tenantId}] 🎉 Conexión establecida exitosamente`);
 
-          // 🌐 APLICAR PROXY DESPUÉS DE CONECTAR (Modo Híbrido)
-          if (PROXY_ENABLED && USE_HYBRID_PROXY && !proxyAgent) {
-            logger.info(`[${tenantId}] 🔐 APLICANDO PROXY POST-CONEXIÓN (Anti-Ban Mode)`);
+          // 🌐 APLICAR PROXY EN MODO HÍBRIDO (solo para residential/datacenter)
+          if (PROXY_ENABLED && useHybridMode && !proxyAgent) {
+            logger.info(`[${tenantId}] 🔐 APLICANDO PROXY POST-CONEXIÓN (Modo Híbrido)`);
             const postConnectProxyAgent = proxyManager.getProxyAgent(tenantId);
             
             if (postConnectProxyAgent && socket) {
-              // Actualizar el agente del socket existente
+              // Nota: Esto puede no funcionar con todos los proxies
+              // ISP proxy debe usarse desde el inicio
               socket.config = socket.config || {};
               socket.config.agent = postConnectProxyAgent;
-              logger.info(`[${tenantId}] ✅✅✅ PROXY APLICADO EXITOSAMENTE - Sistema Anti-Ban Activo ✅✅✅`);
-            } else {
-              logger.error(`[${tenantId}] ❌ ERROR: No se pudo obtener proxy agent`);
+              logger.info(`[${tenantId}] ✅ Proxy aplicado en modo híbrido`);
             }
-          } else {
-            // Log de por qué NO se aplicó el proxy
-            if (!PROXY_ENABLED) {
-              logger.warn(`[${tenantId}] ⚠️ PROXY DESHABILITADO (ENABLE_PROXY=false)`);
-            } else if (!USE_HYBRID_PROXY) {
-              logger.info(`[${tenantId}] ℹ️ Modo legacy activo (proxy desde inicio)`);
-            } else if (proxyAgent) {
-              logger.info(`[${tenantId}] ℹ️ Proxy ya aplicado desde inicio`);
-            }
+          } else if (PROXY_ENABLED && PROXY_TYPE === 'isp') {
+            logger.info(`[${tenantId}] ✅ ISP Proxy activo desde inicio - Sistema Anti-Ban activado`);
           }
 
           // Obtener información del número
