@@ -135,6 +135,9 @@ function buscarProducto(textoProducto, menuCustom = null) {
   const textoNormalizado = normalizarTexto(textoProducto);
   const textoFonetico = normalizarFonetica(textoProducto);
   
+  // Log para debugging
+  console.log(`🔎 [buscarProducto] Buscando: "${textoProducto}" → normalizado: "${textoNormalizado}"`);
+  
   // Nivel 1: Coincidencia exacta
   for (const producto of menuAUsar) {
     const variaciones = obtenerVariaciones(producto);
@@ -184,14 +187,28 @@ function buscarProducto(textoProducto, menuCustom = null) {
     }
   }
   
-  // Nivel 5: Fuzzy matching (distancia de Levenshtein) - umbral 75%
+  // Nivel 5: Fuzzy matching (distancia de Levenshtein) - umbral dinámico
   let mejorCoincidencia = null;
   let mejorScore = 0;
-  const UMBRAL_FUZZY = 75; // 75% de similitud mínima
+  
+  // Umbral dinámico: palabras cortas necesitan mayor precisión
+  // Palabras < 6 chars: 85%, 6-10 chars: 80%, > 10 chars: 75%
+  const longitudTexto = textoNormalizado.length;
+  const UMBRAL_FUZZY = longitudTexto < 6 ? 85 : (longitudTexto <= 10 ? 80 : 75);
+  
+  // Máxima diferencia de longitud permitida (proporcional al texto)
+  // Ej: "chiribita" (9) vs "pizza" (5) = diff 4 > max 3 → descartado
+  const MAX_DIFF_LONGITUD = Math.max(3, Math.floor(longitudTexto * 0.4));
   
   for (const producto of menuAUsar) {
     const nombreNormalizado = normalizarTexto(producto.nombre);
     const variaciones = obtenerVariaciones(producto);
+    
+    // Verificar diferencia de longitud antes de calcular similitud
+    const diffLongitud = Math.abs(nombreNormalizado.length - longitudTexto);
+    if (diffLongitud > MAX_DIFF_LONGITUD) {
+      continue; // Descartar si la diferencia de longitud es muy grande
+    }
     
     // Comparar nombre principal
     const scoreNombre = calcularSimilitud(textoNormalizado, nombreNormalizado);
@@ -202,6 +219,11 @@ function buscarProducto(textoProducto, menuCustom = null) {
     
     // Comparar variaciones
     for (const variacion of variaciones) {
+      const diffVariacion = Math.abs(variacion.length - longitudTexto);
+      if (diffVariacion > MAX_DIFF_LONGITUD) {
+        continue; // También verificar longitud en variaciones
+      }
+      
       const scoreVariacion = calcularSimilitud(textoNormalizado, variacion);
       if (scoreVariacion > mejorScore && scoreVariacion >= UMBRAL_FUZZY) {
         mejorScore = scoreVariacion;
@@ -211,9 +233,11 @@ function buscarProducto(textoProducto, menuCustom = null) {
   }
   
   if (mejorCoincidencia) {
+    console.log(`✅ [buscarProducto] Match fuzzy: "${textoNormalizado}" → "${mejorCoincidencia.nombre}" (score: ${mejorScore}%)`);
     return mejorCoincidencia;
   }
   
+  console.log(`❌ [buscarProducto] No encontrado: "${textoNormalizado}"`);
   return null;
 }
 
@@ -307,12 +331,19 @@ function parsearPedido(textoPedido, menuCustom = null) {
   let fragmentos = texto.split(separadores).map(f => f.trim()).filter(f => f.length > 0);
   
   // PASO 4: Intentar dividir fragmentos muy largos que puedan tener múltiples productos
-  // Esto maneja casos como "hamburguesa pizza" → debería ser 2 items
+  // PERO primero verificar si el fragmento completo ya es un producto válido
   const fragmentosProcesados = [];
   for (const fragmento of fragmentos) {
-    // Si el fragmento es muy largo y no tiene espacios, intentar dividir por espacios
-    if (fragmento.length > 15 && fragmento.includes(' ')) {
-      // Intentar buscar múltiples productos en el mismo fragmento
+    // PRIMERO: Intentar buscar el producto con el texto completo (sin dividir)
+    // Esto evita que "salchipapa chiribita" se divida incorrectamente
+    const productoCompleto = buscarProducto(fragmento, menuAUsar);
+    
+    if (productoCompleto) {
+      // Si encontramos el producto completo, usarlo directamente
+      fragmentosProcesados.push(fragmento);
+    } else if (fragmento.length > 20 && fragmento.includes(' ')) {
+      // Solo dividir si es muy largo (>20 chars) y NO se encontró como producto completo
+      // Esto maneja casos como "hamburguesa y pizza" que no son un solo producto
       const palabras = fragmento.split(/\s+/);
       let fragmentoActual = '';
       
