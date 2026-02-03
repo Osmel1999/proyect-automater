@@ -44,8 +44,8 @@ const wsHandler = new BaileysWebSocketHandler(io);
 global.baileysWebSocket = wsHandler;
 
 // Middleware
-app.use(express.urlencoded({ extended: false }));
-app.use(express.json());
+app.use(express.urlencoded({ extended: false, limit: '15mb' }));
+app.use(express.json({ limit: '15mb' }));
 
 // CORS middleware - permitir requests desde el frontend
 app.use((req, res, next) => {

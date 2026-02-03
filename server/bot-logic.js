@@ -495,7 +495,13 @@ Parece que faltan datos en tu pedido. Asegúrate de incluir:
   // Parsear los productos del texto del pedido
   const menuTenant = await obtenerMenuTenantCached(tenantId);
   const { parsearPedido } = require('./pedido-parser');
+  
+  console.log(`🔍 [Pedido Rápido] Texto a parsear: "${datosPedido.pedidoTexto}"`);
+  console.log(`🔍 [Pedido Rápido] Items en menú: ${menuTenant.length}`);
+  
   const resultadoParseo = parsearPedido(datosPedido.pedidoTexto, menuTenant);
+  
+  console.log(`🔍 [Pedido Rápido] Resultado parseo:`, JSON.stringify(resultadoParseo, null, 2));
   
   if (!resultadoParseo.exitoso || resultadoParseo.items.length === 0) {
     return `⚠️ *No encontré los productos*
@@ -507,8 +513,10 @@ No pude identificar los productos en tu pedido:
 📝 Escribe *hola* para recibir el formulario de nuevo.`;
   }
   
-  // Guardar los items en el carrito
+  // LIMPIAR CARRITO ANTES de agregar nuevos items
+  console.log(`🧹 [Pedido Rápido] Limpiando carrito anterior (tenía ${sesion.carrito?.length || 0} items)`);
   sesion.carrito = [];
+  
   resultadoParseo.items.forEach(item => {
     for (let i = 0; i < item.cantidad; i++) {
       sesion.carrito.push({
@@ -519,6 +527,8 @@ No pude identificar los productos en tu pedido:
       });
     }
   });
+  
+  console.log(`📦 [Pedido Rápido] Nuevo carrito:`, JSON.stringify(sesion.carrito, null, 2));
   
   // Guardar dirección, teléfono y método de pago
   sesion.direccion = datosPedido.direccion;
@@ -588,11 +598,16 @@ Una vez realices el pago, tu pedido será confirmado automáticamente.`;
  */
 async function finalizarPedidoRapido(tenantId, sesion, itemsAgrupados, total) {
   try {
+    console.log(`🏁 [finalizarPedidoRapido] Items a guardar:`, JSON.stringify(itemsAgrupados, null, 2));
+    console.log(`🏁 [finalizarPedidoRapido] Total: $${total}`);
+    
     // Generar ID de pedido corto
     const orderId = Math.random().toString(16).substring(2, 8).toUpperCase();
     
-    // Generar token de tracking
-    const trackingToken = generateTrackingToken();
+    // Generar token de tracking (pasando tenantId y orderId para token único)
+    const trackingToken = generateTrackingToken(tenantId, orderId);
+    
+    console.log(`🏁 [finalizarPedidoRapido] OrderId: ${orderId}, TrackingToken: ${trackingToken}`);
     
     // Obtener nombre del restaurante
     const tenantSnapshot = await firebaseService.database.ref(`tenants/${tenantId}/profile/businessName`).once('value');
