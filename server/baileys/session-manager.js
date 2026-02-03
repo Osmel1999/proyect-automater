@@ -129,12 +129,14 @@ class SessionManager extends EventEmitter {
       }
 
       // 🌐 Obtener agente proxy para este tenant (Anti-Ban)
-      const proxyAgent = proxyManager.getProxyAgent(tenantId);
+      // TEMPORAL: Deshabilitar proxy para debug
+      const PROXY_ENABLED = process.env.ENABLE_PROXY !== 'false';
+      const proxyAgent = PROXY_ENABLED ? proxyManager.getProxyAgent(tenantId) : null;
       
-      if (proxyAgent) {
+      if (proxyAgent && PROXY_ENABLED) {
         logger.info(`[${tenantId}] 🔐 Usando proxy para conexión (Anti-Ban activado)`);
       } else {
-        logger.warn(`[${tenantId}] ⚠️ Sin proxy - usando IP directa del servidor`);
+        logger.warn(`[${tenantId}] ⚠️ Proxy deshabilitado - usando IP directa del servidor`);
       }
 
       // Configurar socket de Baileys
