@@ -300,37 +300,48 @@ async function generarMensajePedidoRapido(tenantId, incluirSaludo = true) {
     const messagesSnapshot = await firebaseService.database.ref(`tenants/${tenantId}/bot/messages`).once('value');
     const messages = messagesSnapshot.val();
     
+    // Verificar si Wompi/pagos con tarjeta está habilitado
+    let pagoTarjetaHabilitado = false;
+    try {
+      const paymentConfig = await paymentConfigService.getConfig(tenantId);
+      pagoTarjetaHabilitado = paymentConfig && paymentConfig.enabled === true;
+    } catch (e) {
+      console.log(`[PedidoRapido] No se pudo verificar config de pagos: ${e.message}`);
+    }
+    
     // Mensaje 1: Saludo y explicación
     let saludoMsg = '';
     if (incluirSaludo) {
-      saludoMsg = messages?.welcome || `👋 *¡Hola! Bienvenido a ${nombreRestaurante}*`;
+      saludoMsg = messages?.welcome || `Hola! Bienvenido a ${nombreRestaurante}`;
     }
     
     const explicacionMsg = `${saludoMsg}
 
-📱 *Mira nuestro menú en el catálogo* 👆
-(Toca el ícono de tienda en este chat)
+Mira nuestro menu en el catalogo
+(Toca el icono de tienda en este chat)
 
-📝 Para hacer tu pedido de forma rápida:
+Para hacer tu pedido de forma rapida:
 1. Copia el formulario del siguiente mensaje
-2. Complétalo con tu pedido
-3. Envíalo de vuelta
+2. Completalo con tu pedido
+3. Envialo de vuelta
 
-¡Es muy fácil! 👇`;
+Es muy facil!`;
 
-    // Mensaje 2: Formulario para copiar
-    const formularioMsg = `━━━━━━━━━━━━━━━━━━
-📦 *MI PEDIDO:*
-• (escribe aquí los productos)
+    // Mensaje 2: Formulario para copiar (con o sin opcion de tarjeta)
+    const opcionPago = pagoTarjetaHabilitado ? 'Efectivo / Tarjeta' : 'Efectivo';
+    
+    const formularioMsg = `----------------------
+*MI PEDIDO:*
+- (escribe aqui los productos)
 
-📍 *DIRECCIÓN:*
-• (tu dirección completa)
+*DIRECCION:*
+- (tu direccion completa)
 
-📞 *TELÉFONO:*
-• (número de contacto)
+*TELEFONO:*
+- (numero de contacto)
 
-💵 *PAGO:* Efectivo / Tarjeta
-━━━━━━━━━━━━━━━━━━`;
+*PAGO:* ${opcionPago}
+----------------------`;
 
     // Retornamos un objeto especial que indica múltiples mensajes
     return {
@@ -339,24 +350,24 @@ async function generarMensajePedidoRapido(tenantId, incluirSaludo = true) {
     };
     
   } catch (error) {
-    console.error('Error generando mensaje de pedido rápido:', error);
-    // Fallback simple
+    console.error('Error generando mensaje de pedido rapido:', error);
+    // Fallback simple (solo efectivo por seguridad)
     return {
       type: 'multiple', 
       messages: [
-        '👋 *¡Hola! Bienvenido*\n\n📱 Mira nuestro menú en el catálogo y copia el formulario del siguiente mensaje para hacer tu pedido.',
-        `━━━━━━━━━━━━━━━━━━
-📦 *MI PEDIDO:*
-• (productos)
+        'Hola! Bienvenido\n\nMira nuestro menu en el catalogo y copia el formulario del siguiente mensaje para hacer tu pedido.',
+        `----------------------
+*MI PEDIDO:*
+- (productos)
 
-📍 *DIRECCIÓN:*
-• (dirección)
+*DIRECCION:*
+- (direccion)
 
-📞 *TELÉFONO:*
-• (teléfono)
+*TELEFONO:*
+- (telefono)
 
-💵 *PAGO:* Efectivo / Tarjeta
-━━━━━━━━━━━━━━━━━━`
+*PAGO:* Efectivo
+----------------------`
       ]
     };
   }
@@ -778,46 +789,47 @@ Una vez realices el pago, tu pedido sera enviado a cocina automaticamente.`;
     sesion.telefonoContacto = null;
     sesion.metodoPago = null;
     
-    return `❌ *Pedido cancelado*
+    return `*Pedido cancelado*
 
 No te preocupes, tu pedido ha sido cancelado.
 
-📝 Escribe *hola* cuando quieras hacer un nuevo pedido.`;
+Escribe *hola* cuando quieras hacer un nuevo pedido.`;
   }
   
-  // ✏️ EDITAR PEDIDO
+  // EDITAR PEDIDO
   if (palabrasEditar.some(p => textoLower === p || textoLower.startsWith(p + ' '))) {
     // Limpiar estado pero mantener info para nuevo intento
     sesion.esperandoConfirmacionRapida = false;
     sesion.pedidoRapidoPendiente = null;
     sesion.carrito = [];
     
-    return `✏️ *Vamos a editar tu pedido*
+    return `*Vamos a editar tu pedido*
 
-Por favor, envía nuevamente el formulario con los cambios que deseas:
+Por favor, envia nuevamente el formulario con los cambios que deseas:
 
-━━━━━━━━━━━━━━━━━━
-📦 *MI PEDIDO:*
-• (escribe aquí los productos)
+----------------------
+*MI PEDIDO:*
+- (escribe aqui los productos)
 
-📍 *DIRECCIÓN:*
-• ${sesion.direccion || 'tu dirección'}
+*DIRECCION:*
+- ${sesion.direccion || 'tu direccion'}
 
-📞 *TELÉFONO:*
-${sesion.telefonoContacto || 'tu número'}
-💵 *PAGO:* Efectivo
-━━━━━━━━━━━━━━━━━━
+*TELEFONO:*
+${sesion.telefonoContacto || 'tu numero'}
 
-💡 Copia, edita y envía el formulario con tus cambios.`;
+*PAGO:* Efectivo
+----------------------
+
+Copia, edita y envia el formulario con tus cambios.`;
   }
   
   // No entendió la respuesta
-  return `🤔 No entendí tu respuesta.
+  return `No entendi tu respuesta.
 
 Por favor responde:
-• *si* o *confirmar* → para confirmar el pedido
-• *editar* o *cambiar* → para modificar el pedido  
-• *cancelar* o *no* → para cancelar el pedido`;
+- *si* o *confirmar* - para confirmar el pedido
+- *editar* o *cambiar* - para modificar el pedido  
+- *cancelar* o *no* - para cancelar el pedido`;
 }
 
 /**
