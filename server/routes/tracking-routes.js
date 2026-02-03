@@ -95,6 +95,17 @@ router.get('/:token', async (req, res) => {
     const tiempoTranscurrido = timestampPedido ? Date.now() - timestampPedido : 0;
     const minutosTranscurridos = Math.floor(tiempoTranscurrido / 60000);
     
+    // Calcular subtotal si no existe (suma de items)
+    let subtotal = pedido.subtotal;
+    if (!subtotal && pedido.items) {
+      subtotal = pedido.items.reduce((sum, item) => {
+        return sum + ((item.precio || 0) * (item.cantidad || 1));
+      }, 0);
+    }
+    
+    // Obtener costo de envío (puede ser 0 si no aplica)
+    const costoEnvio = pedido.costoEnvio || 0;
+    
     res.json({
       success: true,
       order: {
@@ -107,6 +118,8 @@ router.get('/:token', async (req, res) => {
           cantidad: item.cantidad,
           precio: item.precio
         })) || [],
+        subtotal: subtotal,
+        costoEnvio: costoEnvio,
         total: pedido.total,
         direccion: pedido.direccion,
         metodoPago: pedido.metodoPago || 'efectivo',
