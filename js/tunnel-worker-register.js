@@ -162,6 +162,7 @@
    */
   function setupCommunication() {
     if (!navigator.serviceWorker.controller) {
+      setTimeout(setupCommunication, 1000);
       return;
     }
 
@@ -169,8 +170,27 @@
     navigator.serviceWorker.addEventListener('message', (event) => {
       console.log('📨 Mensaje del Service Worker:', event.data);
       
-      if (event.data.type === 'tunnel.status') {
-        updateTunnelStatus(event.data.status);
+      if (event.data.type === 'tunnel-status') {
+        const statusMap = {
+          'connected': 'active',
+          'disconnected': 'pending',
+          'error': 'error',
+          'failed': 'error'
+        };
+        updateTunnelStatus(statusMap[event.data.status] || 'pending');
+      }
+      else if (event.data.type === 'request-tenant-id') {
+        // Service Worker solicita el tenantId
+        const tenantId = getTenantId();
+        if (tenantId) {
+          navigator.serviceWorker.controller.postMessage({
+            type: 'set-tenant-id',
+            tenantId: tenantId
+          });
+          console.log(`🆔 TenantId enviado al Service Worker: ${tenantId}`);
+        } else {
+          console.warn('⚠️ No se encontró tenantId');
+        }
       }
     });
 
@@ -178,9 +198,12 @@
     const tenantId = getTenantId();
     if (tenantId) {
       navigator.serviceWorker.controller.postMessage({
-        type: 'tenant.info',
+        type: 'set-tenant-id',
         tenantId: tenantId
       });
+      console.log(`🆔 TenantId configurado: ${tenantId}`);
+    } else {
+      console.warn('⚠️ No se encontró tenantId en localStorage o URL');
     }
   }
 

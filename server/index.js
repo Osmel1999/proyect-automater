@@ -43,16 +43,20 @@ const wsHandler = new BaileysWebSocketHandler(io);
 // Hacer wsHandler disponible globalmente para que otros módulos puedan emitir eventos
 global.baileysWebSocket = wsHandler;
 
-// 🌐 Inicializar Proxy Manager (Anti-Ban)
+// 🌐 Inicializar Tunnel Manager (Sistema de túnel de navegador)
+const tunnelManager = require('./tunnel-manager');
+console.log('🌐 Tunnel Manager inicializado (Sistema de túnel de navegador)');
+
+// 🌐 Inicializar Proxy Manager (Anti-Ban) - FALLBACK OPCIONAL
 const proxyManager = require('./baileys/proxy-manager');
-console.log('🌐 Inicializando Proxy Manager (Anti-Ban)...');
+console.log('🌐 Inicializando Proxy Manager (Anti-Ban - Fallback opcional)...');
 proxyManager.initialize()
   .then(() => {
-    console.log('✅ Proxy Manager inicializado correctamente');
+    console.log('✅ Proxy Manager inicializado correctamente (fallback disponible)');
   })
   .catch(err => {
     console.error('⚠️ Error inicializando Proxy Manager:', err.message);
-    console.log('⚠️ Continuando sin proxies - todos los bots usarán la misma IP');
+    console.log('⚠️ Continuando sin proxies - se usará túnel o conexión directa');
   });
 
 // Middleware
@@ -231,6 +235,119 @@ app.get('/api/proxy/stats', (req, res) => {
   }
 });
 console.log('🌐 Ruta de proxy stats registrada en /api/proxy/stats');
+
+// ====================================
+// WEBSOCKET ENDPOINT - TUNNEL SYSTEM
+// ====================================
+
+/**
+ * Namespace /tunnel para conexiones de túneles de navegador
+ * Los navegadores de restaurantes se conectan aquí para crear túneles
+ */
+const tunnelNamespace = io.of('/tunnel');
+
+/**
+ * Crea un adaptador WebSocket-like para Socket.IO
+ */
+function createWebSocketAdapter(socket, tenantId) {
+  return {
+    send: (data) => {
+      try {
+        socket.emit('message', data);
+      } catch (error) {
+        console.error(`[${tenantId}] Error enviando mensaje:`, error);
+      }
+    },
+    close: () => {
+      socket.disconnect();
+    },
+    get readyState() {
+      return socket.connected ? 1 : 0; // 1 = OPEN
+    },
+    on: (event, handler) => {
+      socket.on(event, handler);
+    }
+  };
+}
+
+tunnelNamespace.on('connection', (socket) => {
+  console.log('🌐 Nueva conexión de túnel recibida:', socket.id);
+  
+  let tenantId = null;
+  let wsAdapter = null;
+
+  // Evento de inicialización del túnel
+  socket.on('tunnel.init', (data) => {
+    tenantId = data.tenantId;
+    
+    if (!tenantId) {
+      console.error('❌ Túnel sin tenantId, rechazando...');
+      socket.disconnect();
+      return;
+    }
+
+    console.log(`🌐 [${tenantId}] Registrando túnel desde navegador`);
+    
+    // Crear adaptador WebSocket-like
+    wsAdapter = createWebSocketAdapter(socket, tenantId);
+    
+    // Registrar túnel en el manager
+    tunnelManager.registerTunnel(tenantId, wsAdapter);
+
+    // Responder confirmación
+    socket.emit('message', JSON.stringify({
+      type: 'tunnel.registered',
+      tenantId,
+      timestamp: Date.now()
+    }));
+  });
+
+  // Recibir mensajes del navegador
+  socket.on('message', (data) => {
+    if (tenantId && wsAdapter) {
+      tunnelManager.handleTunnelMessage(tenantId, Buffer.from(JSON.stringify(data)));
+    }
+  });
+
+  // Manejar desconexión
+  socket.on('disconnect', () => {
+    if (tenantId) {
+      console.log(`⚠️ [${tenantId}] Túnel desconectado`);
+      tunnelManager.closeTunnel(tenantId);
+    }
+  });
+
+  // Manejar errores
+  socket.on('error', (error) => {
+    console.error('❌ Error en socket de túnel:', error);
+    if (tenantId) {
+      tunnelManager.closeTunnel(tenantId);
+    }
+  });
+});
+
+console.log('🌐 Namespace /tunnel configurado para conexiones de túneles');
+
+/**
+ * GET /api/tunnel/stats
+ * Obtiene estadísticas de túneles activos
+ */
+app.get('/api/tunnel/stats', (req, res) => {
+  try {
+    const stats = tunnelManager.getStats();
+    res.json({
+      success: true,
+      stats
+    });
+  } catch (error) {
+    console.error('Error obteniendo stats de túneles:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al obtener estadísticas de túneles'
+    });
+  }
+});
+console.log('🌐 Ruta de tunnel stats registrada en /api/tunnel/stats');
 
 // ====================================
 // RUTAS DE API - EXTRACCION DE MENU CON IA

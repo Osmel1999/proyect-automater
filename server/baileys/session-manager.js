@@ -45,6 +45,26 @@ async function loadBaileys() {
   return baileysPromise;
 }
 
+// node-fetch para fallback (precarga para evitar import en error path)
+let nodeFetch = null;
+let nodeFetchPromise = null;
+
+async function loadNodeFetch() {
+  if (nodeFetch) return nodeFetch;
+  if (!nodeFetchPromise) {
+    nodeFetchPromise = import('node-fetch').then((module) => {
+      nodeFetch = module.default;
+      return module.default;
+    });
+  }
+  return nodeFetchPromise;
+}
+
+// Precargar node-fetch al inicio
+loadNodeFetch().catch(() => {
+  logger.warn('node-fetch no disponible para fallback');
+});
+
 class SessionManager extends EventEmitter {
   constructor() {
     super();
@@ -128,10 +148,14 @@ class SessionManager extends EventEmitter {
         saveCreds = authState.saveCreds;
       }
 
-      // 🌐 ESTRATEGIA DE PROXY INTELIGENTE
-      // ISP Proxy: Usar desde el inicio (estable, no causa timeout)
-      // Residential Proxy: Modo híbrido (puede causar timeout si se usa desde inicio)
-      // Sin proxy: Conexión directa
+      // 🌐 ESTRATEGIA DE CONEXIÓN INTELIGENTE
+      // 1. TÚNEL (prioridad máxima): Navegador del restaurante (IP real, $0 costo)
+      // 2. ISP Proxy: IP estable de proveedor (si está configurado)
+      // 3. Residential Proxy: Modo híbrido (si está configurado)
+      // 4. Conexión directa: IP de Railway (fallback)
+      
+      const tunnelManager = require('../tunnel-manager');
+      const hasTunnel = tunnelManager.hasTunnel(tenantId);
       
       const PROXY_ENABLED = process.env.ENABLE_PROXY !== 'false';
       const PROXY_TYPE = process.env.PROXY_TYPE || 'none';
@@ -139,8 +163,16 @@ class SessionManager extends EventEmitter {
       
       let proxyAgent = null;
       let useHybridMode = false;
+      let useTunnel = false;
       
-      if (PROXY_ENABLED) {
+      // PRIORIDAD 1: Usar túnel si está disponible
+      if (hasTunnel) {
+        useTunnel = true;
+        logger.info(`[${tenantId}] 🌐 TÚNEL ACTIVO: Usando IP del restaurante ($0 costo)`);
+        logger.info(`[${tenantId}] ✅ WhatsApp verá la IP real del negocio (máximo anti-ban)`);
+      }
+      // PRIORIDAD 2: Usar proxy si está configurado y no hay túnel
+      else if (PROXY_ENABLED) {
         // ISP Proxy: Siempre desde el inicio (IP estable, no timeout)
         if (PROXY_TYPE === 'isp') {
           proxyAgent = proxyManager.getProxyAgent(tenantId);
@@ -161,7 +193,7 @@ class SessionManager extends EventEmitter {
           }
         }
       } else {
-        logger.warn(`[${tenantId}] ⚠️ Proxy deshabilitado - usando IP directa`);
+        logger.warn(`[${tenantId}] ⚠️ Sin túnel ni proxy - usando IP directa de Railway`);
       }
 
       // Configurar socket de Baileys
@@ -180,10 +212,39 @@ class SessionManager extends EventEmitter {
         }
       };
 
-      // 🌐 Agregar agente proxy si está disponible
-      if (proxyAgent) {
+      // 🌐 CONFIGURAR AGENTE DE CONEXIÓN
+      // Si hay túnel activo, usar fetch personalizado que pasa por el túnel
+      if (useTunnel) {
+        socketConfig.fetchAgent = async (url, options = {}) => {
+          try {
+            logger.debug(`[${tenantId}] 🌐 Petición a través del túnel: ${options.method || 'GET'} ${url}`);
+            
+            // Hacer petición a través del túnel del navegador
+            const response = await tunnelManager.proxyRequest(tenantId, url, options);
+            
+            // Adaptar respuesta al formato esperado por Baileys
+            return {
+              status: response.status,
+              headers: response.headers,
+              text: () => Promise.resolve(response.body),
+              json: () => Promise.resolve(JSON.parse(response.body)),
+              buffer: () => Promise.resolve(Buffer.from(response.body))
+            };
+          } catch (error) {
+            logger.error(`[${tenantId}] ❌ Error en petición por túnel:`, error.message);
+            logger.warn(`[${tenantId}] ⚠️ Fallback a conexión directa`);
+            
+            // Fallback: usar fetch precargado
+            const fetch = await loadNodeFetch();
+            return fetch(url, options);
+          }
+        };
+      }
+      // Si hay proxy agent configurado, usarlo
+      else if (proxyAgent) {
         socketConfig.agent = proxyAgent;
       }
+      // Si no hay túnel ni proxy, usar conexión directa (sin configuración adicional)
 
       const socket = makeWASocket(socketConfig);
 
