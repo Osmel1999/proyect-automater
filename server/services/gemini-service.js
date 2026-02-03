@@ -4,6 +4,7 @@
  */
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+// Usar gemini-1.5-flash que es el modelo vision disponible publicamente
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
 /**
