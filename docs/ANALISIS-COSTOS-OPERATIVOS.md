@@ -1,12 +1,57 @@
 # Análisis de Costos Operativos - KDS WhatsApp Bot
 
 **Fecha de análisis**: 31 de Enero 2026  
-**Última actualización**: 31 de Enero 2026 (con datos exactos de planes)
+**Última actualización**: 31 de Enero 2026  
+**Versión**: 2.0 (incluye sistema anti-ban con proxies rotativos)
 
 > **Terminología:**
 > - **Restaurante** = Usuario de tu plataforma (tenant) que paga mensualidad
 > - **Cliente final** = Persona que hace pedidos por WhatsApp al restaurante
 > - **Pedido** = Una transacción completa (varios mensajes de WhatsApp)
+> - **Bot** = Instancia de WhatsApp conectada para un restaurante (1 bot = 1 número de WhatsApp)
+
+> **⚠️ CAMBIO IMPORTANTE EN V2.0:**  
+> Se añade análisis completo del **sistema anti-ban con proxies rotativos**. Cada bot ahora requiere una IP única a través de proxies para evitar bans masivos de WhatsApp. Esto añade ~$0.07/restaurante al costo operativo, pero es **OBLIGATORIO** para operación estable en producción.
+
+---
+
+## 📋 Tabla de Contenido
+
+1. [Planes y Límites de los Servicios](#1-planes-y-límites-de-los-servicios)
+2. [Consumo por Cliente Final (1 Pedido)](#2-consumo-por-cliente-final-1-pedido)
+3. [Consumo por Restaurante (Proyección Mensual)](#3-consumo-por-restaurante-proyección-mensual)
+4. [Capacidad de Planes Gratuitos](#4-capacidad-de-planes-gratuitos)
+5. [Capacidad por Plan de Pago](#5-capacidad-por-plan-de-pago)
+6. [Tabla de Costos Finales](#6-tabla-de-costos-finales)
+7. [Proyecciones de Rentabilidad](#7-proyecciones-de-rentabilidad-sin-proxies---ver-sección-10-para-costos-reales)
+8. [Límites y Cuándo Escalar](#8-límites-y-cuándo-escalar)
+9. [Resumen Ejecutivo](#9-resumen-ejecutivo)
+10. [**Sistema Anti-Ban: Costo de Proxies Rotativos** 🆕](#10-sistema-anti-ban-costo-de-proxies-rotativos)
+11. [Optimizaciones Implementadas](#11-optimizaciones-implementadas)
+12. [Precios Recomendados por Tipo de Restaurante](#12-precios-recomendados-por-tipo-de-restaurante)
+
+---
+
+## 🆕 Cambios en V2.0 (31 Enero 2026)
+
+### Nuevas Secciones:
+- ✅ **Sección 10:** Análisis completo del sistema anti-ban con proxies rotativos
+- ✅ **Costo de proxies:** $49/mes (Webshare) para ~650 restaurantes
+- ✅ **Consumo de bandwidth:** ~150 MB/bot/mes (90% es keep-alive)
+- ✅ **Costo por restaurante actualizado:** $0.11-0.17/mes (incluye proxies)
+- ✅ **Rentabilidad actualizada:** Margen sigue siendo >98% con proxies incluidos
+
+### Arquitectura del Sistema:
+- 🔒 **1 proxy dedicado por restaurante/bot** (5 IPs en pool de rotación)
+- 🔄 **Rotación automática** de IP en cada reinicio del bot
+- 📊 **Monitoreo de uso** vía endpoint `/api/proxy/stats`
+- ⚡ **Keep-alive optimizado** cada 30 segundos (balance estabilidad/bandwidth)
+
+### Impacto Financiero:
+- 💰 Añade **~$0.07/restaurante** al costo operativo
+- 📈 Margen se reduce de **99%** a **98-99%** (sigue siendo excelente)
+- 🎯 **Costo total por restaurante:** $0.11-0.17/mes (vs $0.05-0.10 sin proxies)
+- ✅ **Rentabilidad:** Con precio de $120,000 COP/mes, ganancia sigue siendo >$119,500 COP/restaurante
 
 ---
 
@@ -174,9 +219,12 @@
 |----------|-------|
 | Firebase | $0.000004 (~6.5 KB de 10 GB gratis) |
 | Railway | $0.00001 (despreciable) |
-| **TOTAL por pedido** | **~$0.00001** (prácticamente $0) |
+| Proxy | $0.00005 (~5 KB de 100 GB × $0.49/GB) |
+| **TOTAL por pedido** | **~$0.00006** (prácticamente $0) |
 
-### Costo por Restaurante/Mes (50 pedidos/día)
+### Costo por Restaurante/Mes (50 pedidos/día) - SIN PROXIES
+
+> **⚠️ Esta tabla NO incluye proxies.** Ver **Sección 10** para costos reales con proxies.
 
 | # Restaurantes | Firebase | Railway | **Total/restaurante** |
 |----------------|----------|---------|----------------------|
@@ -187,13 +235,26 @@
 | 500 | $0 | $0.03-0.04 | **$0.03-0.04** |
 | 1,000 | $5 | $0.02-0.03 | **$0.007-0.008** |
 
+### Costo por Restaurante/Mes (50 pedidos/día) - CON PROXIES
+
+| # Restaurantes | Firebase | Railway | Proxies | **Total/restaurante** |
+|----------------|----------|---------|---------|----------------------|
+| 10 | $0 | $0.50 | $0.07 | **$0.57** |
+| 50 | $0 | $0.10 | $0.07 | **$0.17** |
+| 100 | $0 | $0.07 | $0.07 | **$0.14** |
+| 500 | $0 | $0.04 | $0.07 | **$0.11** |
+| 650 | $0.01 | $0.04 | $0.07 | **$0.12** |
+| 1,000 | $0.005 | $0.03 | $0.075 | **$0.11** |
+
 ---
 
-## 7. Proyecciones de Rentabilidad
+## 7. Proyecciones de Rentabilidad (SIN PROXIES - Ver sección 10 para costos reales)
+
+> **⚠️ IMPORTANTE:** Esta sección NO incluye el costo de proxies ($49/mes para ~650 restaurantes). Ver **Sección 10** para análisis completo con proxies.
 
 ### Si cobras $50,000 COP/mes (~$12 USD) por restaurante:
 
-| Restaurantes | Ingreso/mes | Costos/mes | **Ganancia** | **Margen** |
+| Restaurantes | Ingreso/mes | Costos/mes* | **Ganancia** | **Margen** |
 |--------------|-------------|------------|--------------|------------|
 | 10 | $120 | $5 (Railway) | **$115** | 96% |
 | 25 | $300 | $5 | **$295** | 98% |
@@ -201,6 +262,8 @@
 | 100 | $1,200 | $7-10 | **$1,190-1,193** | 99% |
 | 500 | $6,000 | $20-25 | **$5,975-5,980** | 99.6% |
 | 1,000 | $12,000 | $25-30 | **$11,970-11,975** | 99.7% |
+
+*Solo Railway + Firebase. **NO incluye proxies obligatorios** (ver sección 10)
 
 ---
 
@@ -226,50 +289,208 @@
 
 ## 9. Resumen Ejecutivo
 
-### Capacidad con planes GRATUITOS:
+### ⚠️ IMPORTANTE: Sistema Anti-Ban Requiere Proxies
 
-| Servicio | Límite principal | Restaurantes máx |
-|----------|------------------|------------------|
-| Firebase Spark | 100 conexiones | **~30-50** |
-| Railway Free | 30 días trial | **~20-30** |
-| **Combinado** | - | **~20-30 restaurantes** |
+Para evitar bans de WhatsApp, cada bot necesita su propia IP a través de proxies rotativos. Esto añade un costo adicional pero es **OBLIGATORIO** para operación estable.
 
-### Capacidad con planes MÍNIMOS ($5/mes total):
+### Capacidad con planes MÍNIMOS ($49-54/mes):
 
-| Servicio | Plan | Restaurantes máx |
-|----------|------|------------------|
-| Firebase Blaze | Pago por uso | **~500-666** (dentro del gratis) |
-| Railway Hobby | $5/mes | **~100-200** |
-| **Combinado** | $5/mes | **~100-200 restaurantes** |
+| Servicio | Plan | Costo | Capacidad |
+|----------|------|-------|-----------|
+| **Railway Hobby** | Pago por uso | $5/mes | ~100-200 restaurantes |
+| **Firebase Blaze** | Pago por uso | $0/mes | ~500-666 restaurantes (gratis) |
+| **Webshare Proxies** | Starter | $49/mes | ~650 restaurantes (100 GB) |
+| **TOTAL** | - | **$54/mes** | **~100-200 restaurantes*** |
 
-### Costos reales:
+*El cuello de botella es Railway (RAM), no proxies ni Firebase
 
-| Escala | Costo total/mes | Costo por restaurante |
-|--------|-----------------|----------------------|
-| 10 restaurantes | $5 | $0.50 |
-| 50 restaurantes | $5-7 | $0.10-0.14 |
-| 100 restaurantes | $7-10 | $0.07-0.10 |
-| 500 restaurantes | $20-25 | $0.04-0.05 |
+### Costos reales CON PROXIES:
 
-### Conclusión:
+| Escala | Railway | Firebase | Proxies | **TOTAL/mes** | **Por restaurante** |
+|--------|---------|----------|---------|---------------|---------------------|
+| 10 rest | $5 | $0 | $0.74 | **$5.74** | **$0.57** |
+| 50 rest | $5 | $0 | $3.68 | **$8.68** | **$0.17** |
+| 100 rest | $7 | $0 | $7.35 | **$14.35** | **$0.14** |
+| 500 rest | $20 | $0 | $36.76 | **$56.76** | **$0.11** |
+| 650 rest | $25 | $5 | $49 | **$79** | **$0.12** |
+
+### Conclusión actualizada:
 
 1. **Cada pedido cuesta ~$0.00001** - Prácticamente gratis
-2. **Cada restaurante (50 ped/día) cuesta $0.05-0.50/mes** dependiendo de escala
-3. **Con $5/mes puedes tener hasta 100-200 restaurantes**
-4. **Tu margen es >96%** desde el primer restaurante
-5. **El cuello de botella inicial es Railway** (RAM), no Firebase
+2. **Cada restaurante (50 ped/día) cuesta $0.11-0.17/mes** incluyendo proxies anti-ban
+3. **Con ~$54/mes puedes tener hasta 100-200 restaurantes** (limitado por Railway)
+4. **Con ~$79/mes puedes tener hasta 650 restaurantes** (límite de 100 GB proxies)
+5. **Tu margen es >98%** desde el primer restaurante, incluso con proxies
+6. **Los proxies añaden solo ~$0.07/restaurante** pero son esenciales para estabilidad
+
+### Cuellos de botella por escala:
+
+| Restaurantes | Cuello de botella | Solución |
+|--------------|-------------------|----------|
+| 0-50 | Railway Free (30 días) | Migrar a Hobby ($5/mes) |
+| 50-200 | Railway RAM (~2-4 GB) | Optimizar o escalar a Pro ($20/mes) |
+| 200-650 | Railway RAM (~8 GB) | Railway Pro |
+| 650+ | Proxies (100 GB agotado) | 2do plan Webshare (+$49/mes) |
 
 ---
 
-## 12. Optimizaciones Implementadas
+## 10. Sistema Anti-Ban: Costo de Proxies Rotativos
+
+> **¿Por qué proxies?** WhatsApp puede banear números/IPs con alta actividad. Cada bot necesita su propia IP única para evitar bans masivos.
+
+### Arquitectura de Proxies
+
+- **1 proxy dedicado por restaurante/bot**
+- **Rotación de IP** cada vez que el bot se reinicia
+- **Protocolo:** HTTP/HTTPS proxies (no SOCKS5 para evitar complicaciones)
+- **Pool de proxies:** 5 por tenant/bot (1 activo + 4 de respaldo)
+
+### Consumo de Bandwidth por Bot
+
+#### Análisis detallado del tráfico:
+
+| Concepto | Consumo | Frecuencia | Total/mes |
+|----------|---------|------------|-----------|
+| **Keep-alive WebSocket** | 1.5 KB/paquete | Cada 30s | **~129 MB** |
+| **Mensajes recibidos** | 2-10 KB/msg | 50 ped × 5 msg = 250/mes | **~1.25 MB** |
+| **Mensajes enviados** | 1-5 KB/msg | 50 ped × 3 msg = 150/mes | **~0.45 MB** |
+| **Media (imágenes menú)** | 50-200 KB/img | 2-3 veces/día × 30 | **~5 MB** |
+| **Reconexiones/sincronización** | 500 KB-2 MB/evento | 5-10 veces/mes | **~10 MB** |
+| **TOTAL POR BOT/MES** | - | - | **~145-150 MB** |
+
+> **Desglose del keep-alive:** 2,592,000 seg/mes ÷ 30 seg = 86,400 paquetes × 1.5 KB = 129.6 MB
+
+#### Consumo por tipo de restaurante:
+
+| Perfil | Pedidos/día | Mensajes/mes* | Total bandwidth/mes |
+|--------|-------------|---------------|---------------------|
+| **Pequeño** | 25 | ~200 | **~135 MB** |
+| **Mediano** | 50 | ~400 | **~150 MB** |
+| **Alto volumen** | 100 | ~800 | **~180 MB** |
+
+*Incluye keep-alive (90% del tráfico), mensajes de pedidos y media
+
+---
+
+### Proveedores de Proxies y Costos
+
+#### Comparativa de proveedores recomendados:
+
+| Proveedor | Tipo | Precio | Bandwidth | Costo/GB | IPs | Rotación |
+|-----------|------|--------|-----------|----------|-----|----------|
+| **Webshare** | Residencial | $49/100 GB | 100 GB | $0.49 | Ilimitadas | Cada request |
+| **Bright Data** | Residencial | $8.40/GB | Pay-as-you-go | $8.40 | Ilimitadas | Cada request |
+| **Smartproxy** | Residencial | $12.5/GB | Pay-as-you-go | $12.50 | Ilimitadas | Cada request |
+| **IPRoyal** | Residencial | $7/GB | Pay-as-you-go | $7.00 | Ilimitadas | Cada request |
+| **ProxyScrape** | Dedicado | $5/mes/proxy | Ilimitado | $0 | 1 | No |
+
+#### Recomendación: **Webshare** (mejor relación costo/beneficio)
+
+**Plan Starter - $49/mes:**
+- ✅ 100 GB bandwidth incluido
+- ✅ IPs residenciales (USA, EU, etc.)
+- ✅ Rotación automática
+- ✅ 99.9% uptime
+- ✅ Soporte HTTP/HTTPS
+
+---
+
+### Cálculo de Costos con Proxies
+
+#### ¿Cuántos restaurantes soporta 100 GB?
+
+| Bot consume | 100 GB ÷ consumo | Restaurantes máx |
+|-------------|------------------|------------------|
+| 135 MB/mes (pequeño) | 100,000 MB ÷ 135 MB | **~740 bots** |
+| 150 MB/mes (mediano) | 100,000 MB ÷ 150 MB | **~666 bots** |
+| 180 MB/mes (alto vol) | 100,000 MB ÷ 180 MB | **~555 bots** |
+
+**Promedio:** ~**650 restaurantes** con 100 GB de Webshare ($49/mes)
+
+---
+
+### Costo Total de Infraestructura con Proxies
+
+| # Restaurantes | Railway | Firebase | Proxies (Webshare) | **TOTAL/mes** |
+|----------------|---------|----------|-------------------|---------------|
+| 10 | $5 | $0 | $0.74* | **$5.74** |
+| 50 | $5 | $0 | $3.68 | **$8.68** |
+| 100 | $7 | $0 | $7.35 | **$14.35** |
+| 500 | $20 | $0 | $36.76 | **$56.76** |
+| 650 | $25 | $5 | $49 | **$79** |
+| 1,000 | $30 | $5 | $75** | **$110** |
+
+*$49/mes ÷ 666 restaurantes promedio × cantidad  
+**Necesitarás 2 planes de Webshare (200 GB) a $49 c/u = $98
+
+---
+
+### Costo por Restaurante (Incluye Proxies)
+
+| # Restaurantes | Costo total/mes | Costo por restaurante |
+|----------------|-----------------|----------------------|
+| 10 | $5.74 | **$0.57** |
+| 50 | $8.68 | **$0.17** |
+| 100 | $14.35 | **$0.14** |
+| 500 | $56.76 | **$0.11** |
+| 650 | $79 | **$0.12** |
+| 1,000 | $110 | **$0.11** |
+
+---
+
+### Rentabilidad Actualizada (Con Proxies)
+
+#### Si cobras $120,000 COP/mes (~$29 USD) por restaurante:
+
+| Restaurantes | Ingreso/mes | Costos/mes | **Ganancia** | **Margen** |
+|--------------|-------------|------------|--------------|------------|
+| 10 | $290 | $5.74 | **$284.26** | 98% |
+| 50 | $1,450 | $8.68 | **$1,441.32** | 99.4% |
+| 100 | $2,900 | $14.35 | **$2,885.65** | 99.5% |
+| 500 | $14,500 | $56.76 | **$14,443.24** | 99.6% |
+| 650 | $18,850 | $79 | **$18,771** | 99.6% |
+| 1,000 | $29,000 | $110 | **$28,890** | 99.6% |
+
+> **Conclusión:** Los proxies añaden **~$0.07/restaurante** pero mantienen el margen >98%
+
+---
+
+### Optimizaciones de Bandwidth
+
+#### Actualmente implementadas:
+
+| Optimización | Ubicación | Ahorro |
+|--------------|-----------|--------|
+| Keep-alive cada 30s (no 10s) | `proxy-manager.js` | **~2.5x menos tráfico** |
+| Compresión de mensajes | Baileys nativo | ~20% menos |
+| Caché de media | En memoria | ~30% menos descargas |
+
+#### Optimizaciones adicionales posibles:
+
+| Optimización | Ahorro potencial | Complejidad | Riesgo de ban |
+|--------------|------------------|-------------|---------------|
+| Keep-alive cada 60s | 50% menos | Baja | Alto ⚠️ |
+| Desconectar bots inactivos >2h | 15-20% menos | Media | Bajo |
+| Horarios nocturnos (11pm-6am off) | 30% menos | Media | Medio |
+| Comprimir imágenes menú (WebP) | 40% menos en media | Baja | Nulo |
+
+**Recomendación:** Mantener keep-alive en 30s por estabilidad. Implementar solo "desconectar inactivos" si se necesita ahorrar.
+
+---
+
+## 11. Optimizaciones Implementadas
 
 | Optimización | Archivo | Ahorro |
 |--------------|---------|--------|
-| Listeners granulares KDS | `app.js` | 90% menos datos |
-| Caché de menú (5 min) | `server/bot-logic.js` | 33% menos lecturas |
+| Listeners granulares KDS | `app.js` | 90% menos datos Firebase |
+| Caché de menú (5 min) | `server/bot-logic.js` | 33% menos lecturas Firebase |
 | Sesiones en memoria | `server/bot-logic.js` | 0 lecturas por mensaje intermedio |
+| Proxies rotativos | `proxy-manager.js` | Protección anti-ban |
+| Keep-alive optimizado (30s) | `proxy-manager.js` | 2.5x menos bandwidth vs 10s |
 
-Estas optimizaciones permiten que cada pedido consuma solo **~6.5 KB** en lugar de ~20 KB sin optimizar.
+Estas optimizaciones permiten:
+- **Firebase:** Cada pedido consume solo **~6.5 KB** en lugar de ~20 KB sin optimizar
+- **Proxies:** Cada bot consume solo **~150 MB/mes** en lugar de ~375 MB/mes sin optimizar
 
 ---
 
@@ -395,16 +616,18 @@ Asumiendo que usas **Railway Hobby ($5/mes) + Firebase Blaze (pago por uso)**:
 
 ---
 
-### 🎯 Tabla de Rentabilidad Final
+### 🎯 Tabla de Rentabilidad Final (CON PROXIES)
 
-| Restaurantes | Ingreso bruto/mes | Costos operativos | Ganancia neta | Margen |
-|--------------|-------------------|-------------------|---------------|--------|
-| 10 | $1,140,000 COP (~$276 USD) | ~$5 USD | **$1,119,000 COP** | 98% |
-| 25 | $2,850,000 COP (~$690 USD) | ~$5 USD | **$2,829,000 COP** | 99% |
-| 50 | $5,700,000 COP (~$1,380 USD) | ~$6 USD | **$5,675,000 COP** | 99.5% |
-| 100 | $11,400,000 COP (~$2,760 USD) | ~$8 USD | **$11,367,000 COP** | 99.7% |
+| Restaurantes | Ingreso bruto/mes | Costos operativos** | Ganancia neta | Margen |
+|--------------|-------------------|---------------------|---------------|--------|
+| 10 | $1,140,000 COP (~$276 USD) | ~$5.74 USD | **$1,116,000 COP** | 98% |
+| 25 | $2,850,000 COP (~$690 USD) | ~$6.50 USD | **$2,823,000 COP** | 99% |
+| 50 | $5,700,000 COP (~$1,380 USD) | ~$8.68 USD | **$5,664,000 COP** | 99.4% |
+| 100 | $11,400,000 COP (~$2,760 USD) | ~$14.35 USD | **$11,341,000 COP** | 99.5% |
 
-> **Nota:** Costos operativos son solo infraestructura. No incluyen marketing, soporte, desarrollo, etc.
+**Costos operativos incluyen: Railway + Firebase + Proxies rotativos (Webshare)
+
+> **Nota crítica:** Los proxies son obligatorios para evitar bans de WhatsApp. Sin ellos, el servicio no es viable a largo plazo.
 
 ---
 
