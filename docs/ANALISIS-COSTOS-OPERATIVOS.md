@@ -11,7 +11,7 @@
 > - **Bot** = Instancia de WhatsApp conectada para un restaurante (1 bot = 1 número de WhatsApp)
 
 > **⚠️ CAMBIO IMPORTANTE EN V2.0:**  
-> Se añade análisis completo del **sistema anti-ban con proxies rotativos de Bright Data**. Cada bot ahora requiere una IP única a través de proxies para evitar bans masivos de WhatsApp. Esto añade **~$0.63-1.26/restaurante** al costo operativo (dependiendo del descuento), pero es **OBLIGATORIO** para operación estable en producción. Bright Data ofrece 50% de descuento los primeros 3 meses.
+> Se añade análisis completo del **sistema anti-ban con proxies rotativos de Bright Data**. Cada bot ahora requiere una IP única a través de proxies para evitar bans masivos de WhatsApp. Esto añade **~$0.21-0.42/restaurante** al costo operativo (dependiendo del descuento), pero es **OBLIGATORIO** para operación estable en producción. Bright Data ofrece 50% de descuento los primeros 3 meses.
 
 ---
 
@@ -38,10 +38,10 @@
 - ✅ **Sección 10:** Análisis completo del sistema anti-ban con proxies rotativos de Bright Data
 - ✅ **Costo de proxies:** $4.20/GB (primeros 3 meses con 50% OFF) o $8.40/GB (precio regular)
 - ✅ **Modelo pay-as-you-go:** Solo pagas lo que usas, sin mínimos mensuales
-- ✅ **Consumo de bandwidth:** ~150 MB/bot/mes (90% es keep-alive)
-- ✅ **Costo por restaurante actualizado:** $0.67-0.73/mes (primeros 3 meses) o $1.30-1.36/mes (mes 4+)
-- ✅ **Rentabilidad actualizada:** Margen de 95-97% con Bright Data incluido
-- ✅ **Explicación de proxies:** Qué son, por qué se necesitan, cómo funcionan
+- ✅ **Consumo de bandwidth:** ~50 MB/bot/mes (86% es keep-alive)
+- ✅ **Capacidad por GB:** 1 GB mantiene ~20-22 bots/mes
+- ✅ **Costo por restaurante actualizado:** $0.25-0.31/mes (primeros 3 meses) o $0.46-0.52/mes (mes 4+)
+- ✅ **Rentabilidad actualizada:** Margen de 98-99% con Bright Data incluido
 
 ### Arquitectura del Sistema:
 - 🔒 **1 proxy dedicado por restaurante/bot** (5 IPs en pool de rotación)
@@ -51,11 +51,11 @@
 - ⚡ **Keep-alive optimizado** cada 30 segundos (balance estabilidad/bandwidth)
 
 ### Impacto Financiero:
-- 💰 Añade **$0.63-0.73/restaurante** durante los primeros 3 meses (50% OFF)
-- 💰 Añade **$1.26-1.36/restaurante** a partir del mes 4 (precio regular)
-- 📈 Margen se mantiene en **95-97%** (excelente para SaaS)
-- 🎯 **Costo total por restaurante:** $0.67-0.73/mes (meses 1-3) o $1.30-1.36/mes (mes 4+)
-- ✅ **Rentabilidad:** Con precio de $120,000 COP/mes, ganancia de $27,500-28,000 COP/restaurante
+- 💰 Añade **$0.21-0.31/restaurante** durante los primeros 3 meses (50% OFF)
+- 💰 Añade **$0.42-0.52/restaurante** a partir del mes 4 (precio regular)
+- 📈 Margen se mantiene en **98-99%** (excelente para SaaS)
+- 🎯 **Costo total por restaurante:** $0.25-0.31/mes (meses 1-3) o $0.46-0.52/mes (mes 4+)
+- ✅ **Rentabilidad:** Con precio de $120,000 COP/mes, ganancia de $28,500-28,800 COP/restaurante
 
 ### Ventajas de Bright Data:
 - 🏆 **Líder mundial** en proxies residenciales
@@ -231,8 +231,8 @@
 |----------|-------|
 | Firebase | $0.000004 (~6.5 KB de 10 GB gratis) |
 | Railway | $0.00001 (despreciable) |
-| Proxy (Bright Data) | $0.00013 (~5 KB × $0.146/GB con descuento) |
-| **TOTAL por pedido** | **~$0.00015** (prácticamente $0) |
+| Proxy (Bright Data) | $0.000004 (~2 KB × $0.21/0.05 GB con descuento) |
+| **TOTAL por pedido** | **~$0.00002** (prácticamente $0) |
 
 ### Costo por Restaurante/Mes (50 pedidos/día) - SIN PROXIES
 
@@ -253,21 +253,21 @@
 
 | # Restaurantes | Firebase | Railway | Proxies (50% OFF) | **Total/restaurante** |
 |----------------|----------|---------|-------------------|----------------------|
-| 10 | $0 | $0.50 | $0.63 | **$1.13** |
-| 50 | $0 | $0.10 | $0.63 | **$0.73** |
-| 100 | $0 | $0.07 | $0.63 | **$0.70** |
-| 500 | $0 | $0.04 | $0.63 | **$0.67** |
-| 1,000 | $0.005 | $0.03 | $0.63 | **$0.67** |
+| 10 | $0 | $0.50 | $0.21 | **$0.71** |
+| 50 | $0 | $0.10 | $0.21 | **$0.31** |
+| 100 | $0 | $0.07 | $0.21 | **$0.28** |
+| 500 | $0 | $0.04 | $0.21 | **$0.25** |
+| 1,000 | $0.005 | $0.03 | $0.21 | **$0.25** |
 
 #### A partir del mes 4 (precio regular):
 
 | # Restaurantes | Firebase | Railway | Proxies | **Total/restaurante** |
 |----------------|----------|---------|---------|----------------------|
-| 10 | $0 | $0.50 | $1.26 | **$1.76** |
-| 50 | $0 | $0.10 | $1.26 | **$1.36** |
-| 100 | $0 | $0.07 | $1.26 | **$1.33** |
-| 500 | $0 | $0.04 | $1.26 | **$1.30** |
-| 1,000 | $0.005 | $0.03 | $1.26 | **$1.30** |
+| 10 | $0 | $0.50 | $0.42 | **$0.92** |
+| 50 | $0 | $0.10 | $0.42 | **$0.52** |
+| 100 | $0 | $0.07 | $0.42 | **$0.49** |
+| 500 | $0 | $0.04 | $0.42 | **$0.46** |
+| 1,000 | $0.005 | $0.03 | $0.42 | **$0.46** |
 
 ---
 
@@ -331,18 +331,14 @@
 
 Para evitar bans de WhatsApp, cada bot necesita su propia IP a través de proxies rotativos. Bright Data es el proveedor líder en proxies residenciales con la mejor calidad y menor tasa de ban.
 
-### ¿Qué son los proxies?
-
-Los proxies actúan como intermediarios entre tu bot y WhatsApp, dándole a cada bot una IP única y residencial (como si fuera un usuario normal desde su casa). Esto evita que WhatsApp detecte múltiples bots desde la misma IP y los banee masivamente.
-
 ### Capacidad y costos iniciales:
 
 | Servicio | Plan | Costo (Meses 1-3) | Capacidad |
 |----------|------|-------------------|-----------|
 | **Railway Hobby** | Pago por uso | $5-20/mes | ~100-500 restaurantes |
 | **Firebase Blaze** | Pago por uso | $0-5/mes | ~500-1,000 restaurantes |
-| **Bright Data Proxies** | Pay-as-you-go (50% OFF) | $4.20/GB | Ilimitado |
-| **TOTAL estimado** | 100 restaurantes | **~$70/mes** | **100 restaurantes*** |
+| **Bright Data Proxies** | Pay-as-you-go (50% OFF) | $4.20/GB | ~20-22 bots/GB |
+| **TOTAL estimado** | 100 restaurantes | **~$28/mes** | **100 restaurantes*** |
 
 *El cuello de botella inicial es Railway (RAM), no proxies ni Firebase
 
@@ -352,30 +348,31 @@ Los proxies actúan como intermediarios entre tu bot y WhatsApp, dándole a cada
 
 | Escala | Railway | Firebase | Proxies | **TOTAL/mes** | **Por restaurante** |
 |--------|---------|----------|---------|---------------|---------------------|
-| 10 rest | $5 | $0 | $6.30 | **$11.30** | **$1.13** |
-| 50 rest | $5 | $0 | $31.50 | **$36.50** | **$0.73** |
-| 100 rest | $7 | $0 | $63.00 | **$70** | **$0.70** |
-| 500 rest | $20 | $0 | $315 | **$335** | **$0.67** |
-| 1,000 rest | $30 | $5 | $630 | **$665** | **$0.67** |
+| 10 rest | $5 | $0 | $2.10 | **$7.10** | **$0.71** |
+| 50 rest | $5 | $0 | $10.50 | **$15.50** | **$0.31** |
+| 100 rest | $7 | $0 | $21 | **$28** | **$0.28** |
+| 500 rest | $20 | $0 | $105 | **$125** | **$0.25** |
+| 1,000 rest | $30 | $5 | $210 | **$245** | **$0.25** |
 
 #### A partir del mes 4 (precio regular):
 
 | Escala | Railway | Firebase | Proxies | **TOTAL/mes** | **Por restaurante** |
 |--------|---------|----------|---------|---------------|---------------------|
-| 10 rest | $5 | $0 | $12.60 | **$17.60** | **$1.76** |
-| 50 rest | $5 | $0 | $63.00 | **$68** | **$1.36** |
-| 100 rest | $7 | $0 | $126 | **$133** | **$1.33** |
-| 500 rest | $20 | $0 | $630 | **$650** | **$1.30** |
-| 1,000 rest | $30 | $5 | $1,260 | **$1,295** | **$1.30** |
+| 10 rest | $5 | $0 | $4.20 | **$9.20** | **$0.92** |
+| 50 rest | $5 | $0 | $21 | **$26** | **$0.52** |
+| 100 rest | $7 | $0 | $42 | **$49** | **$0.49** |
+| 500 rest | $20 | $0 | $210 | **$230** | **$0.46** |
+| 1,000 rest | $30 | $5 | $420 | **$455** | **$0.46** |
 
 ### Conclusión actualizada:
 
-1. **Cada pedido cuesta ~$0.00001** - Prácticamente gratis
-2. **Cada restaurante (50 ped/día) cuesta $0.67-0.73/mes** durante los primeros 3 meses
-3. **A partir del mes 4, cuesta $1.30-1.36/mes** por restaurante
-4. **Tu margen es >95%** desde el primer restaurante, incluso con precio regular de Bright Data
+1. **Cada pedido cuesta ~$0.00002** - Prácticamente gratis
+2. **Cada restaurante (50 ped/día) cuesta $0.25-0.31/mes** durante los primeros 3 meses
+3. **A partir del mes 4, cuesta $0.46-0.52/mes** por restaurante
+4. **Tu margen es >98%** desde el primer restaurante, incluso con precio regular de Bright Data
 5. **Bright Data es pay-as-you-go** - No pagas por adelantado, escala con tu negocio
-6. **Los proxies de Bright Data son obligatorios** pero tienen la mejor calidad y menor tasa de ban
+6. **1 GB = ~20-22 bots/mes** - Consumo real ~50 MB por bot
+7. **Los proxies de Bright Data son obligatorios** pero tienen la mejor calidad y menor tasa de ban
 
 ### Cuellos de botella por escala:
 
@@ -393,58 +390,13 @@ Los proxies actúan como intermediarios entre tu bot y WhatsApp, dándole a cada
 - ✅ **50% OFF primeros 3 meses:** Valida tu producto con menores costos
 - ✅ **IPs de mejor calidad:** Menor tasa de ban que competidores
 - ✅ **Cashflow saludable:** Tus costos crecen cuando tus ingresos crecen
+- ✅ **Consumo optimizado:** ~50 MB/bot/mes (keep-alive representa 86%)
 
 ---
 
 ## 10. Sistema Anti-Ban: Costo de Proxies Rotativos con Bright Data
 
 > **¿Por qué proxies?** WhatsApp puede banear números/IPs con alta actividad. Cada bot necesita su propia IP única para evitar bans masivos y mantener la operación estable.
-
-### ¿Qué es un proxy y cómo funciona?
-
-Un **proxy** es un servidor intermediario que se sitúa entre tu aplicación (el bot de WhatsApp) y el servidor de destino (WhatsApp). Cuando usas un proxy:
-
-1. Tu bot envía una solicitud al proxy
-2. El proxy reenvía esa solicitud a WhatsApp **usando su propia IP**
-3. WhatsApp responde al proxy
-4. El proxy te devuelve la respuesta
-
-**Flujo sin proxy:**
-```
-Bot → WhatsApp (WhatsApp ve la IP de tu servidor Railway)
-```
-
-**Flujo con proxy:**
-```
-Bot → Proxy (IP residencial única) → WhatsApp (WhatsApp ve la IP del proxy, no la tuya)
-```
-
-### ¿Por qué necesitamos proxies rotativos?
-
-WhatsApp tiene sistemas anti-spam que detectan comportamientos sospechosos:
-
-❌ **Sin proxies:**
-- 100 bots conectados desde la misma IP (tu servidor Railway)
-- WhatsApp detecta: "100 números desde una IP = bot/automatización"
-- **Resultado: Ban masivo de todos los números**
-
-✅ **Con proxies rotativos:**
-- Cada bot usa una IP diferente (residencial, como si fuera un usuario normal)
-- WhatsApp ve: "1 número desde la casa de Juan, 1 desde la oficina de María..."
-- **Resultado: Cada bot parece un usuario legítimo**
-
-### Rotación de IPs
-
-**¿Qué es la rotación?**
-- Cada bot tiene un **pool de 5 IPs diferentes**
-- Cada vez que el bot se reinicia, usa una IP diferente del pool
-- Esto simula el comportamiento natural (cambiar de WiFi, reiniciar router, etc.)
-
-**¿Por qué 5 IPs por bot?**
-- ✅ Mayor estabilidad (si una IP falla, pasa a la siguiente)
-- ✅ Simula cambios naturales de red
-- ✅ Menor sospecha de WhatsApp
-- ⚡ Balance entre seguridad y costo
 
 ### Arquitectura de Proxies
 
@@ -460,68 +412,33 @@ WhatsApp tiene sistemas anti-spam que detectan comportamientos sospechosos:
 
 | Concepto | Consumo | Frecuencia | Total/mes |
 |----------|---------|------------|-----------|
-| **Keep-alive WebSocket** | 1.5 KB/paquete | Cada 30s | **~129 MB** |
+| **Keep-alive WebSocket** | 0.5 KB/paquete | Cada 30s | **~43 MB** |
 | **Mensajes recibidos** | 2-10 KB/msg | 50 ped × 5 msg = 250/mes | **~1.25 MB** |
 | **Mensajes enviados** | 1-5 KB/msg | 50 ped × 3 msg = 150/mes | **~0.45 MB** |
 | **Media (imágenes menú)** | 50-200 KB/img | 2-3 veces/día × 30 | **~5 MB** |
-| **Reconexiones/sincronización** | 500 KB-2 MB/evento | 5-10 veces/mes | **~10 MB** |
-| **TOTAL POR BOT/MES** | - | - | **~145-150 MB** |
+| **Reconexiones/sincronización** | 50-100 KB/evento | 3-5 veces/mes | **~0.3 MB** |
+| **TOTAL POR BOT/MES** | - | - | **~50 MB (0.05 GB)** |
 
-> **Desglose del keep-alive:** 2,592,000 seg/mes ÷ 30 seg = 86,400 paquetes × 1.5 KB = 129.6 MB
+> **Desglose del keep-alive:** 2,592,000 seg/mes ÷ 30 seg = 86,400 paquetes × 0.5 KB = 43.2 MB  
+> **Nota:** El keep-alive representa ~86% del tráfico total. Ver análisis detallado en PROXY-BANDWIDTH-CALCULATOR.md
 
 #### Consumo por tipo de restaurante:
 
 | Perfil | Pedidos/día | Mensajes/mes* | Total bandwidth/mes |
 |--------|-------------|---------------|---------------------|
-| **Pequeño** | 25 | ~200 | **~135 MB** |
-| **Mediano** | 50 | ~400 | **~150 MB** |
-| **Alto volumen** | 100 | ~800 | **~180 MB** |
+| **Pequeño** | 25 | ~200 | **~45 MB (0.045 GB)** |
+| **Mediano** | 50 | ~400 | **~50 MB (0.05 GB)** |
+| **Alto volumen** | 100 | ~800 | **~61 MB (0.061 GB)** |
 
-*Incluye keep-alive (90% del tráfico), mensajes de pedidos y media
+*Incluye keep-alive (86% del tráfico), mensajes de pedidos y media
 
----
-
-### ¿Qué son los proxies y por qué los necesitamos?
-
-#### Concepto básico de proxies
-
-Un **proxy** es un servidor intermediario que actúa como "puente" entre tu aplicación y WhatsApp:
-
-```
-Tu Bot → Proxy (IP diferente) → WhatsApp
-```
-
-**Sin proxy:**
-```
-Bot Restaurante 1 (IP: 192.168.1.1) → WhatsApp
-Bot Restaurante 2 (IP: 192.168.1.1) → WhatsApp  ❌ Misma IP = Ban riesgo alto
-Bot Restaurante 3 (IP: 192.168.1.1) → WhatsApp
-```
-
-**Con proxy:**
-```
-Bot Restaurante 1 → Proxy (IP: 45.123.45.67) → WhatsApp  ✅
-Bot Restaurante 2 → Proxy (IP: 78.234.56.89) → WhatsApp  ✅ IP única por bot
-Bot Restaurante 3 → Proxy (IP: 91.345.67.90) → WhatsApp  ✅
-```
-
-#### ¿Por qué WhatsApp banea sin proxies?
-
-WhatsApp detecta patrones sospechosos cuando:
-- Múltiples números se conectan desde la **misma IP**
-- Alta frecuencia de mensajes desde una IP
-- Conexiones simultáneas de muchos bots
-
-**Con proxies rotativos:**
-- ✅ Cada bot tiene su propia IP (parece un usuario normal desde una casa/oficina)
-- ✅ Las IPs son residenciales (no datacenter, más confiables)
-- ✅ Rotación automática al reiniciar (simula cambios naturales de red)
+> **Capacidad por GB:** 1 GB puede mantener aproximadamente **20-22 bots/mes** con actividad media
 
 ---
 
 ### Proveedor de Proxies: Bright Data
 
-Después de evaluar múltiples opciones, usamos **Bright Data** por ser el líder en la industria de proxies residenciales con mejor calidad y soporte empresarial.
+Usamos **Bright Data** por ser el líder en la industria de proxies residenciales con mejor calidad y soporte empresarial.
 
 #### ¿Por qué Bright Data?
 - 🏆 Líder mundial en proxies residenciales
@@ -530,7 +447,6 @@ Después de evaluar múltiples opciones, usamos **Bright Data** por ser el líde
 - 🔒 Cumplimiento GDPR/CCPA
 - 🛡️ Menor tasa de ban en WhatsApp
 - 📊 Dashboard de monitoreo en tiempo real
-- 🎯 IPs de mejor calidad (residenciales reales, no VPS)
 
 #### Plan Residential Proxies - Pay As You Go
 
@@ -543,6 +459,7 @@ Después de evaluar múltiples opciones, usamos **Bright Data** por ser el líde
 | **Protocolos** | HTTP/HTTPS/SOCKS5 |
 | **Ubicaciones** | 195+ países |
 | **Soporte** | 24/7 + Account Manager |
+| **Capacidad por GB** | ~20-22 bots/mes |
 
 #### Ventajas del modelo Pay-As-You-Go:
 - ✅ **No pagas por adelantado** - Solo lo que consumes
@@ -554,19 +471,22 @@ Después de evaluar múltiples opciones, usamos **Bright Data** por ser el líde
 
 ### Cálculo de Costos con Bright Data
 
-#### Consumo mensual por bot (recordatorio):
-- Keep-alive optimizado: ~129 MB
-- Mensajes + Media: ~21 MB
-- **Total: ~150 MB/bot/mes**
+#### Consumo mensual por bot (basado en análisis real):
+- Keep-alive optimizado: ~43 MB
+- Mensajes + Media: ~7 MB
+- **Total: ~50 MB/bot/mes (0.05 GB)**
+
+> **Capacidad:** 1 GB puede mantener aproximadamente **20-22 bots/mes**
 
 #### Costo por restaurante con Bright Data:
 
 | Período | Precio/GB | Consumo/bot | Costo/restaurante/mes |
 |---------|-----------|-------------|----------------------|
-| **Meses 1-3** (50% OFF) | $4.20/GB | 150 MB | **$0.63/mes** |
-| **Mes 4+** (precio regular) | $8.40/GB | 150 MB | **$1.26/mes** |
+| **Meses 1-3** (50% OFF) | $4.20/GB | 50 MB (0.05 GB) | **$0.21/mes** |
+| **Mes 4+** (precio regular) | $8.40/GB | 50 MB (0.05 GB) | **$0.42/mes** |
 
-**Cálculo:** 150 MB = 0.146 GB × $4.20 = $0.61 ≈ **$0.63/mes** (con descuento)
+**Cálculo:** 0.05 GB × $4.20 = **$0.21/mes** (con descuento)  
+**Cálculo:** 0.05 GB × $8.40 = **$0.42/mes** (precio regular)
 
 ---
 
@@ -576,10 +496,10 @@ Después de evaluar múltiples opciones, usamos **Bright Data** por ser el líde
 
 | Concepto | Meses 1-3 (50% OFF) | Mes 4+ (Precio regular) |
 |----------|---------------------|-------------------------|
-| Consumo total | 100 × 150 MB = 15 GB | 15 GB |
+| Consumo total | 100 × 50 MB = 5 GB | 5 GB |
 | Precio/GB | $4.20 | $8.40 |
-| **Costo mensual** | **$63** | **$126** |
-| **Costo por restaurante** | **$0.63** | **$1.26** |
+| **Costo mensual** | **$21** | **$42** |
+| **Costo por restaurante** | **$0.21** | **$0.42** |
 
 #### Impacto en el margen de ganancia:
 
@@ -587,12 +507,12 @@ Si cobras **$120,000 COP/mes** (~$29 USD) por restaurante:
 
 | Período | Costo proxy/rest | Costo total/rest* | Ganancia/rest | Margen |
 |---------|------------------|-------------------|---------------|--------|
-| **Meses 1-3** | $0.63 | $0.73-0.83 | $28.17-28.27 | **97.2%** |
-| **Mes 4+** | $1.26 | $1.36-1.46 | $27.54-27.64 | **95%** |
+| **Meses 1-3** | $0.21 | $0.31-0.41 | $28.59-28.69 | **98.6%** |
+| **Mes 4+** | $0.42 | $0.52-0.62 | $28.38-28.48 | **97.9%** |
 
 *Incluye Railway ($0.10/rest) + Firebase ($0.00-0.05/rest) + Proxies
 
-> **Nota:** Aún con el precio regular de Bright Data, el margen sigue siendo >95%, lo cual es excelente para un SaaS.
+> **Nota:** Incluso con el precio regular de Bright Data, el margen sigue siendo >97%, lo cual es excelente para un SaaS.
 
 ---
 
@@ -600,17 +520,17 @@ Si cobras **$120,000 COP/mes** (~$29 USD) por restaurante:
 
 | Restaurantes | Bandwidth/mes | Costo Meses 1-3 | Costo Mes 4+ | Diferencia |
 |--------------|---------------|-----------------|--------------|------------|
-| 10 | 1.5 GB | **$6.30** | $12.60 | -$6.30 |
-| 50 | 7.5 GB | **$31.50** | $63.00 | -$31.50 |
-| 100 | 15 GB | **$63.00** | $126.00 | -$63.00 |
-| 200 | 30 GB | **$126.00** | $252.00 | -$126.00 |
-| 500 | 75 GB | **$315.00** | $630.00 | -$315.00 |
-| 1,000 | 150 GB | **$630.00** | $1,260.00 | -$630.00 |
+| 10 | 0.5 GB | **$2.10** | $4.20 | -$2.10 |
+| 50 | 2.5 GB | **$10.50** | $21.00 | -$10.50 |
+| 100 | 5 GB | **$21.00** | $42.00 | -$21.00 |
+| 200 | 10 GB | **$42.00** | $84.00 | -$42.00 |
+| 500 | 25 GB | **$105.00** | $210.00 | -$105.00 |
+| 1,000 | 50 GB | **$210.00** | $420.00 | -$210.00 |
 
 **Ahorro durante los primeros 3 meses:**
-- 10 restaurantes: **$18.90** total ahorrado
-- 100 restaurantes: **$189** total ahorrado
-- 500 restaurantes: **$945** total ahorrado
+- 10 restaurantes: **$6.30** total ahorrado
+- 100 restaurantes: **$63** total ahorrado
+- 500 restaurantes: **$315** total ahorrado
 
 Este descuento inicial te permite:
 - ✅ **Validar el producto** con menores costos al inicio
@@ -626,23 +546,23 @@ Este descuento inicial te permite:
 
 | # Restaurantes | Railway | Firebase | Proxies (Bright Data 50% OFF) | **TOTAL/mes** |
 |----------------|---------|----------|-------------------------------|---------------|
-| 10 | $5 | $0 | $6.30 | **$11.30** |
-| 50 | $5 | $0 | $31.50 | **$36.50** |
-| 100 | $7 | $0 | $63.00 | **$70.00** |
-| 200 | $10 | $0 | $126.00 | **$136.00** |
-| 500 | $20 | $0 | $315.00 | **$335.00** |
-| 1,000 | $30 | $5 | $630.00 | **$665.00** |
+| 10 | $5 | $0 | $2.10 | **$7.10** |
+| 50 | $5 | $0 | $10.50 | **$15.50** |
+| 100 | $7 | $0 | $21.00 | **$28.00** |
+| 200 | $10 | $0 | $42.00 | **$52.00** |
+| 500 | $20 | $0 | $105.00 | **$125.00** |
+| 1,000 | $30 | $5 | $210.00 | **$245.00** |
 
 #### A partir del mes 4 (precio regular):
 
 | # Restaurantes | Railway | Firebase | Proxies (Bright Data) | **TOTAL/mes** |
 |----------------|---------|----------|----------------------|---------------|
-| 10 | $5 | $0 | $12.60 | **$17.60** |
-| 50 | $5 | $0 | $63.00 | **$68.00** |
-| 100 | $7 | $0 | $126.00 | **$133.00** |
-| 200 | $10 | $0 | $252.00 | **$262.00** |
-| 500 | $20 | $0 | $630.00 | **$650.00** |
-| 1,000 | $30 | $5 | $1,260.00 | **$1,295.00** |
+| 10 | $5 | $0 | $4.20 | **$9.20** |
+| 50 | $5 | $0 | $21.00 | **$26.00** |
+| 100 | $7 | $0 | $42.00 | **$49.00** |
+| 200 | $10 | $0 | $84.00 | **$94.00** |
+| 500 | $20 | $0 | $210.00 | **$230.00** |
+| 1,000 | $30 | $5 | $420.00 | **$455.00** |
 
 ---
 
@@ -652,23 +572,23 @@ Este descuento inicial te permite:
 
 | # Restaurantes | Costo total/mes | Costo por restaurante |
 |----------------|-----------------|----------------------|
-| 10 | $11.30 | **$1.13** |
-| 50 | $36.50 | **$0.73** |
-| 100 | $70.00 | **$0.70** |
-| 200 | $136.00 | **$0.68** |
-| 500 | $335.00 | **$0.67** |
-| 1,000 | $665.00 | **$0.67** |
+| 10 | $7.10 | **$0.71** |
+| 50 | $15.50 | **$0.31** |
+| 100 | $28.00 | **$0.28** |
+| 200 | $52.00 | **$0.26** |
+| 500 | $125.00 | **$0.25** |
+| 1,000 | $245.00 | **$0.25** |
 
 #### A partir del mes 4 (precio regular):
 
 | # Restaurantes | Costo total/mes | Costo por restaurante |
 |----------------|-----------------|----------------------|
-| 10 | $17.60 | **$1.76** |
-| 50 | $68.00 | **$1.36** |
-| 100 | $133.00 | **$1.33** |
-| 200 | $262.00 | **$1.31** |
-| 500 | $650.00 | **$1.30** |
-| 1,000 | $1,295.00 | **$1.30** |
+| 10 | $9.20 | **$0.92** |
+| 50 | $26.00 | **$0.52** |
+| 100 | $49.00 | **$0.49** |
+| 200 | $94.00 | **$0.47** |
+| 500 | $230.00 | **$0.46** |
+| 1,000 | $455.00 | **$0.46** |
 
 ---
 
@@ -680,25 +600,25 @@ Este descuento inicial te permite:
 
 | Restaurantes | Ingreso/mes | Costos/mes | **Ganancia** | **Margen** |
 |--------------|-------------|------------|--------------|------------|
-| 10 | $290 | $11.30 | **$278.70** | 96.1% |
-| 50 | $1,450 | $36.50 | **$1,413.50** | 97.5% |
-| 100 | $2,900 | $70.00 | **$2,830.00** | 97.6% |
-| 200 | $5,800 | $136.00 | **$5,664.00** | 97.7% |
-| 500 | $14,500 | $335.00 | **$14,165.00** | 97.7% |
-| 1,000 | $29,000 | $665.00 | **$28,335.00** | 97.7% |
+| 10 | $290 | $7.10 | **$282.90** | 97.6% |
+| 50 | $1,450 | $15.50 | **$1,434.50** | 98.9% |
+| 100 | $2,900 | $28.00 | **$2,872.00** | 99.0% |
+| 200 | $5,800 | $52.00 | **$5,748.00** | 99.1% |
+| 500 | $14,500 | $125.00 | **$14,375.00** | 99.1% |
+| 1,000 | $29,000 | $245.00 | **$28,755.00** | 99.2% |
 
 **A partir del mes 4 (precio regular):**
 
 | Restaurantes | Ingreso/mes | Costos/mes | **Ganancia** | **Margen** |
 |--------------|-------------|------------|--------------|------------|
-| 10 | $290 | $17.60 | **$272.40** | 93.9% |
-| 50 | $1,450 | $68.00 | **$1,382.00** | 95.3% |
-| 100 | $2,900 | $133.00 | **$2,767.00** | 95.4% |
-| 200 | $5,800 | $262.00 | **$5,538.00** | 95.5% |
-| 500 | $14,500 | $650.00 | **$13,850.00** | 95.5% |
-| 1,000 | $29,000 | $1,295.00 | **$27,705.00** | 95.5% |
+| 10 | $290 | $9.20 | **$280.80** | 96.8% |
+| 50 | $1,450 | $26.00 | **$1,424.00** | 98.2% |
+| 100 | $2,900 | $49.00 | **$2,851.00** | 98.3% |
+| 200 | $5,800 | $94.00 | **$5,706.00** | 98.4% |
+| 500 | $14,500 | $230.00 | **$14,270.00** | 98.4% |
+| 1,000 | $29,000 | $455.00 | **$28,545.00** | 98.4% |
 
-> **Conclusión:** Con Bright Data el costo por restaurante es de **$0.63-0.73** (meses 1-3) o **$1.26-1.36** (mes 4+), manteniendo un margen >95% que es excelente para un SaaS.
+> **Conclusión:** Con Bright Data el costo por restaurante es de **$0.25-0.31** (meses 1-3) o **$0.46-0.52** (mes 4+), manteniendo un margen >98% que es excelente para un SaaS.
 
 ---
 
@@ -799,19 +719,19 @@ Asumiendo **Railway Hobby ($5/mes) + Firebase Blaze (pago por uso) + Bright Data
 
 | # Restaurantes totales | Railway + Firebase | Bright Data | Costo total/mes | Costo por restaurante |
 |------------------------|-------------------|-------------|-----------------|----------------------|
-| 10 | $5 | $6.30 | $11.30 | **$1.13** |
-| 25 | $5 | $15.75 | $20.75 | **$0.83** |
-| 50 | $5-6 | $31.50 | $36.50-37.50 | **$0.73-0.75** |
-| 100 | $6-8 | $63.00 | $69-71 | **$0.69-0.71** |
+| 10 | $5 | $2.10 | $7.10 | **$0.71** |
+| 25 | $5 | $5.25 | $10.25 | **$0.41** |
+| 50 | $5-6 | $10.50 | $15.50-16.50 | **$0.31-0.33** |
+| 100 | $6-8 | $21.00 | $27-29 | **$0.27-0.29** |
 
 #### A partir del mes 4 (precio regular Bright Data):
 
 | # Restaurantes totales | Railway + Firebase | Bright Data | Costo total/mes | Costo por restaurante |
 |------------------------|-------------------|-------------|-----------------|----------------------|
-| 10 | $5 | $12.60 | $17.60 | **$1.76** |
-| 25 | $5 | $31.50 | $36.50 | **$1.46** |
-| 50 | $5-6 | $63.00 | $68-69 | **$1.36-1.38** |
-| 100 | $6-8 | $126.00 | $132-134 | **$1.32-1.34** |
+| 10 | $5 | $4.20 | $9.20 | **$0.92** |
+| 25 | $5 | $10.50 | $15.50 | **$0.62** |
+| 50 | $5-6 | $21.00 | $26-27 | **$0.52-0.54** |
+| 100 | $6-8 | $42.00 | $48-50 | **$0.48-0.50** |
 
 **Nota:** Firebase permanece en $0 hasta ~666 restaurantes medianos (10 GB descargas gratis).
 
@@ -819,9 +739,9 @@ Asumiendo **Railway Hobby ($5/mes) + Firebase Blaze (pago por uso) + Bright Data
 
 | Perfil | Bandwidth proxy | Railway+Firebase | Bright Data (mes 1-3) | Bright Data (mes 4+) | Costo total mes 1-3 | Costo total mes 4+ |
 |--------|-----------------|------------------|----------------------|---------------------|--------------------|--------------------|
-| **Pequeño** (25 ped/día) | 135 MB | $0.10 | $0.57 | $1.13 | **$0.67** | **$1.23** |
-| **Mediano** (50 ped/día) | 150 MB | $0.10 | $0.63 | $1.26 | **$0.73** | **$1.36** |
-| **Alto volumen** (100 ped/día) | 180 MB | $0.10 | $0.76 | $1.51 | **$0.86** | **$1.61** |
+| **Pequeño** (25 ped/día) | 45 MB | $0.10 | $0.19 | $0.38 | **$0.29** | **$0.48** |
+| **Mediano** (50 ped/día) | 50 MB | $0.10 | $0.21 | $0.42 | **$0.31** | **$0.52** |
+| **Alto volumen** (100 ped/día) | 61 MB | $0.10 | $0.26 | $0.51 | **$0.36** | **$0.61** |
 
 ---
 
@@ -831,19 +751,19 @@ Asumiendo **Railway Hobby ($5/mes) + Firebase Blaze (pago por uso) + Bright Data
 
 | Perfil | Costo real/mes | Precio sugerido | Margen |
 |--------|----------------|-----------------|--------|
-| **Pequeño** (25 ped/día) | ~$0.67 (~$2,700 COP) | **$90,000 COP** (~$22 USD) | **97%** |
-| **Mediano** (50 ped/día) | ~$0.73 (~$2,900 COP) | **$120,000 COP** (~$29 USD) | **97.5%** |
-| **Alto volumen** (100 ped/día) | ~$0.86 (~$3,400 COP) | **$150,000 COP** (~$36 USD) | **97.6%** |
+| **Pequeño** (25 ped/día) | ~$0.29 (~$1,200 COP) | **$90,000 COP** (~$22 USD) | **98.7%** |
+| **Mediano** (50 ped/día) | ~$0.31 (~$1,200 COP) | **$120,000 COP** (~$29 USD) | **98.9%** |
+| **Alto volumen** (100 ped/día) | ~$0.36 (~$1,400 COP) | **$150,000 COP** (~$36 USD) | **99.0%** |
 
 #### A partir del mes 4 (precio regular):
 
 | Perfil | Costo real/mes | Precio sugerido | Margen |
 |--------|----------------|-----------------|--------|
-| **Pequeño** (25 ped/día) | ~$1.23 (~$4,900 COP) | **$90,000 COP** (~$22 USD) | **94.4%** |
-| **Mediano** (50 ped/día) | ~$1.36 (~$5,400 COP) | **$120,000 COP** (~$29 USD) | **95.3%** |
-| **Alto volumen** (100 ped/día) | ~$1.61 (~$6,400 COP) | **$150,000 COP** (~$36 USD) | **95.5%** |
+| **Pequeño** (25 ped/día) | ~$0.48 (~$1,900 COP) | **$90,000 COP** (~$22 USD) | **97.8%** |
+| **Mediano** (50 ped/día) | ~$0.52 (~$2,100 COP) | **$120,000 COP** (~$29 USD) | **98.2%** |
+| **Alto volumen** (100 ped/día) | ~$0.61 (~$2,400 COP) | **$150,000 COP** (~$36 USD) | **98.3%** |
 
-> **Nota:** Incluso con el precio regular de Bright Data, el margen se mantiene >94%, lo cual es excelente para un SaaS.
+> **Nota:** Incluso con el precio regular de Bright Data, el margen se mantiene >97%, lo cual es excelente para un SaaS.
 
 ---
 
@@ -853,22 +773,22 @@ Asumiendo **Railway Hobby ($5/mes) + Firebase Blaze (pago por uso) + Bright Data
 - ✅ Ideal para negocios que empiezan
 - ✅ Precio accesible (< $100,000)
 - ✅ 750 pedidos incluidos
-- ✅ **Margen mes 1-3:** ~$87,300 COP (97%)
-- ✅ **Margen mes 4+:** ~$85,100 COP (94.4%)
+- ✅ **Margen mes 1-3:** ~$88,800 COP (98.7%)
+- ✅ **Margen mes 4+:** ~$88,100 COP (97.8%)
 
 #### Plan Mediano - $120,000 COP/mes
 - ✅ El plan más popular (punto medio)
 - ✅ 1,500 pedidos incluidos
 - ✅ Funcionalidades completas
-- ✅ **Margen mes 1-3:** ~$117,100 COP (97.5%)
-- ✅ **Margen mes 4+:** ~$114,600 COP (95.3%)
+- ✅ **Margen mes 1-3:** ~$118,800 COP (98.9%)
+- ✅ **Margen mes 4+:** ~$117,900 COP (98.2%)
 
 #### Plan Alto Volumen - $150,000 COP/mes
 - ✅ Para restaurantes exitosos
 - ✅ 3,000 pedidos incluidos
 - ✅ Soporte prioritario (justifica precio)
-- ✅ **Margen mes 1-3:** ~$146,600 COP (97.6%)
-- ✅ **Margen mes 4+:** ~$143,600 COP (95.5%)
+- ✅ **Margen mes 1-3:** ~$148,600 COP (99.0%)
+- ✅ **Margen mes 4+:** ~$147,600 COP (98.3%)
 
 ---
 
@@ -893,23 +813,23 @@ Asumiendo **Railway Hobby ($5/mes) + Firebase Blaze (pago por uso) + Bright Data
 
 | Restaurantes | Ingreso bruto/mes | Costos operativos* | Ganancia neta | Margen |
 |--------------|-------------------|-------------------|---------------|--------|
-| 10 | $1,140,000 COP (~$276 USD) | ~$11.30 USD (~$45,200 COP) | **$1,095,000 COP** | 96% |
-| 25 | $2,850,000 COP (~$690 USD) | ~$20.75 USD (~$83,000 COP) | **$2,767,000 COP** | 97% |
-| 50 | $5,700,000 COP (~$1,380 USD) | ~$36.50 USD (~$146,000 COP) | **$5,554,000 COP** | 97.4% |
-| 100 | $11,400,000 COP (~$2,760 USD) | ~$70 USD (~$280,000 COP) | **$11,120,000 COP** | 97.5% |
+| 10 | $1,140,000 COP (~$276 USD) | ~$7.10 USD (~$28,400 COP) | **$1,112,000 COP** | 97.5% |
+| 25 | $2,850,000 COP (~$690 USD) | ~$13 USD (~$52,000 COP) | **$2,798,000 COP** | 98.2% |
+| 50 | $5,700,000 COP (~$1,380 USD) | ~$15.50 USD (~$62,000 COP) | **$5,638,000 COP** | 98.9% |
+| 100 | $11,400,000 COP (~$2,760 USD) | ~$28 USD (~$112,000 COP) | **$11,288,000 COP** | 99.0% |
 
 #### A partir del mes 4 (precio regular):
 
 | Restaurantes | Ingreso bruto/mes | Costos operativos* | Ganancia neta | Margen |
 |--------------|-------------------|-------------------|---------------|--------|
-| 10 | $1,140,000 COP (~$276 USD) | ~$17.60 USD (~$70,400 COP) | **$1,070,000 COP** | 93.8% |
-| 25 | $2,850,000 COP (~$690 USD) | ~$36.50 USD (~$146,000 COP) | **$2,704,000 COP** | 94.9% |
-| 50 | $5,700,000 COP (~$1,380 USD) | ~$68 USD (~$272,000 COP) | **$5,428,000 COP** | 95.2% |
-| 100 | $11,400,000 COP (~$2,760 USD) | ~$133 USD (~$532,000 COP) | **$10,868,000 COP** | 95.3% |
+| 10 | $1,140,000 COP (~$276 USD) | ~$9.20 USD (~$36,800 COP) | **$1,103,000 COP** | 96.8% |
+| 25 | $2,850,000 COP (~$690 USD) | ~$18 USD (~$72,000 COP) | **$2,778,000 COP** | 97.5% |
+| 50 | $5,700,000 COP (~$1,380 USD) | ~$26 USD (~$104,000 COP) | **$5,596,000 COP** | 98.2% |
+| 100 | $11,400,000 COP (~$2,760 USD) | ~$49 USD (~$196,000 COP) | **$11,204,000 COP** | 98.3% |
 
 *Costos operativos incluyen: Railway + Firebase + Bright Data Proxies
 
-> **Conclusión:** Los proxies de Bright Data son obligatorios para evitar bans de WhatsApp. Incluso con el precio regular (mes 4+), el margen se mantiene >93%, lo cual es excelente para un SaaS.
+> **Conclusión:** Los proxies de Bright Data son obligatorios para evitar bans de WhatsApp. Incluso con el precio regular (mes 4+), el margen se mantiene >96%, lo cual es excelente para un SaaS.
 
 ---
 
