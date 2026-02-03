@@ -89,6 +89,45 @@ async function obtenerTiempoEntrega(tenantId) {
 }
 
 /**
+ * Obtiene el costo de envío configurado para el restaurante
+ * @param {string} tenantId - ID del restaurante
+ * @param {number} subtotal - Subtotal del pedido (para calcular si aplica envío gratis)
+ * @returns {Promise<{cost: number, freeDeliveryMin: number|null, isFree: boolean}>} Datos del envío
+ */
+async function obtenerCostoEnvio(tenantId, subtotal = 0) {
+  try {
+    console.log(`🚚 [obtenerCostoEnvio] Buscando costo para tenant: ${tenantId}, subtotal: $${subtotal}`);
+    const snapshot = await firebaseService.database.ref(`tenants/${tenantId}/config/deliveryCost`).once('value');
+    const deliveryCost = snapshot.val();
+    
+    console.log(`🚚 [obtenerCostoEnvio] Datos obtenidos:`, deliveryCost);
+    
+    if (deliveryCost) {
+      const cost = deliveryCost.cost || 0;
+      const freeDeliveryMin = deliveryCost.freeDeliveryMin || null;
+      
+      // Verificar si aplica envío gratis por monto mínimo
+      const isFree = cost === 0 || (freeDeliveryMin && subtotal >= freeDeliveryMin);
+      
+      console.log(`✅ [obtenerCostoEnvio] Costo: $${cost}, Min gratis: $${freeDeliveryMin}, Es gratis: ${isFree}`);
+      
+      return {
+        cost: isFree ? 0 : cost,
+        freeDeliveryMin,
+        isFree
+      };
+    }
+    
+    // Valor por defecto si no está configurado (sin costo de envío)
+    console.warn(`⚠️ [obtenerCostoEnvio] No hay costo configurado, usando 0`);
+    return { cost: 0, freeDeliveryMin: null, isFree: true };
+  } catch (error) {
+    console.error('❌ [obtenerCostoEnvio] Error:', error);
+    return { cost: 0, freeDeliveryMin: null, isFree: true };
+  }
+}
+
+/**
  * Crea una descripción natural de un item con cantidad
  * @param {string} nombreItem - Nombre del item en minúsculas
  * @param {number} cantidad - Cantidad del item
@@ -540,17 +579,34 @@ No pude identificar los productos en tu pedido:
   
   // Calcular totales
   const itemsAgrupados = agruparCarrito(sesion.carrito);
-  const total = sesion.carrito.reduce((sum, item) => sum + item.precio, 0);
+  const subtotal = sesion.carrito.reduce((sum, item) => sum + item.precio, 0);
+  
+  // Obtener costo de envío
+  const envioData = await obtenerCostoEnvio(tenantId, subtotal);
+  const costoEnvio = envioData.cost;
+  const total = subtotal + costoEnvio;
   
   // Generar resumen para confirmación
   let resumenItems = itemsAgrupados.map(item => 
-    `• ${item.cantidad}x ${item.nombre} - $${formatearPrecio(item.precio * item.cantidad)}`
+    `- ${item.cantidad}x ${item.nombre} - $${formatearPrecio(item.precio * item.cantidad)}`
   ).join('\n');
   
-  // ✨ NUEVO: Guardar datos del pedido y esperar confirmación del cliente
+  // Linea de envio
+  let lineaEnvio = '';
+  if (envioData.isFree && envioData.freeDeliveryMin && subtotal >= envioData.freeDeliveryMin) {
+    lineaEnvio = `Envio: GRATIS! (pedido mayor a $${formatearPrecio(envioData.freeDeliveryMin)})`;
+  } else if (costoEnvio === 0) {
+    lineaEnvio = `Envio: GRATIS!`;
+  } else {
+    lineaEnvio = `Envio: $${formatearPrecio(costoEnvio)}`;
+  }
+  
+  // Guardar datos del pedido y esperar confirmacion del cliente
   sesion.esperandoConfirmacionRapida = true;
   sesion.pedidoRapidoPendiente = {
     items: itemsAgrupados,
+    subtotal: subtotal,
+    costoEnvio: costoEnvio,
     total: total,
     direccion: sesion.direccion,
     telefono: sesion.telefonoContacto,
@@ -558,22 +614,24 @@ No pude identificar los productos en tu pedido:
   };
   
   // Mostrar resumen y pedir confirmación
-  return `� *Resumen de tu pedido:*
+  return `*Resumen de tu pedido:*
 
 ${resumenItems}
 
-━━━━━━━━━━━━━━━━━━
-💰 *Total:* $${formatearPrecio(total)}
-📍 *Dirección:* ${sesion.direccion}
-📱 *Teléfono:* ${sesion.telefonoContacto}
-� *Pago:* ${sesion.metodoPago === 'tarjeta' ? 'Tarjeta' : 'Efectivo'}
-━━━━━━━━━━━━━━━━━━
+----------------------
+Subtotal: $${formatearPrecio(subtotal)}
+${lineaEnvio}
+*Total:* $${formatearPrecio(total)}
+Direccion: ${sesion.direccion}
+Telefono: ${sesion.telefonoContacto}
+Pago: ${sesion.metodoPago === 'tarjeta' ? 'Tarjeta' : 'Efectivo'}
+----------------------
 
-¿Todo está correcto?
+Todo esta correcto?
 
-✅ *Confirmar* - Escribe *si* o *confirmar*
-✏️ *Editar* - Escribe *editar* o *cambiar*
-❌ *Cancelar* - Escribe *cancelar* o *no*`;
+*Confirmar* - Escribe *si* o *confirmar*
+*Editar* - Escribe *editar* o *cambiar*
+*Cancelar* - Escribe *cancelar* o *no*`;
 }
 
 /**
@@ -619,7 +677,7 @@ async function procesarConfirmacionRapida(tenantId, sesion, texto) {
             sesion.pedidoRapidoPendiente = null;
             
             let resumenItems = pedido.items.map(item => 
-              `• ${item.cantidad}x ${item.nombre}`
+              `- ${item.cantidad}x ${item.nombre}`
             ).join('\n');
             
             return `✅ *¡Pedido confirmado!*
@@ -644,7 +702,7 @@ Una vez realices el pago, tu pedido será enviado a cocina automáticamente.`;
     
     // Pago en efectivo - finalizar pedido
     sesion.pedidoRapidoPendiente = null;
-    return await finalizarPedidoRapido(tenantId, sesion, pedido.items, pedido.total);
+    return await finalizarPedidoRapido(tenantId, sesion, pedido.items, pedido.subtotal, pedido.costoEnvio, pedido.total);
   }
   
   // ❌ CANCELAR PEDIDO
@@ -702,10 +760,10 @@ Por favor responde:
 /**
  * Finaliza un pedido rápido y lo guarda en Firebase
  */
-async function finalizarPedidoRapido(tenantId, sesion, itemsAgrupados, total) {
+async function finalizarPedidoRapido(tenantId, sesion, itemsAgrupados, subtotal, costoEnvio, total) {
   try {
-    console.log(`🏁 [finalizarPedidoRapido] Items a guardar:`, JSON.stringify(itemsAgrupados, null, 2));
-    console.log(`🏁 [finalizarPedidoRapido] Total: $${total}`);
+    console.log(`[finalizarPedidoRapido] Items a guardar:`, JSON.stringify(itemsAgrupados, null, 2));
+    console.log(`[finalizarPedidoRapido] Subtotal: $${subtotal}, Envio: $${costoEnvio}, Total: $${total}`);
     
     // Generar ID de pedido corto
     const orderId = Math.random().toString(16).substring(2, 8).toUpperCase();
@@ -713,7 +771,7 @@ async function finalizarPedidoRapido(tenantId, sesion, itemsAgrupados, total) {
     // Generar token de tracking (pasando tenantId y orderId para token único)
     const trackingToken = generateTrackingToken(tenantId, orderId);
     
-    console.log(`🏁 [finalizarPedidoRapido] OrderId: ${orderId}, TrackingToken: ${trackingToken}`);
+    console.log(`[finalizarPedidoRapido] OrderId: ${orderId}, TrackingToken: ${trackingToken}`);
     
     // Obtener nombre del restaurante
     const tenantSnapshot = await firebaseService.database.ref(`tenants/${tenantId}/profile/businessName`).once('value');
@@ -726,12 +784,14 @@ async function finalizarPedidoRapido(tenantId, sesion, itemsAgrupados, total) {
       cliente: sesion.telefono,
       telefonoContacto: sesion.telefonoContacto || sesion.telefono,
       items: itemsAgrupados,
+      subtotal: subtotal,
+      costoEnvio: costoEnvio,
       total: total,
       direccion: sesion.direccion,
       metodoPago: sesion.metodoPago,
       estado: 'pendiente',
       trackingToken: trackingToken,
-      timestamp: Date.now(), // ✨ Para calcular tiempo transcurrido en tracking
+      timestamp: Date.now(),
       fecha: new Date().toISOString(),
       fechaCreacion: new Date().toISOString(),
       creadoPor: 'pedido_rapido'
@@ -740,7 +800,7 @@ async function finalizarPedidoRapido(tenantId, sesion, itemsAgrupados, total) {
     // Guardar en Firebase
     await firebaseService.database.ref(`tenants/${tenantId}/pedidos/${orderId}`).set(pedido);
     
-    console.log(`✅ Pedido rápido creado: ${orderId} para tenant ${tenantId}`);
+    console.log(`Pedido rapido creado: ${orderId} para tenant ${tenantId}`);
     
     // Emitir evento WebSocket para KDS
     if (global.baileysWebSocket) {
@@ -760,29 +820,34 @@ async function finalizarPedidoRapido(tenantId, sesion, itemsAgrupados, total) {
     
     // Generar mensaje de confirmación
     let resumenItems = itemsAgrupados.map(item => 
-      `• ${item.cantidad}x ${item.nombre}`
+      `- ${item.cantidad}x ${item.nombre}`
     ).join('\n');
     
-    return `🎉 *¡Pedido confirmado!*
+    // Linea de envio para el mensaje
+    let lineaEnvioMsg = costoEnvio > 0 ? `Envio: $${formatearPrecio(costoEnvio)}` : 'Envio: GRATIS';
+    
+    return `*Pedido confirmado!*
 
-📋 *Número de pedido:* #${orderId}
+Numero de pedido: #${orderId}
 
 ${resumenItems}
 
-💰 *Total:* $${formatearPrecio(total)}
-📍 *Dirección:* ${pedido.direccion}
-💵 *Pago:* ${sesion.metodoPago === 'tarjeta' ? 'Tarjeta' : 'Efectivo'}
+Subtotal: $${formatearPrecio(subtotal)}
+${lineaEnvioMsg}
+*Total:* $${formatearPrecio(total)}
+Direccion: ${pedido.direccion}
+Pago: ${sesion.metodoPago === 'tarjeta' ? 'Tarjeta' : 'Efectivo'}
 
-📦 *Sigue tu pedido aquí:*
-👉 https://kdsapp.site/track/${trackingToken}
+Sigue tu pedido aqui:
+${process.env.BASE_URL || 'https://kdsapp.site'}/track/${trackingToken}
 
-🕒 *Tiempo estimado:* ${tiempoEntrega}
+Tiempo estimado: ${tiempoEntrega}
 
-¡Gracias por tu pedido! 🙌`;
+Gracias por tu pedido!`;
     
   } catch (error) {
-    console.error('Error finalizando pedido rápido:', error);
-    return '❌ Hubo un error al procesar tu pedido. Por favor intenta de nuevo o escribe *hola* para reiniciar.';
+    console.error('Error finalizando pedido rapido:', error);
+    return 'Hubo un error al procesar tu pedido. Por favor intenta de nuevo o escribe *hola* para reiniciar.';
   }
 }
 
@@ -1294,8 +1359,13 @@ async function confirmarPedido(sesion) {
     const tenant = await tenantService.getTenantById(sesion.tenantId);
     const restaurantName = tenant.restaurant?.name || 'Restaurante';
     
-    // Calcular total
-    const total = sesion.carrito.reduce((sum, item) => sum + item.precio, 0);
+    // Calcular subtotal
+    const subtotal = sesion.carrito.reduce((sum, item) => sum + item.precio, 0);
+    
+    // Obtener costo de envío
+    const envioData = await obtenerCostoEnvio(sesion.tenantId, subtotal);
+    const costoEnvio = envioData.cost;
+    const total = subtotal + costoEnvio;
     
     // Agrupar items para Firebase
     const itemsAgrupados = {};
@@ -1312,11 +1382,11 @@ async function confirmarPedido(sesion) {
     const orderId = `${sesion.tenantId}_${numeroHex}_${Date.now()}`;
     
     // ====================================
-    // 🔥 NUEVO FLUJO: PAGO CON TARJETA
+    // FLUJO: PAGO CON TARJETA
     // ====================================
     if (sesion.metodoPago === 'tarjeta') {
-      console.log(`\n💳 [confirmarPedido] Cliente eligió pagar con tarjeta`);
-      console.log(`   NO se creará el pedido en KDS hasta que el pago sea confirmado`);
+      console.log(`[confirmarPedido] Cliente eligio pagar con tarjeta`);
+      console.log(`   NO se creara el pedido en KDS hasta que el pago sea confirmado`);
       console.log(`   Generando enlace de pago...`);
       
       // Crear objeto temporal del pedido (NO guardarlo en KDS aún)
@@ -1329,8 +1399,10 @@ async function confirmarPedido(sesion) {
         telefonoContacto: sesion.telefonoContacto || sesion.telefono,
         direccion: sesion.direccion || 'No especificada',
         items: Object.values(itemsAgrupados),
+        subtotal: subtotal,
+        costoEnvio: costoEnvio,
         total: total,
-        estado: 'awaiting_payment', // 🔥 Esperando pago
+        estado: 'awaiting_payment',
         timestamp: Date.now(),
         fecha: new Date().toISOString(),
         fuente: 'whatsapp',
@@ -1342,7 +1414,7 @@ async function confirmarPedido(sesion) {
       // Guardar temporalmente en /orders (no en KDS del restaurante)
       await firebaseService.database.ref(`orders/${orderId}`).set(pedidoTemporal);
       
-      console.log(`📝 [confirmarPedido] Pedido temporal guardado: ${orderId}`);
+      console.log(`[confirmarPedido] Pedido temporal guardado: ${orderId}`);
       
       // Generar enlace de pago
       const paymentResult = await paymentService.createPaymentLink({
@@ -1403,7 +1475,7 @@ async function confirmarPedido(sesion) {
       mensaje += `⚠️ *Una vez confirmes el pago, ${restaurantName} empezará a preparar tu pedido.*\n\n`;
       
       // Obtener tiempo de entrega configurado
-      const tiempoEntrega = await obtenerTiempoEntrega(sesion.tenantId);
+      const tiempoEntrega = await obtenerTiempoEntrega(tenantId);
       mensaje += `🕒 Tiempo estimado: ${tiempoEntrega}\n\n`;
       mensaje += '_Te avisaremos cuando el pago sea confirmado_ ✅';
       
@@ -1417,7 +1489,7 @@ async function confirmarPedido(sesion) {
     console.log(`   Creando pedido en KDS inmediatamente...`);
     
     // Generar tracking token para seguimiento del pedido
-    const trackingToken = generateTrackingToken(sesion.tenantId, numeroHex + Date.now());
+    const trackingToken = generateTrackingToken(tenantId, numeroHex + Date.now());
     
     // Crear pedido normal
     const pedido = {
@@ -1485,7 +1557,7 @@ async function confirmarPedido(sesion) {
     mensaje += `Ya lo enviamos a la cocina de ${restaurantName}. 🛵\n\n`;
     
     // Obtener tiempo de entrega configurado
-    const tiempoEntrega = await obtenerTiempoEntrega(sesion.tenantId);
+    const tiempoEntrega = await obtenerTiempoEntrega(tenantId);
     mensaje += `🕒 Tiempo estimado: ${tiempoEntrega}\n\n`;
     mensaje += '_Te avisaremos cuando esté listo para entrega_ ✅';
     
@@ -1518,8 +1590,13 @@ async function confirmarPedidoEfectivo(sesion, pedidoKey = null, numeroHex = nul
     const tenant = await tenantService.getTenantById(sesion.tenantId);
     const restaurantName = tenant.restaurant?.name || 'Restaurante';
     
-    // Calcular total
-    const total = sesion.carrito.reduce((sum, item) => sum + item.precio, 0);
+    // Calcular subtotal
+    const subtotal = sesion.carrito.reduce((sum, item) => sum + item.precio, 0);
+    
+    // Obtener costo de envío
+    const envioData = await obtenerCostoEnvio(sesion.tenantId, subtotal);
+    const costoEnvio = envioData.cost;
+    const total = subtotal + costoEnvio;
     
     // Si no se pasaron itemsAgrupados, generarlos
     if (!itemsAgrupados) {
@@ -1556,15 +1633,17 @@ async function confirmarPedidoEfectivo(sesion, pedidoKey = null, numeroHex = nul
         telefonoContacto: sesion.telefonoContacto || sesion.telefono,
         direccion: sesion.direccion || 'No especificada',
         items: Object.values(itemsAgrupados),
+        subtotal: subtotal,
+        costoEnvio: costoEnvio,
         total: total,
-        estado: 'pendiente', // ✨ Estado: pendiente (sin pago)
+        estado: 'pendiente',
         timestamp: Date.now(),
         fecha: new Date().toISOString(),
         fuente: 'whatsapp',
         restaurante: restaurantName,
-        paymentStatus: 'CASH', // ✨ Pago en efectivo
+        paymentStatus: 'CASH',
         metodoPago: sesion.metodoPago || 'efectivo',
-        trackingToken: trackingToken, // 📦 Token para seguimiento
+        trackingToken: trackingToken,
       };
       
       const pedidoSnapshot = await pedidoRef.push(pedido);
@@ -1607,32 +1686,37 @@ async function confirmarPedidoEfectivo(sesion, pedidoKey = null, numeroHex = nul
     // Formatear teléfono para mostrar: 300 123 4567
     const telefonoFormateado = telefonoContacto.replace(/(\d{3})(\d{3})(\d{4})/, '$1 $2 $3');
     
-    // Respuesta de confirmación para pago en efectivo/transferencia
-    let mensaje = '🎉 *¡Listo! Tu pedido está confirmado*\n\n';
-    mensaje += `📋 Número de pedido: #${numeroHex}\n`;
-    mensaje += `📍 Dirección: ${direccionEntrega}\n`;
-    mensaje += `📱 Teléfono de contacto: ${telefonoFormateado}\n`;
-    mensaje += `💰 Total: $${formatearPrecio(total)}\n`;
-    mensaje += `💵 Forma de pago: *${sesion.metodoPago === 'efectivo' ? 'Efectivo' : 'Efectivo/Transferencia'}*\n\n`;
+    // Linea de envio para mensaje
+    let lineaEnvioMsg = costoEnvio > 0 ? `Envio: $${formatearPrecio(costoEnvio)}` : 'Envio: GRATIS';
     
-    // 📦 Link de seguimiento del pedido
+    // Respuesta de confirmacion para pago en efectivo/transferencia
+    let mensaje = '*Listo! Tu pedido esta confirmado*\n\n';
+    mensaje += `Numero de pedido: #${numeroHex}\n`;
+    mensaje += `Direccion: ${direccionEntrega}\n`;
+    mensaje += `Telefono de contacto: ${telefonoFormateado}\n`;
+    mensaje += `Subtotal: $${formatearPrecio(subtotal)}\n`;
+    mensaje += `${lineaEnvioMsg}\n`;
+    mensaje += `*Total: $${formatearPrecio(total)}*\n`;
+    mensaje += `Forma de pago: *${sesion.metodoPago === 'efectivo' ? 'Efectivo' : 'Efectivo/Transferencia'}*\n\n`;
+    
+    // Link de seguimiento del pedido
     if (trackingToken) {
-      mensaje += `📦 *Sigue tu pedido aquí:*\n`;
-      mensaje += `👉 https://kdsapp.site/track/${trackingToken}\n\n`;
+      mensaje += `Sigue tu pedido aqui:\n`;
+      mensaje += `${process.env.BASE_URL || 'https://kdsapp.site'}/track/${trackingToken}\n\n`;
     }
     
-    mensaje += '━'.repeat(30) + '\n\n';
-    mensaje += `Ya lo enviamos a la cocina de ${restaurantName}. 👨‍🍳\n\n`;
-    mensaje += '💵 *Pago:*\n';
-    mensaje += '• Puedes pagar en efectivo al domiciliario\n';
-    mensaje += '• O si prefieres transferencia, pregunta los datos al domiciliario\n\n';
-    mensaje += '━'.repeat(30) + '\n\n';
-    mensaje += 'Te llamaremos al número que nos diste cuando el domiciliario esté en camino. 🛵\n\n';
+    mensaje += '----------------------\n\n';
+    mensaje += `Ya lo enviamos a la cocina de ${restaurantName}.\n\n`;
+    mensaje += '*Pago:*\n';
+    mensaje += '- Puedes pagar en efectivo al domiciliario\n';
+    mensaje += '- O si prefieres transferencia, pregunta los datos al domiciliario\n\n';
+    mensaje += '----------------------\n\n';
+    mensaje += 'Te llamaremos al numero que nos diste cuando el domiciliario este en camino.\n\n';
     
     // Obtener tiempo de entrega configurado
     const tiempoEntrega = await obtenerTiempoEntrega(sesion.tenantId);
-    mensaje += `🕒 Tiempo estimado: ${tiempoEntrega}\n\n`;
-    mensaje += '¿Quieres pedir algo más? Escribe *menu* cuando quieras.';
+    mensaje += `Tiempo estimado: ${tiempoEntrega}\n\n`;
+    mensaje += 'Quieres pedir algo mas? Escribe *menu* cuando quieras.';
     
     return mensaje;
     
