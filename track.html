@@ -426,6 +426,36 @@
             color: var(--text-primary);
         }
 
+        /* Desglose de subtotales */
+        .order-subtotals {
+            padding: 12px 0;
+            border-top: 1px dashed var(--gray-200);
+            margin-top: 8px;
+        }
+
+        .subtotal-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 0;
+        }
+
+        .subtotal-label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .subtotal-amount {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .subtotal-amount.free {
+            color: var(--success);
+            font-weight: 600;
+        }
+
         .order-total {
             display: flex;
             justify-content: space-between;
@@ -783,6 +813,18 @@
                     <!-- Se llena dinámicamente -->
                 </div>
 
+                <!-- Desglose de precios -->
+                <div class="order-subtotals" id="orderSubtotals" style="display: none;">
+                    <div class="subtotal-row">
+                        <span class="subtotal-label">Subtotal</span>
+                        <span class="subtotal-amount" id="orderSubtotal">$0</span>
+                    </div>
+                    <div class="subtotal-row" id="deliveryCostRow">
+                        <span class="subtotal-label">Envío</span>
+                        <span class="subtotal-amount" id="orderDeliveryCost">$0</span>
+                    </div>
+                </div>
+
                 <div class="order-total">
                     <span class="total-label">Total</span>
                     <span class="total-amount" id="orderTotal">$0</span>
@@ -953,6 +995,33 @@
 
             // Total y detalles
             document.getElementById('orderTotal').textContent = `$${formatPrice(order.total)}`;
+            
+            // Mostrar desglose si hay subtotal y costoEnvio
+            const subtotalsEl = document.getElementById('orderSubtotals');
+            if (order.subtotal !== undefined && order.subtotal !== null) {
+                subtotalsEl.style.display = 'block';
+                document.getElementById('orderSubtotal').textContent = `$${formatPrice(order.subtotal)}`;
+                
+                // Costo de envío
+                const deliveryCostEl = document.getElementById('orderDeliveryCost');
+                const deliveryCostRow = document.getElementById('deliveryCostRow');
+                
+                if (order.costoEnvio !== undefined && order.costoEnvio !== null) {
+                    if (order.costoEnvio === 0) {
+                        deliveryCostEl.textContent = 'GRATIS';
+                        deliveryCostEl.classList.add('free');
+                    } else {
+                        deliveryCostEl.textContent = `$${formatPrice(order.costoEnvio)}`;
+                        deliveryCostEl.classList.remove('free');
+                    }
+                    deliveryCostRow.style.display = 'flex';
+                } else {
+                    deliveryCostRow.style.display = 'none';
+                }
+            } else {
+                subtotalsEl.style.display = 'none';
+            }
+            
             document.getElementById('orderAddress').textContent = order.direccion || 'No especificada';
             document.getElementById('orderPayment').textContent = order.metodoPago === 'tarjeta' ? 'Tarjeta' : 'Efectivo';
             document.getElementById('orderTime').textContent = `${order.minutosTranscurridos} minutos`;

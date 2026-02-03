@@ -914,7 +914,7 @@ ${lineaEnvioMsg}
 💵 Pago: ${sesion.metodoPago === 'tarjeta' ? 'Tarjeta 💳' : 'Efectivo 💵'}
 
 🔍 Sigue tu pedido aqui:
-${process.env.BASE_URL || 'https://kdsapp.site'}/track/${trackingToken}
+https://kdsapp.site/track/${trackingToken}
 
 ⏱️ Tiempo estimado: ${tiempoEntrega}
 
@@ -1777,7 +1777,7 @@ async function confirmarPedidoEfectivo(sesion, pedidoKey = null, numeroHex = nul
     // Link de seguimiento del pedido
     if (trackingToken) {
       mensaje += `Sigue tu pedido aqui:\n`;
-      mensaje += `${process.env.BASE_URL || 'https://kdsapp.site'}/track/${trackingToken}\n\n`;
+      mensaje += `https://kdsapp.site/track/${trackingToken}\n\n`;
     }
     
     mensaje += '----------------------\n\n';
