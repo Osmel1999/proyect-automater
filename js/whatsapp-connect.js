@@ -134,7 +134,11 @@
             body: JSON.stringify({ tenantId: this.tenantId })
           });
 
+          console.log('📩 Respuesta del servidor (status):', response.status);
+          console.log('📩 Respuesta del servidor (ok):', response.ok);
+
           const result = await response.json();
+          console.log('📩 Respuesta del servidor (data):', result);
 
           if (!result.success) {
             throw new Error(result.error || 'Error al conectar');

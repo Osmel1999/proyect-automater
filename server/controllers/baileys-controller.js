@@ -82,8 +82,9 @@ class BaileysController {
         });
       }
 
-      // Iniciar sesión (el QR se enviará por eventos)
-      const result = await baileys.initializeSession(tenantId);
+      // Iniciar sesión FORZANDO NUEVA (el QR se enviará por eventos)
+      // Esto evita problemas con sesiones corruptas o colgadas
+      const result = await baileys.initializeSession(tenantId, { forceNew: true });
 
       if (!result.success) {
         throw new Error(result.error || 'Error al inicializar sesión');

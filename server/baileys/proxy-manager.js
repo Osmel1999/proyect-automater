@@ -9,6 +9,7 @@
 const pino = require('pino');
 const logger = pino({ level: 'info' });
 const { HttpsProxyAgent } = require('https-proxy-agent');
+const { SocksProxyAgent } = require('socks-proxy-agent');
 const admin = require('firebase-admin');
 
 class ProxyManager {
@@ -74,23 +75,25 @@ class ProxyManager {
     }
 
     // OPCIÓN 2: Cargar desde variable de entorno (RECOMENDADO)
-    // Formato: PROXY_LIST=http://username:password@host:port
+    // Formato HTTP: PROXY_LIST=http://username:password@host:port
+    // Formato SOCKS5: PROXY_LIST=socks5://username:password@host:port
     // El sistema automáticamente agregará -session-{tenantId} al username
     if (process.env.PROXY_LIST) {
       const proxyUrl = process.env.PROXY_LIST.trim();
       
-      // Extraer componentes del proxy URL
-      const urlMatch = proxyUrl.match(/^(https?):\/\/([^:]+):([^@]+)@([^:]+):(\d+)/);
+      // Extraer componentes del proxy URL (soporta http, https, socks5)
+      const urlMatch = proxyUrl.match(/^(https?|socks5?):\/\/([^:]+):([^@]+)@([^:]+):(\d+)/);
       
       if (urlMatch) {
         this.baseProxyUrl = proxyUrl;
         this.proxyType = 'residential';
-        logger.info(`📡 Proxy base cargado desde ENV`);
+        const protocol = urlMatch[1];
+        logger.info(`📡 Proxy base cargado desde ENV (${protocol.toUpperCase()})`);
         logger.info(`🌐 Sistema AUTO-ESCALABLE activado`);
         logger.info(`💡 Cada restaurante obtendrá una IP única automáticamente`);
         return;
       } else {
-        logger.error('❌ Formato de PROXY_LIST inválido. Usa: http://username:password@host:port');
+        logger.error('❌ Formato de PROXY_LIST inválido. Usa: http://user:pass@host:port o socks5://user:pass@host:port');
       }
     }
 
@@ -142,12 +145,14 @@ class ProxyManager {
 
   /**
    * Crea una URL de proxy con sesión única para un tenant
+   * Soporta HTTP, HTTPS y SOCKS5
+   * 
    * @param {string} tenantId - ID del tenant
    * @returns {string} URL del proxy con sesión
    */
   createSessionUrl(tenantId) {
-    // Extraer componentes del proxy URL base
-    const urlMatch = this.baseProxyUrl.match(/^(https?):\/\/([^:]+):([^@]+)@([^:]+):(\d+)/);
+    // Extraer componentes del proxy URL base (soporta http, https, socks5)
+    const urlMatch = this.baseProxyUrl.match(/^(https?|socks5?):\/\/([^:]+):([^@]+)@([^:]+):(\d+)/);
     
     if (!urlMatch) {
       logger.error('❌ Error: formato de proxy URL inválido');
@@ -167,11 +172,15 @@ class ProxyManager {
   }
 
   /**
-   * Crea un agente HTTP/HTTPS configurado con el proxy del tenant
+   * Crea un agente HTTP/HTTPS/SOCKS5 configurado con el proxy del tenant
    * Este agente se usa en las peticiones de Baileys
    * 
+   * SOPORTA:
+   * - HTTP/HTTPS proxies (para APIs REST)
+   * - SOCKS5 proxies (para WebSockets - RECOMENDADO para Baileys)
+   * 
    * @param {string} tenantId - ID del tenant
-   * @returns {object|null} HttpsProxyAgent o null si no hay proxy
+   * @returns {object|null} ProxyAgent o null si no hay proxy
    */
   getProxyAgent(tenantId) {
     const proxyConfig = this.assignProxyToTenant(tenantId);
@@ -181,15 +190,28 @@ class ProxyManager {
     }
 
     try {
-      // Crear agente con timeout extendido para conexiones internacionales
-      const agent = new HttpsProxyAgent(proxyConfig.url, {
-        keepAlive: true,
-        keepAliveMsecs: 5000, // 5 segundos entre keep-alives
-        timeout: 90000, // 90 segundos - extendido para proxies internacionales
-        rejectUnauthorized: false // Permitir certificados autofirmados
-      });
+      const proxyUrl = proxyConfig.url;
+      let agent;
+      
+      // Detectar tipo de proxy por el protocolo
+      if (proxyUrl.startsWith('socks5://') || proxyUrl.startsWith('socks4://')) {
+        // SOCKS5 Proxy (recomendado para Baileys/WebSocket)
+        agent = new SocksProxyAgent(proxyUrl, {
+          keepAlive: true,
+          timeout: 90000, // 90 segundos
+        });
+        logger.info(`[${tenantId}] 🔗 Agente SOCKS5 creado para ${proxyConfig.id}`);
+      } else {
+        // HTTP/HTTPS Proxy (fallback)
+        agent = new HttpsProxyAgent(proxyUrl, {
+          keepAlive: true,
+          keepAliveMsecs: 5000,
+          timeout: 90000,
+          rejectUnauthorized: false
+        });
+        logger.info(`[${tenantId}] 🔗 Agente HTTPS creado para ${proxyConfig.id}`);
+      }
 
-      logger.info(`[${tenantId}] 🔗 Agente proxy creado para ${proxyConfig.id}`);
       logger.info(`[${tenantId}] ⏱️ Timeout configurado: 90 segundos`);
       
       return agent;

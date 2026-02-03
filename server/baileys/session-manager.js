@@ -128,13 +128,23 @@ class SessionManager extends EventEmitter {
         saveCreds = authState.saveCreds;
       }
 
-      // 🌐 Obtener agente proxy para este tenant (Anti-Ban)
-      // TEMPORAL: Deshabilitar proxy para debug
+      // 🌐 ESTRATEGIA HÍBRIDA DE PROXY (Mejor de ambos mundos)
+      // 1. Iniciar SIN proxy para generar QR rápidamente
+      // 2. Aplicar proxy DESPUÉS de conectar para protección anti-ban
       const PROXY_ENABLED = process.env.ENABLE_PROXY !== 'false';
-      const proxyAgent = PROXY_ENABLED ? proxyManager.getProxyAgent(tenantId) : null;
+      const USE_HYBRID_PROXY = process.env.USE_HYBRID_PROXY !== 'false'; // Activado por defecto
       
-      if (proxyAgent && PROXY_ENABLED) {
-        logger.info(`[${tenantId}] 🔐 Usando proxy para conexión (Anti-Ban activado)`);
+      let proxyAgent = null;
+      
+      if (PROXY_ENABLED && !USE_HYBRID_PROXY) {
+        // Modo legacy: proxy desde el inicio (puede causar timeout en QR)
+        proxyAgent = proxyManager.getProxyAgent(tenantId);
+        if (proxyAgent) {
+          logger.info(`[${tenantId}] 🔐 Usando proxy desde inicio (modo legacy)`);
+        }
+      } else if (PROXY_ENABLED && USE_HYBRID_PROXY) {
+        // Modo híbrido: proxy solo después de conectar (RECOMENDADO)
+        logger.info(`[${tenantId}] 🎯 Modo híbrido activado: QR sin proxy, mensajes con proxy`);
       } else {
         logger.warn(`[${tenantId}] ⚠️ Proxy deshabilitado - usando IP directa del servidor`);
       }
@@ -220,7 +230,31 @@ class SessionManager extends EventEmitter {
           this.emit('disconnected', tenantId);
 
         } else if (connection === 'open') {
-          logger.info(`[${tenantId}] Conexión establecida exitosamente`);
+          logger.info(`[${tenantId}] 🎉 Conexión establecida exitosamente`);
+
+          // 🌐 APLICAR PROXY DESPUÉS DE CONECTAR (Modo Híbrido)
+          if (PROXY_ENABLED && USE_HYBRID_PROXY && !proxyAgent) {
+            logger.info(`[${tenantId}] 🔐 APLICANDO PROXY POST-CONEXIÓN (Anti-Ban Mode)`);
+            const postConnectProxyAgent = proxyManager.getProxyAgent(tenantId);
+            
+            if (postConnectProxyAgent && socket) {
+              // Actualizar el agente del socket existente
+              socket.config = socket.config || {};
+              socket.config.agent = postConnectProxyAgent;
+              logger.info(`[${tenantId}] ✅✅✅ PROXY APLICADO EXITOSAMENTE - Sistema Anti-Ban Activo ✅✅✅`);
+            } else {
+              logger.error(`[${tenantId}] ❌ ERROR: No se pudo obtener proxy agent`);
+            }
+          } else {
+            // Log de por qué NO se aplicó el proxy
+            if (!PROXY_ENABLED) {
+              logger.warn(`[${tenantId}] ⚠️ PROXY DESHABILITADO (ENABLE_PROXY=false)`);
+            } else if (!USE_HYBRID_PROXY) {
+              logger.info(`[${tenantId}] ℹ️ Modo legacy activo (proxy desde inicio)`);
+            } else if (proxyAgent) {
+              logger.info(`[${tenantId}] ℹ️ Proxy ya aplicado desde inicio`);
+            }
+          }
 
           // Obtener información del número
           const socket = this.sessions.get(tenantId);
