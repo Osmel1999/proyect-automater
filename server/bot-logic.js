@@ -330,18 +330,18 @@ Es muy facil! 😊`;
     // Mensaje 2: Formulario para copiar (con o sin opcion de tarjeta)
     const opcionPago = pagoTarjetaHabilitado ? 'Efectivo / Tarjeta' : 'Efectivo';
     
-    const formularioMsg = `----------------------
-*MI PEDIDO:*
-- (escribe aqui los productos)
+    const formularioMsg = `━━━━━━━━━━━━━━━━━━
+📦 *MI PEDIDO:*
+• (escribe aqui los productos)
 
-*DIRECCION:*
-- (tu direccion completa)
+📍 *DIRECCION:*
+• (tu direccion completa)
 
-*TELEFONO:*
-- (numero de contacto)
+📞 *TELEFONO:*
+• (numero de contacto)
 
-*PAGO:* ${opcionPago}
-----------------------`;
+💵 *PAGO:* ${opcionPago}
+━━━━━━━━━━━━━━━━━━`;
 
     // Retornamos un objeto especial que indica múltiples mensajes
     return {
@@ -355,19 +355,19 @@ Es muy facil! 😊`;
     return {
       type: 'multiple', 
       messages: [
-        'Hola! Bienvenido\n\nMira nuestro menu en el catalogo y copia el formulario del siguiente mensaje para hacer tu pedido.',
-        `----------------------
-*MI PEDIDO:*
-- (productos)
+        '👋 Hola! Bienvenido\n\n📋 Mira nuestro menu en el catalogo y copia el formulario del siguiente mensaje para hacer tu pedido.',
+        `━━━━━━━━━━━━━━━━━━
+📦 *MI PEDIDO:*
+• (productos)
 
-*DIRECCION:*
-- (direccion)
+📍 *DIRECCION:*
+• (direccion)
 
-*TELEFONO:*
-- (telefono)
+📞 *TELEFONO:*
+• (telefono)
 
-*PAGO:* Efectivo
-----------------------`
+💵 *PAGO:* Efectivo
+━━━━━━━━━━━━━━━━━━`
       ]
     };
   }
@@ -807,18 +807,18 @@ Escribe *hola* 👋 cuando quieras hacer un nuevo pedido.`;
 
 Por favor, envia nuevamente el formulario con los cambios que deseas:
 
-----------------------
-*MI PEDIDO:*
-- (escribe aqui los productos)
+━━━━━━━━━━━━━━━━━━
+📦 *MI PEDIDO:*
+• (escribe aqui los productos)
 
-*DIRECCION:*
-- ${sesion.direccion || 'tu direccion'}
+📍 *DIRECCION:*
+• ${sesion.direccion || 'tu direccion'}
 
-*TELEFONO:*
-${sesion.telefonoContacto || 'tu numero'}
+📞 *TELEFONO:*
+• ${sesion.telefonoContacto || 'tu numero'}
 
-*PAGO:* Efectivo
-----------------------
+💵 *PAGO:* Efectivo
+━━━━━━━━━━━━━━━━━━
 
 📝 Copia, edita y envia el formulario con tus cambios.`;
   }
