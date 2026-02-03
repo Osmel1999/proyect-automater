@@ -84,6 +84,14 @@ kds-webapp/
 - Mensajes humanizados
 - Soporte para texto, imágenes, ubicación
 - Persistencia de sesiones
+- **🌐 Sistema de Túnel: IP real del restaurante (anti-ban, $0 costo)**
+
+### Sistema Anti-Ban Inteligente
+- **Túnel de Navegador** (Prioridad 1): Usa IP real del restaurante cuando el navegador está abierto
+- **Proxy Opcional** (Prioridad 2): Fallback a proxy si está configurado
+- **Conexión Directa** (Prioridad 3): Fallback final si no hay túnel ni proxy
+- **$0 costo operativo** con sistema de túnel
+- **Fallback automático** entre estrategias
 
 ### Pagos
 - Multi-gateway: Wompi, Bold, PayU, MercadoPago
@@ -127,10 +135,17 @@ FIREBASE_DATABASE_URL=...
 # WhatsApp
 WHATSAPP_SESSION_PATH=./sessions
 
+# Sistema Anti-Ban (opcional - túnel funciona sin estas variables)
+ENABLE_PROXY=false              # false = usar solo túnel y conexión directa
+PROXY_TYPE=isp                  # isp, residential, datacenter (si ENABLE_PROXY=true)
+PROXY_LIST=socks5://...         # URL del proxy (si ENABLE_PROXY=true)
+
 # Pagos (opcional)
 WOMPI_PUBLIC_KEY=...
 WOMPI_PRIVATE_KEY=...
 ```
+
+**Nota:** El sistema de túnel funciona automáticamente sin configuración adicional. Los proxies son opcionales como fallback.
 
 ---
 
@@ -159,9 +174,32 @@ docker run -p 3000:3000 kds-webapp
 | Documento | Descripción |
 |-----------|-------------|
 | `docs/QUICK-START.md` | Guía de inicio rápido |
+| `docs/TUNNEL-IMPLEMENTATION.md` | Sistema de túnel (IP real del restaurante) |
+| `docs/MIGRACION-BRIGHT-DATA-A-TUNNEL.md` | Migración desde Bright Data |
 | `docs/AUTO-RECONNECTION-SYSTEM.md` | Sistema de reconexión WhatsApp |
 | `docs/HUMANIZACION-*.md` | Configuración de mensajes |
 | `Integracion-Multi-Gateway/README.md` | Sistema de pagos |
+
+---
+
+## Sistema de Túnel 🌐
+
+El sistema utiliza un **túnel de navegador** innovador que permite:
+
+- ✅ **IP real del restaurante** (no compartida)
+- ✅ **$0 costo operativo** (elimina necesidad de proxies pagados)
+- ✅ **Máximo anti-ban** (WhatsApp ve IP del negocio)
+- ✅ **Sin instalación** (solo mantener navegador abierto)
+- ✅ **Fallback automático** (sigue funcionando si se cierra navegador)
+
+### ¿Cómo funciona?
+
+1. Restaurante abre dashboard/KDS en su tablet
+2. Service Worker establece túnel WebSocket con servidor
+3. WhatsApp se conecta a través del túnel
+4. **WhatsApp ve la IP real del restaurante** 🎉
+
+Ver documentación completa en `docs/TUNNEL-IMPLEMENTATION.md`
 
 ---
 
