@@ -8,6 +8,7 @@ const pino = require('pino');
 const path = require('node:path');
 const fs = require('node:fs').promises;
 const EventEmitter = require('node:events');
+const proxyManager = require('./proxy-manager'); // 🌐 Importar Proxy Manager
 
 const logger = pino({ level: 'info' });
 
@@ -127,8 +128,17 @@ class SessionManager extends EventEmitter {
         saveCreds = authState.saveCreds;
       }
 
+      // 🌐 Obtener agente proxy para este tenant (Anti-Ban)
+      const proxyAgent = proxyManager.getProxyAgent(tenantId);
+      
+      if (proxyAgent) {
+        logger.info(`[${tenantId}] 🔐 Usando proxy para conexión (Anti-Ban activado)`);
+      } else {
+        logger.warn(`[${tenantId}] ⚠️ Sin proxy - usando IP directa del servidor`);
+      }
+
       // Configurar socket de Baileys
-      const socket = makeWASocket({
+      const socketConfig = {
         auth: state,
         printQRInTerminal: options.printQR || false,
         logger: pino({ level: 'silent' }), // Silenciar logs internos de Baileys
@@ -141,7 +151,14 @@ class SessionManager extends EventEmitter {
           // Implementar recuperación de mensajes si es necesario
           return { conversation: '' };
         }
-      });
+      };
+
+      // 🌐 Agregar agente proxy si está disponible
+      if (proxyAgent) {
+        socketConfig.agent = proxyAgent;
+      }
+
+      const socket = makeWASocket(socketConfig);
 
       // Guardar sesión
       this.sessions.set(tenantId, socket);
@@ -397,6 +414,10 @@ class SessionManager extends EventEmitter {
         await socket.logout();
         this.sessions.delete(tenantId);
         this.sessionStates.delete(tenantId);
+        
+        // 🌐 Liberar proxy asignado (Anti-Ban)
+        proxyManager.releaseProxy(tenantId);
+        
         logger.info(`[${tenantId}] Sesión cerrada`);
       }
     } catch (error) {
@@ -417,6 +438,9 @@ class SessionManager extends EventEmitter {
         
         // 🔥 FIX: Limpiar estado de conexión para forzar nuevo QR
         this.sessionStates.delete(tenantId);
+        
+        // 🌐 Liberar proxy asignado (Anti-Ban)
+        proxyManager.releaseProxy(tenantId);
         
         logger.info(`[${tenantId}] Sesión desconectada (credenciales preservadas, estado limpiado)`);
       }

@@ -36,6 +36,7 @@
     "express-rate-limit": "^8.2.1",
     "firebase-admin": "^12.0.0",
     "fuzzball": "^2.2.3",
+    "https-proxy-agent": "^7.0.2",
     "pino": "^10.2.0",
     "qrcode": "^1.5.4",
     "qrcode-terminal": "^0.12.0",

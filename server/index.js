@@ -43,6 +43,18 @@ const wsHandler = new BaileysWebSocketHandler(io);
 // Hacer wsHandler disponible globalmente para que otros módulos puedan emitir eventos
 global.baileysWebSocket = wsHandler;
 
+// 🌐 Inicializar Proxy Manager (Anti-Ban)
+const proxyManager = require('./baileys/proxy-manager');
+console.log('🌐 Inicializando Proxy Manager (Anti-Ban)...');
+proxyManager.initialize()
+  .then(() => {
+    console.log('✅ Proxy Manager inicializado correctamente');
+  })
+  .catch(err => {
+    console.error('⚠️ Error inicializando Proxy Manager:', err.message);
+    console.log('⚠️ Continuando sin proxies - todos los bots usarán la misma IP');
+  });
+
 // Middleware
 app.use(express.urlencoded({ extended: false, limit: '15mb' }));
 app.use(express.json({ limit: '15mb' }));
@@ -194,6 +206,31 @@ console.log('🛡️ Rutas de admin registradas en /api/admin');
 const trackingRoutes = require('./routes/tracking-routes');
 app.use('/api/tracking', trackingRoutes);
 console.log('📦 Rutas de tracking registradas en /api/tracking');
+
+// ====================================
+// RUTAS DE API - PROXY STATS (Anti-Ban)
+// ====================================
+
+/**
+ * GET /api/proxy/stats
+ * Obtiene estadísticas de uso de proxies
+ */
+app.get('/api/proxy/stats', (req, res) => {
+  try {
+    const stats = proxyManager.getProxyStats();
+    res.json({
+      success: true,
+      stats
+    });
+  } catch (error) {
+    console.error('Error obteniendo stats de proxy:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al obtener estadísticas de proxies'
+    });
+  }
+});
+console.log('🌐 Ruta de proxy stats registrada en /api/proxy/stats');
 
 // ====================================
 // RUTAS DE API - EXTRACCION DE MENU CON IA
