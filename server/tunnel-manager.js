@@ -31,9 +31,23 @@ class TunnelManager extends EventEmitter {
     // Timeout para peticiones (30 segundos)
     this.requestTimeout = 30000;
     
-    // (requestIdCounter removido - se usa crypto.randomUUID() en su lugar)
+    // (requestIdCounter removed - using crypto.randomUUID() instead)
     
     logger.info('🌐 Tunnel Manager inicializado');
+  }
+  
+  /**
+   * Limpia todas las peticiones pendientes de un tenant
+   * @param {string} tenantId - ID del tenant
+   */
+  cleanupPendingRequests(tenantId) {
+    for (const [requestId, pending] of this.pendingRequests.entries()) {
+      if (pending.tenantId === tenantId) {
+        clearTimeout(pending.timeout);
+        pending.reject(new Error(`Tunnel closed for tenant ${tenantId}`));
+        this.pendingRequests.delete(requestId);
+      }
+    }
   }
 
   /**
@@ -65,13 +79,7 @@ class TunnelManager extends EventEmitter {
       this.tunnels.delete(tenantId);
       
       // Clean up all pending requests for this tenant to prevent memory leak
-      for (const [requestId, pending] of this.pendingRequests.entries()) {
-        if (pending.tenantId === tenantId) {
-          clearTimeout(pending.timeout);
-          pending.reject(new Error(`Tunnel closed for tenant ${tenantId}`));
-          this.pendingRequests.delete(requestId);
-        }
-      }
+      this.cleanupPendingRequests(tenantId);
       
       logger.info(`[${tenantId}] ⚠️ Túnel cerrado - Fallback a conexión directa`);
       this.emit('tunnel:closed', tenantId);
@@ -82,13 +90,7 @@ class TunnelManager extends EventEmitter {
       this.tunnels.delete(tenantId);
       
       // Clean up all pending requests for this tenant
-      for (const [requestId, pending] of this.pendingRequests.entries()) {
-        if (pending.tenantId === tenantId) {
-          clearTimeout(pending.timeout);
-          pending.reject(new Error(`Tunnel error for tenant ${tenantId}: ${error.message}`));
-          this.pendingRequests.delete(requestId);
-        }
-      }
+      this.cleanupPendingRequests(tenantId);
       
       this.emit('tunnel:error', tenantId, error);
     });
