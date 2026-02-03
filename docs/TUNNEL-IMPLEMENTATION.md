@@ -92,7 +92,7 @@ Namespace Socket.IO `/tunnel` para recibir conexiones de navegadores.
 
 **Eventos:**
 - `tunnel.init` - Navegador registra el túnel
-- `message` - Mensajes bidireccionales (peticiones/respuestas)
+- `tunnel:message` - Mensajes bidireccionales (peticiones/respuestas)
 - `disconnect` - Limpieza cuando se cierra el túnel
 
 ### 3. Backend: Integración en `server/baileys/session-manager.js`
