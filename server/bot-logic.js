@@ -131,8 +131,11 @@ function obtenerSesion(tenantId, telefono) {
       direccion: null,
       esperandoTelefono: false,
       telefonoContacto: null,
-      esperandoMetodoPago: false, // ✨ Nuevo estado
-      metodoPago: null // ✨ 'tarjeta' o 'efectivo'
+      esperandoMetodoPago: false,
+      metodoPago: null,
+      // ✨ Nuevo: Estado para confirmación de pedido rápido
+      esperandoConfirmacionRapida: false,
+      pedidoRapidoPendiente: null
     });
   }
   
@@ -544,53 +547,156 @@ No pude identificar los productos en tu pedido:
     `• ${item.cantidad}x ${item.nombre} - $${formatearPrecio(item.precio * item.cantidad)}`
   ).join('\n');
   
-  // Si es pago con tarjeta, generar link y crear pedido
-  if (sesion.metodoPago === 'tarjeta') {
-    try {
-      const paymentConfig = await paymentConfigService.getConfig(tenantId);
-      
-      if (!paymentConfig.enabled) {
-        // Pagos no configurados, solo efectivo
-        sesion.metodoPago = 'efectivo';
-        return await finalizarPedidoRapido(tenantId, sesion, itemsAgrupados, total);
-      }
-      
-      // Generar link de pago
-      const paymentResult = await paymentService.createPaymentLink(tenantId, sesion.telefono, total, itemsAgrupados);
-      
-      if (paymentResult.success) {
-        // Guardar datos para cuando confirme el pago
-        sesion.esperandoPago = true;
-        sesion.paymentData = {
-          items: itemsAgrupados,
-          total: total,
-          direccion: sesion.direccion,
-          telefono: sesion.telefonoContacto,
-          paymentUrl: paymentResult.url
-        };
-        
-        return `📦 *Resumen de tu pedido:*
+  // ✨ NUEVO: Guardar datos del pedido y esperar confirmación del cliente
+  sesion.esperandoConfirmacionRapida = true;
+  sesion.pedidoRapidoPendiente = {
+    items: itemsAgrupados,
+    total: total,
+    direccion: sesion.direccion,
+    telefono: sesion.telefonoContacto,
+    metodoPago: sesion.metodoPago
+  };
+  
+  // Mostrar resumen y pedir confirmación
+  return `� *Resumen de tu pedido:*
 
 ${resumenItems}
 
-💰 *Total: $${formatearPrecio(total)}*
-📍 *Entrega:* ${sesion.direccion}
+━━━━━━━━━━━━━━━━━━
+💰 *Total:* $${formatearPrecio(total)}
+📍 *Dirección:* ${sesion.direccion}
 📱 *Teléfono:* ${sesion.telefonoContacto}
+� *Pago:* ${sesion.metodoPago === 'tarjeta' ? 'Tarjeta' : 'Efectivo'}
+━━━━━━━━━━━━━━━━━━
+
+¿Todo está correcto?
+
+✅ *Confirmar* - Escribe *si* o *confirmar*
+✏️ *Editar* - Escribe *editar* o *cambiar*
+❌ *Cancelar* - Escribe *cancelar* o *no*`;
+}
+
+/**
+ * Procesa la confirmación del pedido rápido (cuando el cliente responde si/no/editar)
+ */
+async function procesarConfirmacionRapida(tenantId, sesion, texto) {
+  const textoLower = texto.toLowerCase().trim();
+  
+  // Palabras para CONFIRMAR
+  const palabrasConfirmar = ['si', 'sí', 'confirmar', 'confirmo', 'ok', 'dale', 'listo', 'va', 'correcto', 'perfecto'];
+  
+  // Palabras para CANCELAR
+  const palabrasCancelar = ['no', 'cancelar', 'cancela', 'anular', 'nada', 'olvidalo', 'olvídalo'];
+  
+  // Palabras para EDITAR
+  const palabrasEditar = ['editar', 'cambiar', 'modificar', 'corregir', 'cambio', 'edito'];
+  
+  // ✅ CONFIRMAR PEDIDO
+  if (palabrasConfirmar.some(p => textoLower === p || textoLower.startsWith(p + ' '))) {
+    const pedido = sesion.pedidoRapidoPendiente;
+    
+    // Limpiar estado de espera
+    sesion.esperandoConfirmacionRapida = false;
+    
+    // Si es pago con tarjeta, generar link
+    if (pedido.metodoPago === 'tarjeta') {
+      try {
+        const paymentConfig = await paymentConfigService.getConfig(tenantId);
+        
+        if (paymentConfig.enabled) {
+          const paymentResult = await paymentService.createPaymentLink(tenantId, sesion.telefono, pedido.total, pedido.items);
+          
+          if (paymentResult.success) {
+            sesion.esperandoPago = true;
+            sesion.paymentData = {
+              items: pedido.items,
+              total: pedido.total,
+              direccion: pedido.direccion,
+              telefono: pedido.telefono,
+              paymentUrl: paymentResult.url
+            };
+            
+            sesion.pedidoRapidoPendiente = null;
+            
+            let resumenItems = pedido.items.map(item => 
+              `• ${item.cantidad}x ${item.nombre}`
+            ).join('\n');
+            
+            return `✅ *¡Pedido confirmado!*
+
+${resumenItems}
+
+💰 *Total: $${formatearPrecio(pedido.total)}*
 
 💳 *Pagar con tarjeta:*
 👉 ${paymentResult.url}
 
-Una vez realices el pago, tu pedido será confirmado automáticamente.`;
+Una vez realices el pago, tu pedido será enviado a cocina automáticamente.`;
+          }
+        }
+        // Si falla, continuar con efectivo
+        pedido.metodoPago = 'efectivo';
+      } catch (error) {
+        console.error('Error generando link de pago:', error);
+        pedido.metodoPago = 'efectivo';
       }
-    } catch (error) {
-      console.error('Error generando link de pago:', error);
-      // Continuar con efectivo
-      sesion.metodoPago = 'efectivo';
     }
+    
+    // Pago en efectivo - finalizar pedido
+    sesion.pedidoRapidoPendiente = null;
+    return await finalizarPedidoRapido(tenantId, sesion, pedido.items, pedido.total);
   }
   
-  // Pago en efectivo - confirmar directamente
-  return await finalizarPedidoRapido(tenantId, sesion, itemsAgrupados, total);
+  // ❌ CANCELAR PEDIDO
+  if (palabrasCancelar.some(p => textoLower === p || textoLower.startsWith(p + ' '))) {
+    // Limpiar todo
+    sesion.esperandoConfirmacionRapida = false;
+    sesion.pedidoRapidoPendiente = null;
+    sesion.carrito = [];
+    sesion.direccion = null;
+    sesion.telefonoContacto = null;
+    sesion.metodoPago = null;
+    
+    return `❌ *Pedido cancelado*
+
+No te preocupes, tu pedido ha sido cancelado.
+
+📝 Escribe *hola* cuando quieras hacer un nuevo pedido.`;
+  }
+  
+  // ✏️ EDITAR PEDIDO
+  if (palabrasEditar.some(p => textoLower === p || textoLower.startsWith(p + ' '))) {
+    // Limpiar estado pero mantener info para nuevo intento
+    sesion.esperandoConfirmacionRapida = false;
+    sesion.pedidoRapidoPendiente = null;
+    sesion.carrito = [];
+    
+    return `✏️ *Vamos a editar tu pedido*
+
+Por favor, envía nuevamente el formulario con los cambios que deseas:
+
+━━━━━━━━━━━━━━━━━━
+📦 *MI PEDIDO:*
+• (escribe aquí los productos)
+
+📍 *DIRECCIÓN:*
+• ${sesion.direccion || 'tu dirección'}
+
+📞 *TELÉFONO:*
+${sesion.telefonoContacto || 'tu número'}
+💵 *PAGO:* Efectivo
+━━━━━━━━━━━━━━━━━━
+
+💡 Copia, edita y envía el formulario con tus cambios.`;
+  }
+  
+  // No entendió la respuesta
+  return `🤔 No entendí tu respuesta.
+
+Por favor responde:
+• *si* o *confirmar* → para confirmar el pedido
+• *editar* o *cambiar* → para modificar el pedido  
+• *cancelar* o *no* → para cancelar el pedido`;
 }
 
 /**
@@ -823,8 +929,15 @@ async function processMessage(tenantId, from, texto) {
   
   // Saludo inicial o ayuda
   if (texto === 'hola' || texto === 'menu' || texto === 'empezar' || texto === 'start') {
+    // Limpiar cualquier estado pendiente
     sesion.esperandoConfirmacion = false;
     sesion.pedidoPendiente = null;
+    sesion.esperandoConfirmacionRapida = false;
+    sesion.pedidoRapidoPendiente = null;
+    sesion.carrito = [];
+    sesion.direccion = null;
+    sesion.telefonoContacto = null;
+    sesion.metodoPago = null;
     
     // Verificar si el modo pedido rápido está activado
     try {
@@ -899,6 +1012,12 @@ async function processMessage(tenantId, from, texto) {
   // ✨ NUEVO: Si está esperando método de pago, procesar respuesta
   if (sesion.esperandoMetodoPago) {
     return await procesarMetodoPago(sesion, texto, textoOriginal);
+  }
+  
+  // ✨ NUEVO: Si está esperando confirmación de pedido rápido
+  if (sesion.esperandoConfirmacionRapida) {
+    console.log('⚡ [Pedido Rápido] Esperando confirmación del cliente');
+    return await procesarConfirmacionRapida(tenantId, sesion, textoOriginal);
   }
   
   // ====================================
