@@ -175,7 +175,7 @@ class TunnelManager extends EventEmitter {
    */
   hasTunnel(tenantId) {
     const ws = this.tunnels.get(tenantId);
-    return ws && ws.readyState === 1; // 1 = OPEN
+    return !!(ws && ws.readyState === 1); // 1 = OPEN
   }
 
   /**
