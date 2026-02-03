@@ -13,6 +13,10 @@
 const pino = require('pino');
 const logger = pino({ level: 'info' });
 const EventEmitter = require('events');
+const crypto = require('crypto');
+
+// Constantes
+const ALLOWED_HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD'];
 
 class TunnelManager extends EventEmitter {
   constructor() {
@@ -27,10 +31,23 @@ class TunnelManager extends EventEmitter {
     // Timeout para peticiones (30 segundos)
     this.requestTimeout = 30000;
     
-    // Contador para IDs únicos de peticiones
-    this.requestIdCounter = 0;
+    // (requestIdCounter removed - using crypto.randomUUID() instead)
     
     logger.info('🌐 Tunnel Manager inicializado');
+  }
+  
+  /**
+   * Limpia todas las peticiones pendientes de un tenant
+   * @param {string} tenantId - ID del tenant
+   */
+  cleanupPendingRequests(tenantId) {
+    for (const [requestId, pending] of this.pendingRequests.entries()) {
+      if (pending.tenantId === tenantId) {
+        clearTimeout(pending.timeout);
+        pending.reject(new Error(`Tunnel closed for tenant ${tenantId}`));
+        this.pendingRequests.delete(requestId);
+      }
+    }
   }
 
   /**
@@ -60,6 +77,10 @@ class TunnelManager extends EventEmitter {
     
     ws.on('close', () => {
       this.tunnels.delete(tenantId);
+      
+      // Clean up all pending requests for this tenant to prevent memory leak
+      this.cleanupPendingRequests(tenantId);
+      
       logger.info(`[${tenantId}] ⚠️ Túnel cerrado - Fallback a conexión directa`);
       this.emit('tunnel:closed', tenantId);
     });
@@ -67,6 +88,10 @@ class TunnelManager extends EventEmitter {
     ws.on('error', (error) => {
       logger.error(`[${tenantId}] ❌ Error en túnel:`, error.message);
       this.tunnels.delete(tenantId);
+      
+      // Clean up all pending requests for this tenant
+      this.cleanupPendingRequests(tenantId);
+      
       this.emit('tunnel:error', tenantId, error);
     });
 
@@ -83,7 +108,19 @@ class TunnelManager extends EventEmitter {
     try {
       const message = JSON.parse(data.toString());
       
-      switch (message.type) {
+      // Validate message format
+      if (!message || typeof message !== 'object') {
+        logger.warn(`[${tenantId}] Invalid message format`);
+        return;
+      }
+      
+      const { type } = message;
+      if (!type) {
+        logger.warn(`[${tenantId}] Message missing type field`);
+        return;
+      }
+      
+      switch (type) {
         case 'tunnel.init':
           // Confirmación de inicialización del túnel
           logger.info(`[${tenantId}] Túnel inicializado desde navegador`);
@@ -188,7 +225,20 @@ class TunnelManager extends EventEmitter {
    * @returns {Promise<object>} Respuesta de la petición
    */
   async proxyRequest(tenantId, url, options = {}) {
-    // Verificar que hay túnel activo
+    // Validate URL
+    try {
+      new URL(url);
+    } catch (error) {
+      throw new Error(`Invalid URL format: ${url}`);
+    }
+    
+    // Validate HTTP method
+    const method = (options.method || 'GET').toUpperCase();
+    if (!ALLOWED_HTTP_METHODS.includes(method)) {
+      throw new Error(`Invalid HTTP method: ${method}`);
+    }
+    
+    // Verify tunnel is active
     const ws = this.tunnels.get(tenantId);
     if (!ws || ws.readyState !== 1) {
       throw new Error(`No hay túnel activo para tenant ${tenantId}`);
@@ -203,7 +253,7 @@ class TunnelManager extends EventEmitter {
       type: 'proxy.request',
       requestId,
       url,
-      method: options.method || 'GET',
+      method: method,
       headers: options.headers || {},
       body: options.body || null
     };
