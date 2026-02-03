@@ -649,7 +649,7 @@ async function procesarConfirmacionRapida(tenantId, sesion, texto) {
   // Palabras para EDITAR
   const palabrasEditar = ['editar', 'cambiar', 'modificar', 'corregir', 'cambio', 'edito'];
   
-  // ✅ CONFIRMAR PEDIDO
+  // CONFIRMAR PEDIDO
   if (palabrasConfirmar.some(p => textoLower === p || textoLower.startsWith(p + ' '))) {
     const pedido = sesion.pedidoRapidoPendiente;
     
@@ -662,16 +662,67 @@ async function procesarConfirmacionRapida(tenantId, sesion, texto) {
         const paymentConfig = await paymentConfigService.getConfig(tenantId);
         
         if (paymentConfig.enabled) {
-          const paymentResult = await paymentService.createPaymentLink(tenantId, sesion.telefono, pedido.total, pedido.items);
+          // Generar ID de pedido para el pago
+          const numeroHex = Date.now().toString(16).slice(-6).toUpperCase();
+          const orderId = `${tenantId}_${numeroHex}_${Date.now()}`;
+          
+          // Crear pedido temporal (como en flujo conversacional)
+          const pedidoTemporal = {
+            id: numeroHex,
+            orderId: orderId,
+            tenantId: tenantId,
+            cliente: sesion.telefono,
+            telefono: sesion.telefono,
+            telefonoContacto: pedido.telefono || sesion.telefono,
+            direccion: pedido.direccion || 'No especificada',
+            items: pedido.items,
+            subtotal: pedido.subtotal,
+            costoEnvio: pedido.costoEnvio,
+            total: pedido.total,
+            estado: 'awaiting_payment',
+            timestamp: Date.now(),
+            fecha: new Date().toISOString(),
+            fuente: 'whatsapp',
+            paymentStatus: 'PENDING',
+            metodoPago: 'tarjeta',
+            creadoPor: 'pedido_rapido'
+          };
+          
+          // Guardar pedido temporal
+          await firebaseService.database.ref(`orders/${orderId}`).set(pedidoTemporal);
+          
+          // Llamar a createPaymentLink con el formato correcto
+          const paymentResult = await paymentService.createPaymentLink({
+            restaurantId: tenantId,
+            orderId: orderId,
+            amount: pedido.total * 100, // Total en centavos (incluye envio)
+            customerPhone: sesion.telefono,
+            customerName: `Cliente ${sesion.telefono}`,
+            customerEmail: `${sesion.telefono}@kdsapp.site`,
+            orderDetails: {
+              items: pedido.items.map(i => ({
+                name: i.nombre,
+                quantity: i.cantidad,
+                price: i.precio,
+              })),
+              deliveryAddress: pedido.direccion,
+              contactPhone: pedido.telefono,
+              orderNumber: numeroHex,
+              deliveryCost: pedido.costoEnvio,
+            },
+          });
           
           if (paymentResult.success) {
             sesion.esperandoPago = true;
             sesion.paymentData = {
               items: pedido.items,
+              subtotal: pedido.subtotal,
+              costoEnvio: pedido.costoEnvio,
               total: pedido.total,
               direccion: pedido.direccion,
               telefono: pedido.telefono,
-              paymentUrl: paymentResult.url
+              paymentUrl: paymentResult.paymentLink,
+              orderId: orderId
             };
             
             sesion.pedidoRapidoPendiente = null;
@@ -680,20 +731,32 @@ async function procesarConfirmacionRapida(tenantId, sesion, texto) {
               `- ${item.cantidad}x ${item.nombre}`
             ).join('\n');
             
-            return `✅ *¡Pedido confirmado!*
+            // Linea de envio
+            let lineaEnvioMsg = pedido.costoEnvio > 0 ? `Envio: $${formatearPrecio(pedido.costoEnvio)}` : 'Envio: GRATIS';
+            
+            return `*Pedido confirmado!*
 
 ${resumenItems}
 
-💰 *Total: $${formatearPrecio(pedido.total)}*
+Subtotal: $${formatearPrecio(pedido.subtotal)}
+${lineaEnvioMsg}
+*Total: $${formatearPrecio(pedido.total)}*
 
-💳 *Pagar con tarjeta:*
-👉 ${paymentResult.url}
+*Pagar con tarjeta:*
+${paymentResult.paymentLink}
 
-Una vez realices el pago, tu pedido será enviado a cocina automáticamente.`;
+Una vez realices el pago, tu pedido sera enviado a cocina automaticamente.`;
+          } else {
+            // Si falla crear el link, eliminar pedido temporal y continuar con efectivo
+            await firebaseService.database.ref(`orders/${orderId}`).remove();
+            console.error('Error generando link de pago:', paymentResult.error);
+            pedido.metodoPago = 'efectivo';
           }
+        } else {
+          // Wompi desactivado - continuar con efectivo
+          console.log('[PedidoRapido] Wompi desactivado, cambiando a efectivo');
+          pedido.metodoPago = 'efectivo';
         }
-        // Si falla, continuar con efectivo
-        pedido.metodoPago = 'efectivo';
       } catch (error) {
         console.error('Error generando link de pago:', error);
         pedido.metodoPago = 'efectivo';
