@@ -222,10 +222,20 @@ TOTAL POR PEDIDO: ~25 KB (0.025 MB)
 
 ---
 
-## 🔄 FLUJO 3: Keep-Alive (Mantener Conexión)
+## 🔄 FLUJO 3: Keep-Alive (Mantener Conexión de WhatsApp)
 
-WhatsApp requiere enviar "latidos" periódicos para mantener la conexión activa.
+⚠️ **IMPORTANTE:** Este keep-alive NO es para Railway (tu servidor). Es para mantener la **conexión de WhatsApp abierta**.
 
+**¿Por qué?**
+WhatsApp cierra la conexión si no detecta actividad por ~60 segundos. Para evitar esto, Baileys envía "latidos" (pings) cada 30 segundos diciendo "sigo conectado".
+
+**Configuración en el código:**
+```javascript
+// server/baileys/session-manager.js línea 148
+keepAliveIntervalMs: 30000,  // 30 segundos
+```
+
+**Consumo de Bandwidth:**
 ```
 Cada 30 segundos: ping/pong
 Tamaño: ~0.5 KB por ping
@@ -237,6 +247,8 @@ Por mes: 1.44 MB × 30 = 43.2 MB/mes
 
 **KEEP-ALIVE POR BOT:**
 - **~43 MB por mes** (siempre conectado, incluso sin pedidos)
+- **NO se puede desactivar** (o WhatsApp te desconecta)
+- **NO tiene relación con Railway** (eso ya está resuelto con tu plan pago)
 
 ---
 
