@@ -21,8 +21,28 @@ class ProxyManager {
     // URL base del proxy (sin sesión específica)
     this.baseProxyUrl = null;
     
-    // Tipo de proxy
+    // Tipo de proxy (residential, isp, datacenter, socks5)
     this.proxyType = 'residential';
+    
+    // Configuraciones específicas por tipo de proxy
+    this.proxyConfigs = {
+      residential: {
+        port: 22225,
+        prefix: 'residential',
+        session: true
+      },
+      isp: {
+        port: 33335, // Puerto específico para ISP en Bright Data
+        prefix: 'isp',
+        session: true,
+        stable: true // ISP mantiene IP estable
+      },
+      datacenter: {
+        port: 22225,
+        prefix: 'dc',
+        session: false
+      }
+    };
   }
 
   /**
@@ -55,6 +75,11 @@ class ProxyManager {
    * - Se configura UN SOLO proxy base en PROXY_LIST
    * - El sistema automáticamente crea sesiones únicas por tenant
    * - Cada restaurante obtiene su propia IP única
+   * 
+   * TIPOS DE PROXY SOPORTADOS:
+   * - residential: IPs residenciales rotativas (menos estables)
+   * - isp: IPs de proveedores ISP (MÁS ESTABLES, RECOMENDADO)
+   * - datacenter: IPs de centros de datos (rápidas pero detectables)
    */
   async loadProxies() {
     // OPCIÓN 1: Cargar desde Firebase (recomendado para producción)
@@ -66,7 +91,7 @@ class ProxyManager {
       if (proxyConfig && proxyConfig.enabled && proxyConfig.baseUrl) {
         this.baseProxyUrl = proxyConfig.baseUrl;
         this.proxyType = proxyConfig.type || 'residential';
-        logger.info(`📡 Proxy base cargado desde Firebase`);
+        logger.info(`📡 Proxy base cargado desde Firebase (${this.proxyType.toUpperCase()})`);
         logger.info(`🌐 Sistema AUTO-ESCALABLE activado - IPs únicas por tenant`);
         return;
       }
@@ -78,6 +103,8 @@ class ProxyManager {
     // Formato HTTP: PROXY_LIST=http://username:password@host:port
     // Formato SOCKS5: PROXY_LIST=socks5://username:password@host:port
     // El sistema automáticamente agregará -session-{tenantId} al username
+    // 
+    // TIPO DE PROXY: Configurar con PROXY_TYPE=isp|residential|datacenter
     if (process.env.PROXY_LIST) {
       const proxyUrl = process.env.PROXY_LIST.trim();
       
@@ -86,11 +113,23 @@ class ProxyManager {
       
       if (urlMatch) {
         this.baseProxyUrl = proxyUrl;
-        this.proxyType = 'residential';
+        this.proxyType = process.env.PROXY_TYPE || 'residential';
         const protocol = urlMatch[1];
-        logger.info(`📡 Proxy base cargado desde ENV (${protocol.toUpperCase()})`);
+        
+        // Validar tipo de proxy
+        if (!this.proxyConfigs[this.proxyType]) {
+          logger.warn(`⚠️ Tipo de proxy '${this.proxyType}' no reconocido, usando 'residential'`);
+          this.proxyType = 'residential';
+        }
+        
+        logger.info(`📡 Proxy base cargado desde ENV (${protocol.toUpperCase()} - ${this.proxyType.toUpperCase()})`);
         logger.info(`🌐 Sistema AUTO-ESCALABLE activado`);
         logger.info(`💡 Cada restaurante obtendrá una IP única automáticamente`);
+        
+        if (this.proxyType === 'isp') {
+          logger.info(`✨ ISP PROXY: IP estable y confiable por sesión`);
+        }
+        
         return;
       } else {
         logger.error('❌ Formato de PROXY_LIST inválido. Usa: http://user:pass@host:port o socks5://user:pass@host:port');
@@ -99,7 +138,7 @@ class ProxyManager {
 
     // Si no hay proxy configurado
     logger.warn('⚠️ No hay proxies configurados - todos los bots usarán la IP del servidor');
-    logger.warn('💡 Configura PROXY_LIST para activar el sistema anti-ban');
+    logger.warn('💡 Configura PROXY_LIST y PROXY_TYPE=isp para activar el sistema anti-ban');
   }
 
   /**
@@ -147,8 +186,11 @@ class ProxyManager {
    * Crea una URL de proxy con sesión única para un tenant
    * Soporta HTTP, HTTPS y SOCKS5
    * 
+   * IMPORTANTE: Los proxies ISP de Bright Data ya mantienen IP estable
+   * y NO requieren el sufijo -session-. Solo los residential lo necesitan.
+   * 
    * @param {string} tenantId - ID del tenant
-   * @returns {string} URL del proxy con sesión
+   * @returns {string} URL del proxy con sesión (si aplica)
    */
   createSessionUrl(tenantId) {
     // Extraer componentes del proxy URL base (soporta http, https, socks5)
@@ -161,12 +203,20 @@ class ProxyManager {
 
     const [, protocol, username, password, host, port] = urlMatch;
     
-    // Agregar sufijo de sesión al username
+    // ISP Proxy: Ya mantiene IP estable, NO agregar sufijo de sesión
+    if (this.proxyType === 'isp') {
+      logger.info(`[${tenantId}] 🌐 ISP Proxy: Usando IP estable nativa (sin sufijo de sesión)`);
+      return this.baseProxyUrl;
+    }
+    
+    // Residential/Datacenter: Agregar sufijo de sesión para IP única
     // Formato Bright Data: username-session-TENANT_ID
     const sessionUsername = `${username}-session-${tenantId}`;
     
     // Construir nueva URL con sesión
     const sessionUrl = `${protocol}://${sessionUsername}:${password}@${host}:${port}`;
+    
+    logger.info(`[${tenantId}] 🔄 Proxy con sesión: ${sessionUsername}`);
     
     return sessionUrl;
   }
