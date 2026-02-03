@@ -731,6 +731,8 @@ async function finalizarPedidoRapido(tenantId, sesion, itemsAgrupados, total) {
       metodoPago: sesion.metodoPago,
       estado: 'pendiente',
       trackingToken: trackingToken,
+      timestamp: Date.now(), // ✨ Para calcular tiempo transcurrido en tracking
+      fecha: new Date().toISOString(),
       fechaCreacion: new Date().toISOString(),
       creadoPor: 'pedido_rapido'
     };

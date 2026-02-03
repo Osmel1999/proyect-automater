@@ -84,7 +84,15 @@ router.get('/:token', async (req, res) => {
     const estadoInfo = getEstadoInfo(pedido.estado);
     
     // Calcular tiempo estimado
-    const tiempoTranscurrido = Date.now() - pedido.timestamp;
+    // Usar timestamp si existe, sino usar fechaCreacion o fecha como fallback
+    let timestampPedido = pedido.timestamp;
+    if (!timestampPedido && pedido.fechaCreacion) {
+      timestampPedido = new Date(pedido.fechaCreacion).getTime();
+    } else if (!timestampPedido && pedido.fecha) {
+      timestampPedido = new Date(pedido.fecha).getTime();
+    }
+    
+    const tiempoTranscurrido = timestampPedido ? Date.now() - timestampPedido : 0;
     const minutosTranscurridos = Math.floor(tiempoTranscurrido / 60000);
     
     res.json({
