@@ -126,7 +126,8 @@ function obtenerVariaciones(producto) {
 }
 
 /**
- * Busca un producto por nombre o variación con fuzzy matching
+ * Busca un producto por nombre o variación con sistema de puntuación
+ * Evalúa TODOS los productos y retorna el de mayor score
  * @param {string} textoProducto - Texto del producto a buscar
  * @param {Array} menuCustom - Menú personalizado (opcional, usa menuActivo por defecto)
  */
@@ -134,110 +135,103 @@ function buscarProducto(textoProducto, menuCustom = null) {
   const menuAUsar = menuCustom || menuActivo;
   const textoNormalizado = normalizarTexto(textoProducto);
   const textoFonetico = normalizarFonetica(textoProducto);
+  const palabrasTexto = textoNormalizado.split(/\s+/).filter(p => p.length > 2);
   
   // Log para debugging
   console.log(`🔎 [buscarProducto] Buscando: "${textoProducto}" → normalizado: "${textoNormalizado}"`);
   
-  // Nivel 1: Coincidencia exacta
-  for (const producto of menuAUsar) {
-    const variaciones = obtenerVariaciones(producto);
-    
-    if (variaciones.includes(textoNormalizado)) {
-      return producto;
-    }
-  }
-  
-  // Nivel 2: Coincidencia parcial (contiene)
-  for (const producto of menuAUsar) {
-    const nombreNormalizado = normalizarTexto(producto.nombre);
-    
-    if (nombreNormalizado.includes(textoNormalizado) || 
-        textoNormalizado.includes(nombreNormalizado)) {
-      return producto;
-    }
-  }
-  
-  // Nivel 3: Búsqueda por palabras clave
-  for (const producto of menuAUsar) {
-    const variaciones = obtenerVariaciones(producto);
-    
-    for (const variacion of variaciones) {
-      if (textoNormalizado.includes(variacion) || variacion.includes(textoNormalizado)) {
-        return producto;
-      }
-    }
-  }
-  
-  // Nivel 4: Búsqueda fonética (para errores ortográficos)
-  for (const producto of menuAUsar) {
-    const nombreFonetico = normalizarFonetica(producto.nombre);
-    const variaciones = obtenerVariaciones(producto);
-    
-    // Comparar fonéticamente
-    if (nombreFonetico === textoFonetico) {
-      return producto;
-    }
-    
-    // Comparar variaciones fonéticamente
-    for (const variacion of variaciones) {
-      const variacionFonetica = normalizarFonetica(variacion);
-      if (variacionFonetica === textoFonetico) {
-        return producto;
-      }
-    }
-  }
-  
-  // Nivel 5: Fuzzy matching (distancia de Levenshtein) - umbral dinámico
-  let mejorCoincidencia = null;
+  // Sistema de puntuación: evaluar TODOS los productos
+  let mejorProducto = null;
   let mejorScore = 0;
-  
-  // Umbral dinámico: palabras cortas necesitan mayor precisión
-  // Palabras < 6 chars: 85%, 6-10 chars: 80%, > 10 chars: 75%
-  const longitudTexto = textoNormalizado.length;
-  const UMBRAL_FUZZY = longitudTexto < 6 ? 85 : (longitudTexto <= 10 ? 80 : 75);
-  
-  // Máxima diferencia de longitud permitida (proporcional al texto)
-  // Ej: "chiribita" (9) vs "pizza" (5) = diff 4 > max 3 → descartado
-  const MAX_DIFF_LONGITUD = Math.max(3, Math.floor(longitudTexto * 0.4));
+  const UMBRAL_MINIMO = 50; // Score mínimo para considerar un match
   
   for (const producto of menuAUsar) {
     const nombreNormalizado = normalizarTexto(producto.nombre);
-    const variaciones = obtenerVariaciones(producto);
+    const nombreFonetico = normalizarFonetica(producto.nombre);
+    const palabrasProducto = nombreNormalizado.split(/\s+/).filter(p => p.length > 2);
+    let score = 0;
     
-    // Verificar diferencia de longitud antes de calcular similitud
-    const diffLongitud = Math.abs(nombreNormalizado.length - longitudTexto);
-    if (diffLongitud > MAX_DIFF_LONGITUD) {
-      continue; // Descartar si la diferencia de longitud es muy grande
+    // ==========================================
+    // NIVEL 1: Match exacto (100 puntos)
+    // ==========================================
+    if (textoNormalizado === nombreNormalizado) {
+      console.log(`✅ [buscarProducto] Match EXACTO: "${textoNormalizado}" → "${producto.nombre}"`);
+      return producto; // Match perfecto, retornar inmediatamente
     }
     
-    // Comparar nombre principal
-    const scoreNombre = calcularSimilitud(textoNormalizado, nombreNormalizado);
-    if (scoreNombre > mejorScore && scoreNombre >= UMBRAL_FUZZY) {
-      mejorScore = scoreNombre;
-      mejorCoincidencia = producto;
-    }
+    // ==========================================
+    // NIVEL 2: Similitud del texto completo (0-40 puntos)
+    // ==========================================
+    const similitudCompleta = calcularSimilitud(textoNormalizado, nombreNormalizado);
+    score += (similitudCompleta / 100) * 40; // Max 40 puntos
     
-    // Comparar variaciones
-    for (const variacion of variaciones) {
-      const diffVariacion = Math.abs(variacion.length - longitudTexto);
-      if (diffVariacion > MAX_DIFF_LONGITUD) {
-        continue; // También verificar longitud en variaciones
+    // ==========================================
+    // NIVEL 3: Match por palabras individuales (0-35 puntos)
+    // Cada palabra del cliente que hace match suma puntos
+    // ==========================================
+    let palabrasMatcheadas = 0;
+    let sumaSimilitudPalabras = 0;
+    
+    for (const palabraCliente of palabrasTexto) {
+      let mejorMatchPalabra = 0;
+      
+      for (const palabraProducto of palabrasProducto) {
+        const similitudPalabra = calcularSimilitud(palabraCliente, palabraProducto);
+        if (similitudPalabra > mejorMatchPalabra) {
+          mejorMatchPalabra = similitudPalabra;
+        }
       }
       
-      const scoreVariacion = calcularSimilitud(textoNormalizado, variacion);
-      if (scoreVariacion > mejorScore && scoreVariacion >= UMBRAL_FUZZY) {
-        mejorScore = scoreVariacion;
-        mejorCoincidencia = producto;
+      if (mejorMatchPalabra >= 70) { // Umbral para considerar match de palabra
+        palabrasMatcheadas++;
+        sumaSimilitudPalabras += mejorMatchPalabra;
       }
+    }
+    
+    // Puntaje por palabras: proporción de palabras matcheadas * calidad del match
+    if (palabrasTexto.length > 0) {
+      const proporcionMatch = palabrasMatcheadas / palabrasTexto.length;
+      const calidadMatch = palabrasMatcheadas > 0 ? (sumaSimilitudPalabras / palabrasMatcheadas / 100) : 0;
+      score += proporcionMatch * calidadMatch * 35; // Max 35 puntos
+    }
+    
+    // ==========================================
+    // NIVEL 4: Match fonético (0-15 puntos)
+    // ==========================================
+    const similitudFonetica = calcularSimilitud(textoFonetico, nombreFonetico);
+    score += (similitudFonetica / 100) * 15; // Max 15 puntos
+    
+    // ==========================================
+    // NIVEL 5: Bonus por contención (0-10 puntos)
+    // Si el texto está contenido en el nombre o viceversa
+    // ==========================================
+    if (nombreNormalizado.includes(textoNormalizado)) {
+      score += 10; // El producto contiene exactamente lo que busca el cliente
+    } else if (textoNormalizado.includes(nombreNormalizado)) {
+      score += 5; // El cliente escribió más de lo que es el producto
+    }
+    
+    // ==========================================
+    // Penalización por diferencia de longitud
+    // ==========================================
+    const diffLongitud = Math.abs(textoNormalizado.length - nombreNormalizado.length);
+    const penalizacionLongitud = Math.min(diffLongitud * 0.5, 10); // Max 10 puntos de penalización
+    score -= penalizacionLongitud;
+    
+    // Actualizar mejor producto si este tiene mejor score
+    if (score > mejorScore) {
+      mejorScore = score;
+      mejorProducto = producto;
     }
   }
   
-  if (mejorCoincidencia) {
-    console.log(`✅ [buscarProducto] Match fuzzy: "${textoNormalizado}" → "${mejorCoincidencia.nombre}" (score: ${mejorScore}%)`);
-    return mejorCoincidencia;
+  // Retornar si el score supera el umbral mínimo
+  if (mejorProducto && mejorScore >= UMBRAL_MINIMO) {
+    console.log(`✅ [buscarProducto] Match por SCORE: "${textoNormalizado}" → "${mejorProducto.nombre}" (score: ${mejorScore.toFixed(1)})`);
+    return mejorProducto;
   }
   
-  console.log(`❌ [buscarProducto] No encontrado: "${textoNormalizado}"`);
+  console.log(`❌ [buscarProducto] No encontrado: "${textoNormalizado}" (mejor score: ${mejorScore.toFixed(1)})`);
   return null;
 }
 
