@@ -17,11 +17,11 @@ class ProxyManager {
     // Formato: Map<tenantId, proxyConfig>
     this.tenantProxies = new Map();
     
-    // Lista de proxies disponibles (se cargan de Firebase o env vars)
-    this.availableProxies = [];
+    // URL base del proxy (sin sesión específica)
+    this.baseProxyUrl = null;
     
-    // Índice para rotación round-robin
-    this.currentProxyIndex = 0;
+    // Tipo de proxy
+    this.proxyType = 'residential';
   }
 
   /**
@@ -31,20 +31,29 @@ class ProxyManager {
     try {
       logger.info('🌐 Inicializando Proxy Manager...');
       
-      // Cargar proxies desde variables de entorno o Firebase
+      // Cargar configuración del proxy base
       await this.loadProxies();
       
-      logger.info(`✅ Proxy Manager inicializado con ${this.availableProxies.length} proxies disponibles`);
+      if (this.baseProxyUrl) {
+        logger.info(`✅ Proxy Manager inicializado - Sistema AUTO-ESCALABLE`);
+        logger.info(`🎯 Cada nuevo restaurante obtendrá automáticamente una IP única`);
+      } else {
+        logger.warn(`⚠️ Sin proxies - Todos los bots compartirán la IP del servidor`);
+      }
     } catch (error) {
       logger.error('❌ Error inicializando Proxy Manager:', error);
-      // Continuar sin proxies (fallback)
-      logger.warn('⚠️ Continuando sin proxies - TODOS los bots compartirán la misma IP');
+      logger.warn('⚠️ Continuando sin proxies - RIESGO DE BAN AUMENTADO');
     }
   }
 
   /**
    * Carga la lista de proxies desde configuración
    * Soporta: Firebase Config, Variables de Entorno, o lista hardcodeada
+   * 
+   * ESTRATEGIA AUTO-ESCALABLE:
+   * - Se configura UN SOLO proxy base en PROXY_LIST
+   * - El sistema automáticamente crea sesiones únicas por tenant
+   * - Cada restaurante obtiene su propia IP única
    */
   async loadProxies() {
     // OPCIÓN 1: Cargar desde Firebase (recomendado para producción)
@@ -53,80 +62,108 @@ class ProxyManager {
       const proxySnapshot = await db.ref('system/proxies').once('value');
       const proxyConfig = proxySnapshot.val();
       
-      if (proxyConfig && proxyConfig.enabled && proxyConfig.list) {
-        this.availableProxies = proxyConfig.list.filter(p => p.enabled);
-        logger.info(`📡 Cargados ${this.availableProxies.length} proxies desde Firebase`);
+      if (proxyConfig && proxyConfig.enabled && proxyConfig.baseUrl) {
+        this.baseProxyUrl = proxyConfig.baseUrl;
+        this.proxyType = proxyConfig.type || 'residential';
+        logger.info(`📡 Proxy base cargado desde Firebase`);
+        logger.info(`🌐 Sistema AUTO-ESCALABLE activado - IPs únicas por tenant`);
         return;
       }
     } catch (error) {
       logger.warn('⚠️ No se pudieron cargar proxies desde Firebase:', error.message);
     }
 
-    // OPCIÓN 2: Cargar desde variable de entorno
-    // Formato: PROXY_LIST=http://user:pass@ip1:port,http://user:pass@ip2:port
+    // OPCIÓN 2: Cargar desde variable de entorno (RECOMENDADO)
+    // Formato: PROXY_LIST=http://username:password@host:port
+    // El sistema automáticamente agregará -session-{tenantId} al username
     if (process.env.PROXY_LIST) {
-      const proxyUrls = process.env.PROXY_LIST.split(',').map(url => url.trim());
-      this.availableProxies = proxyUrls.map((url, index) => ({
-        id: `proxy-${index}`,
-        url: url,
-        enabled: true,
-        type: 'residential' // o 'datacenter'
-      }));
-      logger.info(`📡 Cargados ${this.availableProxies.length} proxies desde ENV`);
-      return;
+      const proxyUrl = process.env.PROXY_LIST.trim();
+      
+      // Extraer componentes del proxy URL
+      const urlMatch = proxyUrl.match(/^(https?):\/\/([^:]+):([^@]+)@([^:]+):(\d+)/);
+      
+      if (urlMatch) {
+        this.baseProxyUrl = proxyUrl;
+        this.proxyType = 'residential';
+        logger.info(`📡 Proxy base cargado desde ENV`);
+        logger.info(`🌐 Sistema AUTO-ESCALABLE activado`);
+        logger.info(`💡 Cada restaurante obtendrá una IP única automáticamente`);
+        return;
+      } else {
+        logger.error('❌ Formato de PROXY_LIST inválido. Usa: http://username:password@host:port');
+      }
     }
 
-    // OPCIÓN 3: Lista de ejemplo (para testing)
-    // ⚠️ REEMPLAZAR CON TUS PROXIES REALES
-    if (process.env.NODE_ENV === 'development') {
-      logger.warn('⚠️ Usando proxies de ejemplo (SOLO PARA DESARROLLO)');
-      this.availableProxies = [
-        // Ejemplo: Bright Data (reemplazar con credenciales reales)
-        // { id: 'brightdata-1', url: 'http://username:password@brd.superproxy.io:22225', enabled: true, type: 'residential' },
-        
-        // Ejemplo: Smartproxy (reemplazar con credenciales reales)
-        // { id: 'smartproxy-1', url: 'http://username:password@gate.smartproxy.com:7000', enabled: true, type: 'residential' },
-        
-        // Por ahora, lista vacía para no causar errores
-      ];
-    }
-
-    if (this.availableProxies.length === 0) {
-      logger.warn('⚠️ No hay proxies configurados - todos los bots usarán la IP del servidor');
-    }
+    // Si no hay proxy configurado
+    logger.warn('⚠️ No hay proxies configurados - todos los bots usarán la IP del servidor');
+    logger.warn('💡 Configura PROXY_LIST para activar el sistema anti-ban');
   }
 
   /**
-   * Asigna un proxy único a un tenant
-   * Usa estrategia round-robin para distribución equitativa
+   * Asigna un proxy único a un tenant con sesión dedicada
+   * SISTEMA AUTO-ESCALABLE: Genera automáticamente una sesión única por tenant
    * 
-   * @param {string} tenantId - ID del tenant
+   * @param {string} tenantId - ID del tenant (restaurante)
    * @returns {object|null} Configuración del proxy o null si no hay disponibles
    */
   assignProxyToTenant(tenantId) {
-    // Si no hay proxies disponibles, retornar null (sin proxy)
-    if (this.availableProxies.length === 0) {
-      logger.warn(`[${tenantId}] No hay proxies disponibles - usando IP directa`);
+    // Si no hay proxy base configurado, retornar null
+    if (!this.baseProxyUrl) {
       return null;
     }
 
     // Si el tenant ya tiene un proxy asignado, reutilizarlo
     if (this.tenantProxies.has(tenantId)) {
       const existingProxy = this.tenantProxies.get(tenantId);
-      logger.info(`[${tenantId}] Reutilizando proxy: ${existingProxy.id}`);
+      logger.info(`[${tenantId}] Reutilizando sesión: ${existingProxy.session}`);
       return existingProxy;
     }
 
-    // Asignar siguiente proxy disponible (round-robin)
-    const proxy = this.availableProxies[this.currentProxyIndex];
-    this.currentProxyIndex = (this.currentProxyIndex + 1) % this.availableProxies.length;
+    // Crear URL de proxy con sesión única para este tenant
+    // Formato: http://username-session-TENANT_ID:password@host:port
+    const proxyUrl = this.createSessionUrl(tenantId);
+    
+    const proxyConfig = {
+      id: `session-${tenantId}`,
+      url: proxyUrl,
+      session: tenantId,
+      type: this.proxyType,
+      enabled: true
+    };
 
     // Guardar asignación
-    this.tenantProxies.set(tenantId, proxy);
+    this.tenantProxies.set(tenantId, proxyConfig);
     
-    logger.info(`[${tenantId}] ✅ Proxy asignado: ${proxy.id} (${proxy.type})`);
+    logger.info(`[${tenantId}] ✅ Nueva sesión de proxy creada automáticamente`);
+    logger.info(`[${tenantId}] 🎯 Este restaurante ahora tiene su propia IP única`);
     
-    return proxy;
+    return proxyConfig;
+  }
+
+  /**
+   * Crea una URL de proxy con sesión única para un tenant
+   * @param {string} tenantId - ID del tenant
+   * @returns {string} URL del proxy con sesión
+   */
+  createSessionUrl(tenantId) {
+    // Extraer componentes del proxy URL base
+    const urlMatch = this.baseProxyUrl.match(/^(https?):\/\/([^:]+):([^@]+)@([^:]+):(\d+)/);
+    
+    if (!urlMatch) {
+      logger.error('❌ Error: formato de proxy URL inválido');
+      return this.baseProxyUrl;
+    }
+
+    const [, protocol, username, password, host, port] = urlMatch;
+    
+    // Agregar sufijo de sesión al username
+    // Formato Bright Data: username-session-TENANT_ID
+    const sessionUsername = `${username}-session-${tenantId}`;
+    
+    // Construir nueva URL con sesión
+    const sessionUrl = `${protocol}://${sessionUsername}:${password}@${host}:${port}`;
+    
+    return sessionUrl;
   }
 
   /**
@@ -144,15 +181,16 @@ class ProxyManager {
     }
 
     try {
-      // Crear agente con timeout y configuración de keep-alive
+      // Crear agente con timeout extendido para conexiones internacionales
       const agent = new HttpsProxyAgent(proxyConfig.url, {
         keepAlive: true,
-        keepAliveMsecs: 1000,
-        timeout: 30000,
+        keepAliveMsecs: 5000, // 5 segundos entre keep-alives
+        timeout: 90000, // 90 segundos - extendido para proxies internacionales
         rejectUnauthorized: false // Permitir certificados autofirmados
       });
 
       logger.info(`[${tenantId}] 🔗 Agente proxy creado para ${proxyConfig.id}`);
+      logger.info(`[${tenantId}] ⏱️ Timeout configurado: 90 segundos`);
       
       return agent;
     } catch (error) {
@@ -167,17 +205,19 @@ class ProxyManager {
    */
   getProxyStats() {
     const stats = {
-      totalProxies: this.availableProxies.length,
-      assignedProxies: this.tenantProxies.size,
-      proxyUsage: {}
+      baseProxyConfigured: !!this.baseProxyUrl,
+      activeSessions: this.tenantProxies.size,
+      proxyType: this.proxyType,
+      sessions: []
     };
 
-    // Contar cuántos tenants usan cada proxy
+    // Listar todas las sesiones activas
     for (const [tenantId, proxy] of this.tenantProxies.entries()) {
-      if (!stats.proxyUsage[proxy.id]) {
-        stats.proxyUsage[proxy.id] = [];
-      }
-      stats.proxyUsage[proxy.id].push(tenantId);
+      stats.sessions.push({
+        tenantId: tenantId,
+        session: proxy.session,
+        type: proxy.type
+      });
     }
 
     return stats;
