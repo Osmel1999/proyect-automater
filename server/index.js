@@ -52,22 +52,26 @@ global.baileysWebSocket = wsHandler;
 const wss = new WebSocket.Server({ noServer: true });
 
 wss.on('connection', (ws, request, tenantId) => {
-  console.log(`🔌 [Tunnel] Nueva conexión WebSocket: ${tenantId}`);
+  console.log(`🔌 [Tunnel] Nueva conexión WebSocket: ${tenantId || 'sin ID inicial'}`);
   
   // Obtener información del dispositivo de los headers
   const deviceInfo = {
-    tenantId,
+    tenantId: tenantId || null,
     userAgent: request.headers['user-agent'],
     ip: request.headers['x-forwarded-for'] || request.socket.remoteAddress,
     timestamp: Date.now()
   };
 
-  // Registrar túnel
-  const registered = tunnelManager.registerTunnel(ws, deviceInfo);
-  
-  if (!registered) {
-    ws.close(1008, 'Error al registrar túnel');
-    return;
+  let currentTenantId = tenantId;
+  let isRegistered = false;
+
+  // Si tenemos tenantId, registrar inmediatamente
+  if (tenantId) {
+    isRegistered = tunnelManager.registerTunnel(ws, deviceInfo);
+    if (!isRegistered) {
+      ws.close(1008, 'Error al registrar túnel');
+      return;
+    }
   }
 
   // Manejar mensajes del navegador
@@ -78,18 +82,49 @@ wss.on('connection', (ws, request, tenantId) => {
       switch(data.type) {
         case 'tunnel.init':
           // Actualizar info del dispositivo
-          console.log(`🔧 [Tunnel] Túnel inicializado: ${tenantId}`);
+          console.log(`🔧 [Tunnel] Túnel inicializado: ${currentTenantId || 'sin ID'}`);
+          if (data.deviceInfo) {
+            Object.assign(deviceInfo, data.deviceInfo);
+          }
+          break;
+
+        case 'tunnel.register':
+          // Registro tardío con tenantId
+          if (!isRegistered && data.tenantId) {
+            currentTenantId = data.tenantId;
+            deviceInfo.tenantId = data.tenantId;
+            
+            console.log(`📝 [Tunnel] Registro tardío: ${data.tenantId}`);
+            isRegistered = tunnelManager.registerTunnel(ws, deviceInfo);
+            
+            if (isRegistered) {
+              ws.send(JSON.stringify({ 
+                type: 'tunnel.registered', 
+                tenantId: data.tenantId,
+                timestamp: Date.now()
+              }));
+            } else {
+              ws.send(JSON.stringify({ 
+                type: 'tunnel.error', 
+                error: 'Error al registrar túnel'
+              }));
+            }
+          }
           break;
 
         case 'ping':
           // Responder pong y actualizar heartbeat
-          tunnelManager.updateHeartbeat(tenantId);
+          if (currentTenantId) {
+            tunnelManager.updateHeartbeat(currentTenantId);
+          }
           ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
           break;
 
         case 'pong':
           // Actualizar heartbeat
-          tunnelManager.updateHeartbeat(tenantId);
+          if (currentTenantId) {
+            tunnelManager.updateHeartbeat(currentTenantId);
+          }
           break;
 
         case 'proxy.response':
@@ -116,15 +151,19 @@ wss.on('connection', (ws, request, tenantId) => {
 
   // Manejar cierre de conexión
   ws.on('close', (code, reason) => {
-    console.log(`🔌 [Tunnel] Conexión cerrada: ${tenantId}`);
+    console.log(`🔌 [Tunnel] Conexión cerrada: ${currentTenantId || 'sin ID'}`);
     console.log(`   📝 Code: ${code}, Reason: ${reason || 'unknown'}`);
-    tunnelManager.unregisterTunnel(tenantId, reason || 'connection_closed');
+    if (currentTenantId) {
+      tunnelManager.unregisterTunnel(currentTenantId, reason || 'connection_closed');
+    }
   });
 
   // Manejar errores
   ws.on('error', (error) => {
-    console.error(`❌ [Tunnel] Error en WebSocket: ${tenantId}`, error);
-    tunnelManager.unregisterTunnel(tenantId, 'websocket_error');
+    console.error(`❌ [Tunnel] Error en WebSocket: ${currentTenantId || 'sin ID'}`, error);
+    if (currentTenantId) {
+      tunnelManager.unregisterTunnel(currentTenantId, 'websocket_error');
+    }
   });
 });
 
@@ -133,18 +172,11 @@ server.on('upgrade', (request, socket, head) => {
   const pathname = url.parse(request.url).pathname;
   
   if (pathname === '/tunnel') {
-    // Extraer tenantId de query params
+    // Extraer tenantId de query params (opcional en conexión inicial)
     const query = url.parse(request.url, true).query;
-    const tenantId = query.tenantId;
+    const tenantId = query.tenantId || null;
 
-    if (!tenantId) {
-      console.error('❌ [Tunnel] Upgrade rechazado: falta tenantId');
-      socket.write('HTTP/1.1 400 Bad Request\r\n\r\n');
-      socket.destroy();
-      return;
-    }
-
-    console.log(`🔄 [Tunnel] Upgrade a WebSocket: ${tenantId}`);
+    console.log(`🔄 [Tunnel] Upgrade a WebSocket: ${tenantId || 'sin tenant ID inicial'}`);
     
     wss.handleUpgrade(request, socket, head, (ws) => {
       wss.emit('connection', ws, request, tenantId);

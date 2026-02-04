@@ -158,25 +158,47 @@ async function establishTunnel() {
       
       console.log('📱 [SW] Info del dispositivo:', {
         page: url.pathname,
-        tenantId: currentTenantId
+        tenantId: currentTenantId || 'sin ID inicial'
       });
     }
 
-    // Conectar WebSocket al servidor
+    // Conectar WebSocket al servidor (sin tenantId en URL si no lo tenemos)
     const wsUrl = currentTenantId 
       ? `wss://api.kdsapp.site/tunnel?tenantId=${currentTenantId}`
-      : `wss://api.kdsapp.site/tunnel`;
+      : `wss://api.kdsapp.site/tunnel`;  // ✅ Permitido ahora
     
+    console.log(`🔌 [SW] Conectando a: ${wsUrl}`);
     tunnelSocket = new WebSocket(wsUrl);
 
-    tunnelSocket.addEventListener('open', () => {
+    tunnelSocket.addEventListener('open', async () => {
       console.log('🌐 [SW] Túnel WebSocket establecido');
       
-      // Enviar información del dispositivo
-      tunnelSocket.send(JSON.stringify({
-        type: 'tunnel.init',
-        deviceInfo: deviceInfo
-      }));
+      // Si no tenemos tenantId, intentar obtenerlo ahora
+      if (!currentTenantId) {
+        console.log('⏳ [SW] Esperando tenant ID...');
+        currentTenantId = await getTenantIdFromClients();
+        
+        if (deviceInfo) {
+          deviceInfo.tenantId = currentTenantId;
+        }
+      }
+      
+      // Si tenemos tenantId, registrarlo ahora
+      if (currentTenantId) {
+        console.log(`📝 [SW] Registrando con tenant ID: ${currentTenantId}`);
+        tunnelSocket.send(JSON.stringify({
+          type: 'tunnel.register',
+          tenantId: currentTenantId,
+          deviceInfo: deviceInfo
+        }));
+      } else {
+        // Si aún no tenemos tenantId, solo enviar init
+        console.log('⚠️ [SW] Conectado sin tenant ID - esperando registro');
+        tunnelSocket.send(JSON.stringify({
+          type: 'tunnel.init',
+          deviceInfo: deviceInfo
+        }));
+      }
       
       // Notificar a clientes que túnel está activo
       notifyAllClients({ 
@@ -188,6 +210,17 @@ async function establishTunnel() {
     tunnelSocket.addEventListener('message', async (event) => {
       try {
         const data = JSON.parse(event.data);
+        
+        // Manejar registro exitoso
+        if (data.type === 'tunnel.registered') {
+          console.log(`✅ [SW] Túnel registrado en backend: ${data.tenantId}`);
+          currentTenantId = data.tenantId;
+        }
+        
+        // Manejar error de registro
+        if (data.type === 'tunnel.error') {
+          console.error(`❌ [SW] Error en túnel: ${data.error}`);
+        }
         
         // Manejar peticiones que deben salir desde este navegador
         if (data.type === 'proxy.request') {
@@ -288,13 +321,26 @@ self.addEventListener('fetch', (event) => {
 // Escuchar mensajes de los clientes
 self.addEventListener('message', (event) => {
   if (event.data.type === 'tenant.info') {
+    const newTenantId = event.data.tenantId;
+    const hadTenantId = currentTenantId !== null;
+    
     // Actualizar tenant ID
-    currentTenantId = event.data.tenantId;
+    currentTenantId = newTenantId;
     console.log('📝 [SW] Tenant ID actualizado:', currentTenantId);
     
     // Si el túnel ya está conectado, actualizar deviceInfo
     if (deviceInfo) {
       deviceInfo.tenantId = currentTenantId;
+    }
+    
+    // Si no teníamos tenantId antes y ahora sí, registrar túnel
+    if (!hadTenantId && currentTenantId && tunnelSocket && tunnelSocket.readyState === WebSocket.OPEN) {
+      console.log('🔄 [SW] Registrando túnel con nuevo tenant ID');
+      tunnelSocket.send(JSON.stringify({
+        type: 'tunnel.register',
+        tenantId: currentTenantId,
+        deviceInfo: deviceInfo
+      }));
     }
   } else if (event.data.type === 'ping') {
     // Responder con estado del túnel

@@ -69,9 +69,8 @@ class TunnelManager extends EventEmitter {
     const { tenantId } = deviceInfo;
     
     if (!tenantId) {
-      console.error('❌ [TunnelManager] No se puede registrar túnel sin tenantId');
-      socket.close(1008, 'Tenant ID requerido');
-      return false;
+      console.warn('⚠️ [TunnelManager] Túnel registrado sin tenantId inicial (se esperará registro tardío)');
+      return true;  // Permitir conexión, esperar tenantId después
     }
 
     // Si ya existe un túnel, cerrar el anterior

@@ -28,6 +28,7 @@
     page: window.location.pathname,
     timestamp: Date.now(),
     isServiceWorkerReady: false,
+    websocketConnected: false,  // Nueva propiedad para estado real de WebSocket
     lastError: null
   };
 
@@ -49,6 +50,7 @@
     isActive: function() {
       return tunnelState.status === 'active' && 
              tunnelState.isServiceWorkerReady &&
+             tunnelState.websocketConnected &&  // ✅ Verificar WebSocket conectado
              navigator.serviceWorker.controller !== null;
     },
 
@@ -260,7 +262,8 @@
       if (navigator.serviceWorker.controller) {
         console.log('🌐 [KDSTunnel] Service Worker controlando página');
         tunnelState.isServiceWorkerReady = true;
-        updateState('active', null, 'Service Worker activo');
+        // No cambiar a 'active' hasta que WebSocket conecte
+        updateState('pending', null, 'Service Worker activo, esperando conexión WebSocket');
       } else {
         console.log('⏳ [KDSTunnel] Esperando activación...');
         updateState('pending', null, 'Esperando activación');
@@ -293,13 +296,15 @@
           break;
 
         case 'tunnel.connected':
-          console.log('🌐 [KDSTunnel] Túnel conectado:', data.tenantId);
+          console.log('🌐 [KDSTunnel] Túnel WebSocket conectado:', data.tenantId);
           tunnelState.tenantId = data.tenantId;
-          updateState('active', null, 'Túnel establecido');
+          tunnelState.websocketConnected = true;  // ✅ Marcar WebSocket conectado
+          updateState('active', null, 'Túnel WebSocket establecido');
           break;
 
         case 'tunnel.disconnected':
-          console.warn('⚠️ [KDSTunnel] Túnel desconectado:', data.reason);
+          console.warn('⚠️ [KDSTunnel] Túnel WebSocket desconectado:', data.reason);
+          tunnelState.websocketConnected = false;  // ❌ Marcar WebSocket desconectado
           updateState('disconnected', null, data.reason);
           
           if (data.fallbackToRailway) {
