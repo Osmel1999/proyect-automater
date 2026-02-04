@@ -311,24 +311,17 @@ class SessionManager extends EventEmitter {
         tunnelProxyFetch = createTunnelProxyFetch(tenantId, global.fetch || fetch);
         logger.info(`[${tenantId}] 🔧 Sistema de TÚNEL activado - requests vía navegador del restaurante`);
       }
-      // 🌐 MODO PROXY: Usar Bright Data
+      // 🌐 MODO PROXY: Usar Bright Data desde el inicio (IP única por restaurante)
       else if (PROXY_ENABLED) {
-        // ISP Proxy: Modo híbrido (QR sin proxy, mensajes con proxy)
-        if (PROXY_TYPE === 'isp') {
-          useHybridMode = true;
-          logger.info(`[${tenantId}] 🌐 ISP Proxy: Modo híbrido (QR sin proxy, mensajes con proxy)`);
-        }
-        // Residential/Datacenter: Modo híbrido si está habilitado
-        else if (USE_HYBRID_PROXY) {
-          useHybridMode = true;
-          logger.info(`[${tenantId}] 🎯 Modo híbrido: QR sin proxy, mensajes con proxy`);
-        }
-        // Legacy: Proxy desde inicio
-        else {
-          proxyAgent = proxyManager.getProxyAgent(tenantId);
-          if (proxyAgent) {
-            logger.info(`[${tenantId}] 🔐 Usando proxy desde inicio (modo legacy)`);
-          }
+        // Obtener proxy agent AHORA para WebSocket
+        proxyAgent = proxyManager.getProxyAgent(tenantId);
+        
+        if (proxyAgent) {
+          logger.info(`[${tenantId}] 🌐 Proxy ${PROXY_TYPE.toUpperCase()}: IP única desde el inicio`);
+          logger.info(`[${tenantId}] 📍 WhatsApp verá IP residencial de Bright Data`);
+          logger.info(`[${tenantId}] 🔐 WebSocket + HTTP usarán proxy`);
+        } else {
+          logger.warn(`[${tenantId}] ⚠️ No se pudo obtener proxy agent`);
         }
       }
       // ⚠️ MODO DIRECTO: Sin protección
