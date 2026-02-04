@@ -194,23 +194,23 @@ server.on('upgrade', (request, socket, head) => {
 
 console.log('✅ WebSocket Server configurado en /tunnel');
 
-// Middleware
-app.use(express.urlencoded({ extended: false, limit: '15mb' }));
-app.use(express.json({ limit: '15mb' }));
-
-// CORS middleware - permitir requests desde el frontend
+// CORS middleware - DEBE IR ANTES de express.json() para manejar preflight
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   
-  // Handle preflight requests
+  // Handle preflight requests ANTES de cualquier otro procesamiento
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
   }
   
   next();
 });
+
+// Middleware de parsing - DESPUÉS de CORS
+app.use(express.urlencoded({ extended: false, limit: '15mb' }));
+app.use(express.json({ limit: '15mb' }));
 
 // Logging middleware
 app.use((req, res, next) => {
@@ -387,7 +387,15 @@ app.get('/api/tunnel/status/:tenantId', (req, res) => {
 
 /**
  * Notificar desconexión del túnel (llamado desde frontend/Service Worker)
+ * OPTIONS handler para preflight CORS
  */
+app.options('/api/tunnel/disconnected', (req, res) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.sendStatus(200);
+});
+
 app.post('/api/tunnel/disconnected', express.json(), (req, res) => {
   // Configurar CORS explícitamente para Service Worker
   res.header('Access-Control-Allow-Origin', '*');

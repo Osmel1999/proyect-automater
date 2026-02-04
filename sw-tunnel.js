@@ -98,11 +98,11 @@ async function getTenantIdFromClients() {
 
 /**
  * Notificar desconexión al backend
+ * Esta es una notificación OPCIONAL - el servidor ya detecta el cierre del WebSocket
  */
 async function notifyDisconnection(reason = 'unknown') {
   if (!currentTenantId) {
-    console.warn('⚠️ [SW] No hay tenantId para notificar desconexión');
-    return;
+    return; // No hay tenantId, no notificar
   }
 
   try {
@@ -117,7 +117,9 @@ async function notifyDisconnection(reason = 'unknown') {
     });
     console.log('✅ [SW] Desconexión notificada al backend');
   } catch (error) {
-    console.error('❌ [SW] Error notificando desconexión:', error);
+    // Silenciar error - el servidor ya detectó el cierre del WebSocket
+    // Este es solo un backup y no es crítico
+    console.log('ℹ️ [SW] Notificación de desconexión no enviada (el servidor ya lo detectó)');
   }
 }
 
