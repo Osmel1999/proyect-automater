@@ -94,6 +94,12 @@
         text: '⏳ Activando túnel...',
         title: 'Espere un momento'
       },
+      'disconnected': {
+        color: '#f59e0b',
+        bg: '#fef3c7',
+        text: '🔄 Reconectando...',
+        title: 'Usando Railway temporalmente'
+      },
       'error': {
         color: '#ef4444',
         bg: '#fee2e2',
@@ -171,6 +177,20 @@
       
       if (event.data.type === 'tunnel.status') {
         updateTunnelStatus(event.data.status);
+      } else if (event.data.type === 'tunnel.connected') {
+        console.log('🌐 Túnel conectado para tenant:', event.data.tenantId);
+        updateTunnelStatus('active');
+      } else if (event.data.type === 'tunnel.disconnected') {
+        console.warn('⚠️ Túnel desconectado:', event.data.reason);
+        updateTunnelStatus('disconnected');
+        
+        if (event.data.fallbackToRailway) {
+          showFallbackNotification();
+        }
+      } else if (event.data.type === 'get.tenantId') {
+        // Responder con tenantId
+        const tenantId = getTenantId();
+        event.ports[0]?.postMessage({ tenantId });
       }
     });
 
@@ -182,6 +202,49 @@
         tenantId: tenantId
       });
     }
+  }
+
+  /**
+   * Mostrar notificación de fallback a Railway
+   */
+  function showFallbackNotification() {
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #f59e0b;
+      color: white;
+      padding: 16px 24px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      z-index: 10001;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 320px;
+    `;
+
+    notification.innerHTML = `
+      <div style="font-weight: bold; display: flex; align-items: center; gap: 8px;">
+        ⚠️ Túnel Desconectado
+      </div>
+      <div style="font-size: 14px;">
+        Usando conexión Railway. Tu sesión WhatsApp sigue activa.
+      </div>
+      <div style="font-size: 12px; opacity: 0.9;">
+        Intentando reconectar túnel...
+      </div>
+    `;
+
+    document.body.appendChild(notification);
+
+    // Auto-cerrar después de 5 segundos
+    setTimeout(() => {
+      notification.style.opacity = '0';
+      notification.style.transition = 'opacity 0.3s';
+      setTimeout(() => notification.remove(), 300);
+    }, 5000);
   }
 
   /**
