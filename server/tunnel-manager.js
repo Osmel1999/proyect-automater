@@ -42,7 +42,8 @@ class TunnelManager extends EventEmitter {
       requestTimeout: 30000,      // 30 segundos para respuestas
       heartbeatInterval: 30000,   // 30 segundos entre heartbeats
       reconnectWindow: 60000,     // 1 minuto para reconectar antes de fallback
-      maxPendingRequests: 100     // Máximo de requests pendientes por túnel
+      maxPendingRequests: 100,    // Máximo de requests pendientes por túnel
+      heartbeatTimeout: 90000     // 90 segundos sin heartbeat antes de considerar muerto (3x intervalo)
     };
     
     /**
@@ -201,8 +202,8 @@ class TunnelManager extends EventEmitter {
     const tunnel = this.tunnels.get(tenantId);
     const timeSinceHeartbeat = Date.now() - tunnel.lastHeartbeat;
     
-    // Túnel saludable si último heartbeat fue hace menos de 2 minutos
-    return timeSinceHeartbeat < (this.config.heartbeatInterval * 2);
+    // Túnel saludable si último heartbeat fue hace menos de heartbeatTimeout
+    return timeSinceHeartbeat < this.config.heartbeatTimeout;
   }
 
   /**
@@ -374,16 +375,32 @@ class TunnelManager extends EventEmitter {
       }
 
       try {
+        // Verificar si el socket está abierto antes de enviar ping
+        if (tunnel.socket.readyState !== 1) { // 1 = OPEN
+          console.warn(`⚠️ [TunnelManager] Socket no está abierto para ${tenantId}, estado: ${tunnel.socket.readyState}`);
+          return; // No cerrar aún, solo advertir
+        }
+
         tunnel.socket.send(JSON.stringify({ type: 'ping' }));
         
-        // Verificar si túnel está saludable
+        // Verificar si túnel está saludable (solo advertir, no cerrar)
         if (!this.isTunnelHealthy(tenantId)) {
-          console.warn(`⚠️ [TunnelManager] Túnel no saludable: ${tenantId}`);
-          this.emit('tunnel:unhealthy', { tenantId });
+          const timeSinceHeartbeat = Date.now() - tunnel.lastHeartbeat;
+          console.warn(`⚠️ [TunnelManager] Túnel sin heartbeat reciente: ${tenantId} (${Math.round(timeSinceHeartbeat/1000)}s)`);
+          this.emit('tunnel:unhealthy', { tenantId, timeSinceHeartbeat });
+          
+          // Solo cerrar si excede el timeout máximo (90 segundos)
+          if (timeSinceHeartbeat > this.config.heartbeatTimeout) {
+            console.error(`❌ [TunnelManager] Túnel muerto por timeout: ${tenantId}`);
+            this.unregisterTunnel(tenantId, 'heartbeat_timeout');
+          }
         }
       } catch (error) {
         console.error(`❌ [TunnelManager] Error en heartbeat: ${error.message}`);
-        this.unregisterTunnel(tenantId, 'heartbeat_failed');
+        // Solo cerrar si el error es fatal
+        if (error.message.includes('not open') || error.message.includes('closed')) {
+          this.unregisterTunnel(tenantId, 'heartbeat_failed');
+        }
       }
     }, this.config.heartbeatInterval);
   }

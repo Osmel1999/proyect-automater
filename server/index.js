@@ -151,16 +151,17 @@ wss.on('connection', (ws, request, tenantId) => {
 
   // Manejar cierre de conexión
   ws.on('close', (code, reason) => {
+    const reasonStr = reason ? reason.toString() : 'unknown';
     console.log(`🔌 [Tunnel] Conexión cerrada: ${currentTenantId || 'sin ID'}`);
-    console.log(`   📝 Code: ${code}, Reason: ${reason || 'unknown'}`);
+    console.log(`   📝 Code: ${code}, Reason: ${reasonStr}`);
     if (currentTenantId) {
-      tunnelManager.unregisterTunnel(currentTenantId, reason || 'connection_closed');
+      tunnelManager.unregisterTunnel(currentTenantId, reasonStr || 'connection_closed');
     }
   });
 
   // Manejar errores
   ws.on('error', (error) => {
-    console.error(`❌ [Tunnel] Error en WebSocket: ${currentTenantId || 'sin ID'}`, error);
+    console.error(`❌ [Tunnel] Error en WebSocket: ${currentTenantId || 'sin ID'}`, error.message);
     if (currentTenantId) {
       tunnelManager.unregisterTunnel(currentTenantId, 'websocket_error');
     }
@@ -382,9 +383,14 @@ app.get('/api/tunnel/status/:tenantId', (req, res) => {
 });
 
 /**
- * Notificar desconexión del túnel (llamado desde frontend)
+ * Notificar desconexión del túnel (llamado desde frontend/Service Worker)
  */
 app.post('/api/tunnel/disconnected', express.json(), (req, res) => {
+  // Configurar CORS explícitamente para Service Worker
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  
   try {
     const { tenantId, timestamp, reason } = req.body;
     
