@@ -262,8 +262,9 @@
       if (navigator.serviceWorker.controller) {
         console.log('🌐 [KDSTunnel] Service Worker controlando página');
         tunnelState.isServiceWorkerReady = true;
-        // No cambiar a 'active' hasta que WebSocket conecte
-        updateState('pending', null, 'Service Worker activo, esperando conexión WebSocket');
+        
+        // Verificar si el WebSocket ya está conectado
+        checkWebSocketStatus();
       } else {
         console.log('⏳ [KDSTunnel] Esperando activación...');
         updateState('pending', null, 'Esperando activación');
@@ -272,6 +273,60 @@
     } catch (error) {
       console.error('❌ [KDSTunnel] Error registrando Service Worker:', error);
       updateState('error', error.message, 'Error en registro');
+    }
+  }
+
+  /**
+   * Verificar estado actual del WebSocket
+   * Útil cuando navegamos entre páginas y el SW ya está activo
+   */
+  async function checkWebSocketStatus() {
+    if (!navigator.serviceWorker.controller) {
+      updateState('pending', null, 'Service Worker activo, esperando conexión WebSocket');
+      return;
+    }
+
+    try {
+      // Crear un MessageChannel para recibir respuesta
+      const channel = new MessageChannel();
+      
+      // Esperar respuesta del Service Worker
+      const statusPromise = new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Timeout esperando respuesta del SW'));
+        }, 2000);
+        
+        channel.port1.onmessage = (event) => {
+          clearTimeout(timeout);
+          resolve(event.data);
+        };
+      });
+      
+      // Preguntar al Service Worker por el estado del WebSocket
+      navigator.serviceWorker.controller.postMessage(
+        { type: 'ping' },
+        [channel.port2]
+      );
+      
+      // Esperar respuesta
+      const response = await statusPromise;
+      
+      console.log('🔍 [KDSTunnel] Estado del WebSocket:', response);
+      
+      if (response.status === 'connected' && response.tenantId) {
+        // WebSocket ya está conectado!
+        console.log('✅ [KDSTunnel] WebSocket ya conectado:', response.tenantId);
+        tunnelState.tenantId = response.tenantId;
+        tunnelState.websocketConnected = true;
+        updateState('active', null, 'WebSocket ya estaba conectado');
+      } else {
+        // WebSocket no conectado, esperar
+        updateState('pending', null, 'Service Worker activo, esperando conexión WebSocket');
+      }
+      
+    } catch (error) {
+      console.warn('⚠️ [KDSTunnel] Error verificando estado del WebSocket:', error);
+      updateState('pending', null, 'Service Worker activo, esperando conexión WebSocket');
     }
   }
 
