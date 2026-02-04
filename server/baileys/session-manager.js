@@ -358,16 +358,12 @@ class SessionManager extends EventEmitter {
         socketConfig.fetchAgent = { fetch: tunnelProxyFetch };
         logger.info(`[${tenantId}] 🔧 FetchAgent configurado con sistema de TÚNEL`);
       }
-      // 🌐 MODO PROXY: Configurar fetchAgent con proxy (para HTTP requests)
+      // 🌐 MODO PROXY: Para bots de SOLO TEXTO, NO necesitamos proxy en HTTP
+      // Los mensajes de texto van por WebSocket (no HTTP)
+      // Solo imágenes/videos/audios usan HTTP requests
       else if (PROXY_ENABLED) {
-        // En modo híbrido, obtener el proxy agent AHORA para HTTP requests
-        const proxyAgentForFetch = proxyManager.getProxyAgent(tenantId);
-        if (proxyAgentForFetch) {
-          socketConfig.fetchAgent = { 
-            agent: proxyAgentForFetch 
-          };
-          logger.info(`[${tenantId}] 🌐 FetchAgent configurado con PROXY residencial`);
-        }
+        logger.info(`[${tenantId}] 📝 Bot de SOLO TEXTO - FetchAgent directo (sin proxy HTTP)`);
+        // NO configurar fetchAgent con proxy - usar directo
       }
 
       // 🌐 Agregar agente proxy para WebSocket si está disponible (solo modo no-híbrido)
@@ -438,20 +434,14 @@ class SessionManager extends EventEmitter {
         } else if (connection === 'open') {
           logger.info(`[${tenantId}] 🎉 Conexión establecida exitosamente`);
 
-          // 🌐 APLICAR PROXY EN MODO HÍBRIDO (solo para residential/datacenter)
-          if (PROXY_ENABLED && useHybridMode && !proxyAgent) {
-            logger.info(`[${tenantId}] 🔐 APLICANDO PROXY POST-CONEXIÓN (Modo Híbrido)`);
-            const postConnectProxyAgent = proxyManager.getProxyAgent(tenantId);
-            
-            if (postConnectProxyAgent && socket) {
-              // Nota: Esto puede no funcionar con todos los proxies
-              // ISP proxy debe usarse desde el inicio
-              socket.config = socket.config || {};
-              socket.config.agent = postConnectProxyAgent;
-              logger.info(`[${tenantId}] ✅ Proxy aplicado en modo híbrido`);
-            }
-          } else if (PROXY_ENABLED && PROXY_TYPE === 'isp') {
-            logger.info(`[${tenantId}] ✅ ISP Proxy activo desde inicio - Sistema Anti-Ban activado`);
+          // ⚠️ NOTA: NO aplicar proxy post-conexión
+          // El WebSocket ya está establecido, cambiar el agent no funciona correctamente
+          // Para bots de SOLO TEXTO, no se necesita proxy en HTTP requests
+          
+          if (PROXY_ENABLED) {
+            logger.info(`[${tenantId}] 🛡️ Sistema Anti-Ban: ${PROXY_TYPE.toUpperCase()} Proxy configurado`);
+            logger.info(`[${tenantId}] 📝 WebSocket: Directo (Railway)`);
+            logger.info(`[${tenantId}] 📨 Mensajes: Sin multimedia - No requiere proxy HTTP`);
           }
 
           // Obtener información del número
