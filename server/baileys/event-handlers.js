@@ -98,6 +98,35 @@ class EventHandlers {
       
       logger.info(`[${tenantId}] Mensaje recibido de ${internalMessage.from}: ${internalMessage.text?.substring(0, 50) || '[media]'}`);
 
+      // 🧪 COMANDO DE PRUEBA DEL TÚNEL
+      if (internalMessage.text?.trim().toLowerCase() === '/test-tunel') {
+        logger.info(`[${tenantId}] 🧪 Comando /test-tunel recibido - enviando imagen de prueba`);
+        
+        try {
+          const sessionManager = require('./session-manager');
+          const socket = sessionManager.getSession(tenantId);
+          
+          if (socket) {
+            // URL de una imagen pública para probar
+            const testImageUrl = 'https://picsum.photos/800/600';
+            
+            logger.info(`[${tenantId}] 📤 Descargando imagen de prueba: ${testImageUrl}`);
+            
+            // Enviar imagen (esto forzará uso del fetchAgent y el túnel)
+            await socket.sendMessage(internalMessage.from, {
+              image: { url: testImageUrl },
+              caption: '🧪 Test del Túnel\n\n✅ Si ves esta imagen, el túnel está funcionando!\n\n📊 Verifica los logs del servidor para confirmar que la petición HTTP se hizo vía túnel.'
+            });
+            
+            logger.info(`[${tenantId}] ✅ Imagen de prueba enviada con éxito`);
+          }
+        } catch (error) {
+          logger.error(`[${tenantId}] ❌ Error enviando imagen de prueba:`, error);
+        }
+        
+        return; // No procesar más este mensaje
+      }
+
       // 🚀 AUTO-RECONEXIÓN: Verificar conexión antes de procesar
       const isConnected = await connectionManager.ensureConnected(tenantId);
       
