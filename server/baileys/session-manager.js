@@ -329,21 +329,28 @@ class SessionManager extends EventEmitter {
         logger.warn(`[${tenantId}] ⚠️ MODO DIRECTO - Sin protección anti-ban (IP de Railway)`);
       }
 
-      // Configurar socket de Baileys
+      // Configurar socket de Baileys con timeouts aumentados para proxy
       const socketConfig = {
         auth: state,
         printQRInTerminal: options.printQR || false,
         logger: pino({ level: 'silent' }), // Silenciar logs internos de Baileys
         browser: ['KDS', 'Chrome', '1.0.0'],
-        connectTimeoutMs: 60000,
-        defaultQueryTimeoutMs: 0,
+        // ⏱️ Timeouts aumentados para proxy residencial (latencia mayor)
+        connectTimeoutMs: PROXY_ENABLED ? 120000 : 60000,     // 2 min con proxy, 1 min sin proxy
+        defaultQueryTimeoutMs: PROXY_ENABLED ? 90000 : 60000, // 1.5 min con proxy, 1 min sin proxy
         keepAliveIntervalMs: 30000,
+        qrTimeout: PROXY_ENABLED ? 90000 : 60000,             // 1.5 min con proxy, 1 min sin proxy
         emitOwnEvents: true,
         getMessage: async (key) => {
           // Implementar recuperación de mensajes si es necesario
           return { conversation: '' };
         }
       };
+      
+      if (PROXY_ENABLED) {
+        logger.info(`[${tenantId}] ⏱️ Timeouts aumentados para proxy residencial:`);
+        logger.info(`[${tenantId}]    - Connect: 120s, Query: 90s, QR: 90s`);
+      }
 
       // 🔧 CONFIGURAR FETCH AGENT SEGÚN MODO ANTI-BAN
       if (TUNNEL_ENABLED && tunnelProxyFetch) {
