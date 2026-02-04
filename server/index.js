@@ -352,6 +352,18 @@ console.log('🛡️ Rutas de admin registradas en /api/admin');
 // ====================================
 
 /**
+ * Handler CORS para preflight requests del túnel
+ * Necesario para que el Service Worker pueda hacer POST
+ */
+app.options('/api/tunnel/*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Max-Age', '86400'); // Cache preflight por 24h
+  res.sendStatus(204);
+});
+
+/**
  * Obtener estado del túnel para un tenant
  */
 app.get('/api/tunnel/status/:tenantId', (req, res) => {

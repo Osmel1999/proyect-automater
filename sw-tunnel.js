@@ -239,6 +239,12 @@ async function establishTunnel() {
         if (data.type === 'pong') {
           console.log('🏓 [SW] Pong recibido del servidor');
         }
+        
+        // Responder a ping del servidor con pong
+        if (data.type === 'ping') {
+          tunnelSocket.send(JSON.stringify({ type: 'pong' }));
+          console.log('🏓 [SW] Respondiendo pong al servidor');
+        }
       } catch (error) {
         console.error('❌ [SW] Error procesando mensaje:', error);
       }
