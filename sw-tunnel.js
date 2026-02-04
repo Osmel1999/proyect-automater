@@ -191,6 +191,12 @@ async function establishTunnel() {
           tenantId: currentTenantId,
           deviceInfo: deviceInfo
         }));
+        
+        // ✅ Notificar después de registrar con tenantId
+        notifyAllClients({ 
+          type: 'tunnel.connected',
+          tenantId: currentTenantId 
+        });
       } else {
         // Si aún no tenemos tenantId, solo enviar init
         console.log('⚠️ [SW] Conectado sin tenant ID - esperando registro');
@@ -198,13 +204,9 @@ async function establishTunnel() {
           type: 'tunnel.init',
           deviceInfo: deviceInfo
         }));
+        
+        // ⚠️ NO notificar como conectado hasta tener tenantId
       }
-      
-      // Notificar a clientes que túnel está activo
-      notifyAllClients({ 
-        type: 'tunnel.connected',
-        tenantId: currentTenantId 
-      });
     });
 
     tunnelSocket.addEventListener('message', async (event) => {
@@ -215,6 +217,12 @@ async function establishTunnel() {
         if (data.type === 'tunnel.registered') {
           console.log(`✅ [SW] Túnel registrado en backend: ${data.tenantId}`);
           currentTenantId = data.tenantId;
+          
+          // ✅ Notificar a clientes ahora que el backend confirmó
+          notifyAllClients({ 
+            type: 'tunnel.connected',
+            tenantId: currentTenantId 
+          });
         }
         
         // Manejar error de registro
@@ -341,6 +349,12 @@ self.addEventListener('message', (event) => {
         tenantId: currentTenantId,
         deviceInfo: deviceInfo
       }));
+      
+      // ✅ Notificar a clientes
+      notifyAllClients({ 
+        type: 'tunnel.connected',
+        tenantId: currentTenantId 
+      });
     }
   } else if (event.data.type === 'ping') {
     // Responder con estado del túnel
