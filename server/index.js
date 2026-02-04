@@ -6,6 +6,8 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const WebSocket = require('ws');
+const url = require('url');
 const path = require('path');
 const axios = require('axios');
 const rateLimit = require('express-rate-limit');
@@ -22,6 +24,9 @@ console.log('  ✅ tenant-service cargado');
 
 const encryptionService = require('./encryption-service');
 console.log('  ✅ encryption-service cargado');
+
+const tunnelManager = require('./tunnel-manager');
+console.log('  ✅ tunnel-manager cargado');
 
 const app = express();
 const server = http.createServer(app);
@@ -42,6 +47,116 @@ const wsHandler = new BaileysWebSocketHandler(io);
 
 // Hacer wsHandler disponible globalmente para que otros módulos puedan emitir eventos
 global.baileysWebSocket = wsHandler;
+
+// 🌐 Configurar WebSocket Server para Túnel de Navegador
+const wss = new WebSocket.Server({ noServer: true });
+
+wss.on('connection', (ws, request, tenantId) => {
+  console.log(`🔌 [Tunnel] Nueva conexión WebSocket: ${tenantId}`);
+  
+  // Obtener información del dispositivo de los headers
+  const deviceInfo = {
+    tenantId,
+    userAgent: request.headers['user-agent'],
+    ip: request.headers['x-forwarded-for'] || request.socket.remoteAddress,
+    timestamp: Date.now()
+  };
+
+  // Registrar túnel
+  const registered = tunnelManager.registerTunnel(ws, deviceInfo);
+  
+  if (!registered) {
+    ws.close(1008, 'Error al registrar túnel');
+    return;
+  }
+
+  // Manejar mensajes del navegador
+  ws.on('message', (message) => {
+    try {
+      const data = JSON.parse(message.toString());
+      
+      switch(data.type) {
+        case 'tunnel.init':
+          // Actualizar info del dispositivo
+          console.log(`🔧 [Tunnel] Túnel inicializado: ${tenantId}`);
+          break;
+
+        case 'ping':
+          // Responder pong y actualizar heartbeat
+          tunnelManager.updateHeartbeat(tenantId);
+          ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
+          break;
+
+        case 'pong':
+          // Actualizar heartbeat
+          tunnelManager.updateHeartbeat(tenantId);
+          break;
+
+        case 'proxy.response':
+          // Respuesta de request HTTP
+          tunnelManager.handleProxyResponse(data.requestId, {
+            status: data.status,
+            headers: data.headers,
+            body: data.body
+          });
+          break;
+
+        case 'proxy.error':
+          // Error en request HTTP
+          tunnelManager.handleProxyError(data.requestId, data.error);
+          break;
+
+        default:
+          console.warn(`⚠️ [Tunnel] Mensaje desconocido: ${data.type}`);
+      }
+    } catch (error) {
+      console.error('❌ [Tunnel] Error procesando mensaje:', error);
+    }
+  });
+
+  // Manejar cierre de conexión
+  ws.on('close', (code, reason) => {
+    console.log(`🔌 [Tunnel] Conexión cerrada: ${tenantId}`);
+    console.log(`   📝 Code: ${code}, Reason: ${reason || 'unknown'}`);
+    tunnelManager.unregisterTunnel(tenantId, reason || 'connection_closed');
+  });
+
+  // Manejar errores
+  ws.on('error', (error) => {
+    console.error(`❌ [Tunnel] Error en WebSocket: ${tenantId}`, error);
+    tunnelManager.unregisterTunnel(tenantId, 'websocket_error');
+  });
+});
+
+// Manejar upgrade de HTTP a WebSocket
+server.on('upgrade', (request, socket, head) => {
+  const pathname = url.parse(request.url).pathname;
+  
+  if (pathname === '/tunnel') {
+    // Extraer tenantId de query params
+    const query = url.parse(request.url, true).query;
+    const tenantId = query.tenantId;
+
+    if (!tenantId) {
+      console.error('❌ [Tunnel] Upgrade rechazado: falta tenantId');
+      socket.write('HTTP/1.1 400 Bad Request\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+
+    console.log(`🔄 [Tunnel] Upgrade a WebSocket: ${tenantId}`);
+    
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      wss.emit('connection', ws, request, tenantId);
+    });
+  } else {
+    // Dejar que otros handlers manejen otros paths
+    console.warn(`⚠️ [Tunnel] Upgrade desconocido: ${pathname}`);
+    socket.destroy();
+  }
+});
+
+console.log('✅ WebSocket Server configurado en /tunnel');
 
 // 🌐 Inicializar Proxy Manager (Anti-Ban)
 const proxyManager = require('./baileys/proxy-manager');
@@ -198,6 +313,102 @@ console.log('✅ Rutas de membresías registradas en /api/membership');
 const adminRoutes = require('./routes/admin-routes');
 app.use('/api/admin', adminRoutes);
 console.log('🛡️ Rutas de admin registradas en /api/admin');
+
+// ====================================
+// RUTAS DE API - TÚNEL (Anti-Ban)
+// ====================================
+
+/**
+ * Obtener estado del túnel para un tenant
+ */
+app.get('/api/tunnel/status/:tenantId', (req, res) => {
+  try {
+    const { tenantId } = req.params;
+    const tunnelInfo = tunnelManager.getTunnelInfo(tenantId);
+    
+    if (!tunnelInfo) {
+      return res.json({
+        success: true,
+        hasTunnel: false,
+        tenantId
+      });
+    }
+
+    res.json({
+      success: true,
+      hasTunnel: true,
+      tunnel: tunnelInfo
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo estado de túnel:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error interno'
+    });
+  }
+});
+
+/**
+ * Notificar desconexión del túnel (llamado desde frontend)
+ */
+app.post('/api/tunnel/disconnected', express.json(), (req, res) => {
+  try {
+    const { tenantId, timestamp, reason } = req.body;
+    
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        error: 'tenantId requerido'
+      });
+    }
+
+    console.log(`📡 [API] Notificación de desconexión: ${tenantId}`);
+    console.log(`   💡 Razón: ${reason || 'unknown'}`);
+
+    // El tunnel manager ya debe haber detectado la desconexión
+    // pero confirmamos y emitimos evento
+    if (tunnelManager.hasTunnel(tenantId)) {
+      tunnelManager.unregisterTunnel(tenantId, reason || 'frontend_notification');
+    }
+
+    res.json({
+      success: true,
+      message: 'Desconexión registrada',
+      fallbackActive: true
+    });
+
+  } catch (error) {
+    console.error('Error procesando desconexión:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error interno'
+    });
+  }
+});
+
+/**
+ * Obtener estadísticas del túnel
+ */
+app.get('/api/tunnel/stats', (req, res) => {
+  try {
+    const stats = tunnelManager.getStats();
+    
+    res.json({
+      success: true,
+      stats
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo estadísticas de túnel:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error interno'
+    });
+  }
+});
+
+console.log('✅ Rutas de túnel registradas en /api/tunnel');
 
 // ====================================
 // RUTAS DE API - TRACKING DE PEDIDOS
@@ -431,6 +642,7 @@ server.listen(PORT, () => {
   console.log(`   🔥 Firebase: ${process.env.FIREBASE_PROJECT_ID ? '✅ ' + process.env.FIREBASE_PROJECT_ID : '❌ No configurado'}`);
   console.log(`   📱 Baileys (WhatsApp): ✅ Habilitado`);
   console.log(`   🔐 Cifrado: ${process.env.ENCRYPTION_KEY ? '✅ Configurado' : '❌ No configurado'}`);
+  console.log(`   🔧 Túnel de Navegador: ✅ Habilitado (Anti-Ban)`);
   console.log('');
   console.log('━'.repeat(50));
   console.log('📝 Endpoints - Baileys (WhatsApp):');
@@ -442,6 +654,12 @@ server.listen(PORT, () => {
   console.log('📝 Endpoints - Tenants:');
   console.log('   GET  /api/tenant/:tenantId     - Información de tenant');
   console.log('   GET  /api/tenants              - Listar todos los tenants');
+  console.log('');
+  console.log('📝 Endpoints - Túnel (Anti-Ban):');
+  console.log('   WS   /tunnel?tenantId=xxx      - WebSocket del túnel');
+  console.log('   GET  /api/tunnel/status/:id    - Estado del túnel');
+  console.log('   POST /api/tunnel/disconnected  - Notificar desconexión');
+  console.log('   GET  /api/tunnel/stats         - Estadísticas del túnel');
   console.log('');
   console.log('📝 Endpoints - Pagos (Multi-Gateway):');
   console.log('   POST /api/payments/webhook/:restaurantId/:gateway - Webhook de pago');
@@ -469,11 +687,13 @@ server.listen(PORT, () => {
 // Manejo de cierre graceful
 process.on('SIGTERM', () => {
   console.log('🛑 Recibida señal SIGTERM, cerrando servidor...');
+  tunnelManager.cleanup();
   process.exit(0);
 });
 
 process.on('SIGINT', () => {
   console.log('🛑 Recibida señal SIGINT, cerrando servidor...');
+  tunnelManager.cleanup();
   process.exit(0);
 });
 

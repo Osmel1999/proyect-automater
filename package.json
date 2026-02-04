@@ -43,7 +43,9 @@
     "socket.io": "^4.8.3",
     "socks-proxy-agent": "^8.0.5",
     "string-similarity": "^4.0.4",
-    "twilio": "^4.19.0"
+    "twilio": "^4.19.0",
+    "uuid": "^9.0.1",
+    "ws": "^8.19.0"
   },
   "devDependencies": {
     "firebase-tools": "^13.0.0",
