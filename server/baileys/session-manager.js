@@ -8,7 +8,6 @@ const pino = require('pino');
 const path = require('node:path');
 const fs = require('node:fs').promises;
 const EventEmitter = require('node:events');
-const proxyManager = require('./proxy-manager'); // 🌐 Importar Proxy Manager
 const tunnelManager = require('../tunnel-manager'); // 🔧 Importar Tunnel Manager
 
 const logger = pino({ level: 'info' });
@@ -282,95 +281,34 @@ class SessionManager extends EventEmitter {
         saveCreds = authState.saveCreds;
       }
 
-      // 🌐 ESTRATEGIA ANTI-BAN - SISTEMA CONFIGURABLE
+      // 🔧 SISTEMA ANTI-BAN - TÚNEL POR NAVEGADOR
       // ================================================
-      // Hay 3 modos de operación:
-      // 1. TUNNEL: Usa el navegador del restaurante como proxy (IP real del local)
-      // 2. PROXY: Usa Bright Data (IPs residenciales/ISP pagadas)
-      // 3. DIRECT: Sin protección (IP de Railway - RIESGO DE BAN)
-      //
-      // Configurar via variable de entorno ANTI_BAN_MODE:
-      // - 'tunnel' (default): Sistema de túnel por navegador (GRATIS)
-      // - 'proxy': Sistema Bright Data (PAGO ~$0.21-0.42/restaurante)
-      // - 'direct': Sin protección (NO RECOMENDADO)
+      // Usa el navegador del restaurante como proxy para HTTP requests
+      // WhatsApp ve la IP real del restaurante, no la de Railway
+      // El túnel se activa automáticamente cuando el dashboard está abierto
       
-      const ANTI_BAN_MODE = process.env.ANTI_BAN_MODE || 'tunnel';
-      const TUNNEL_ENABLED = ANTI_BAN_MODE === 'tunnel';
-      const PROXY_ENABLED = ANTI_BAN_MODE === 'proxy';
-      const PROXY_TYPE = process.env.PROXY_TYPE || 'isp';
-      const USE_HYBRID_PROXY = true; // Siempre híbrido por ahora
-      
-      logger.info(`[${tenantId}] 🛡️ Modo Anti-Ban: ${ANTI_BAN_MODE.toUpperCase()}`);
-      
-      let proxyAgent = null;
-      let useHybridMode = false;
-      let tunnelProxyFetch = null;
-      
-      // 🔧 MODO TÚNEL: Usar navegador del restaurante
-      if (TUNNEL_ENABLED) {
-        tunnelProxyFetch = createTunnelProxyFetch(tenantId, global.fetch || fetch);
-        logger.info(`[${tenantId}] 🔧 Sistema de TÚNEL activado - requests vía navegador del restaurante`);
-      }
-      // 🌐 MODO PROXY: Usar Bright Data desde el inicio (IP única por restaurante)
-      else if (PROXY_ENABLED) {
-        // Obtener proxy agent AHORA para WebSocket
-        proxyAgent = proxyManager.getProxyAgent(tenantId);
-        
-        if (proxyAgent) {
-          logger.info(`[${tenantId}] 🌐 Proxy ${PROXY_TYPE.toUpperCase()}: IP única desde el inicio`);
-          logger.info(`[${tenantId}] 📍 WhatsApp verá IP residencial de Bright Data`);
-          logger.info(`[${tenantId}] 🔐 WebSocket + HTTP usarán proxy`);
-        } else {
-          logger.warn(`[${tenantId}] ⚠️ No se pudo obtener proxy agent`);
-        }
-      }
-      // ⚠️ MODO DIRECTO: Sin protección
-      else {
-        logger.warn(`[${tenantId}] ⚠️ MODO DIRECTO - Sin protección anti-ban (IP de Railway)`);
-      }
+      const tunnelProxyFetch = createTunnelProxyFetch(tenantId, global.fetch || fetch);
+      logger.info(`[${tenantId}] 🔧 Sistema de TÚNEL activado - requests vía navegador del restaurante`);
 
-      // Configurar socket de Baileys con timeouts aumentados para proxy
+      // Configurar socket de Baileys
       const socketConfig = {
         auth: state,
         printQRInTerminal: options.printQR || false,
         logger: pino({ level: 'silent' }), // Silenciar logs internos de Baileys
         browser: ['KDS', 'Chrome', '1.0.0'],
-        // ⏱️ Timeouts aumentados para proxy residencial (latencia mayor)
-        connectTimeoutMs: PROXY_ENABLED ? 120000 : 60000,     // 2 min con proxy, 1 min sin proxy
-        defaultQueryTimeoutMs: PROXY_ENABLED ? 90000 : 60000, // 1.5 min con proxy, 1 min sin proxy
+        connectTimeoutMs: 60000,
+        defaultQueryTimeoutMs: 60000,
         keepAliveIntervalMs: 30000,
-        qrTimeout: PROXY_ENABLED ? 90000 : 60000,             // 1.5 min con proxy, 1 min sin proxy
         emitOwnEvents: true,
         getMessage: async (key) => {
           // Implementar recuperación de mensajes si es necesario
           return { conversation: '' };
-        }
+        },
+        // 🔧 CONFIGURAR FETCH AGENT PARA USAR TÚNEL
+        fetchAgent: { fetch: tunnelProxyFetch }
       };
       
-      if (PROXY_ENABLED) {
-        logger.info(`[${tenantId}] ⏱️ Timeouts aumentados para proxy residencial:`);
-        logger.info(`[${tenantId}]    - Connect: 120s, Query: 90s, QR: 90s`);
-      }
-
-      // 🔧 CONFIGURAR FETCH AGENT SEGÚN MODO ANTI-BAN
-      if (TUNNEL_ENABLED && tunnelProxyFetch) {
-        // Baileys usa fetchAgent para todos los HTTP requests a WhatsApp
-        socketConfig.fetchAgent = { fetch: tunnelProxyFetch };
-        logger.info(`[${tenantId}] 🔧 FetchAgent configurado con sistema de TÚNEL`);
-      }
-      // 🌐 MODO PROXY: Para bots de SOLO TEXTO, NO necesitamos proxy en HTTP
-      // Los mensajes de texto van por WebSocket (no HTTP)
-      // Solo imágenes/videos/audios usan HTTP requests
-      else if (PROXY_ENABLED) {
-        logger.info(`[${tenantId}] 📝 Bot de SOLO TEXTO - FetchAgent directo (sin proxy HTTP)`);
-        // NO configurar fetchAgent con proxy - usar directo
-      }
-
-      // 🌐 Agregar agente proxy para WebSocket si está disponible (solo modo no-híbrido)
-      if (proxyAgent) {
-        socketConfig.agent = proxyAgent;
-        logger.info(`[${tenantId}] 🌐 WebSocket Agent configurado con sistema de PROXY`);
-      }
+      logger.info(`[${tenantId}] � FetchAgent configurado con sistema de TÚNEL`);
 
       const socket = makeWASocket(socketConfig);
 
@@ -433,16 +371,7 @@ class SessionManager extends EventEmitter {
 
         } else if (connection === 'open') {
           logger.info(`[${tenantId}] 🎉 Conexión establecida exitosamente`);
-
-          // ⚠️ NOTA: NO aplicar proxy post-conexión
-          // El WebSocket ya está establecido, cambiar el agent no funciona correctamente
-          // Para bots de SOLO TEXTO, no se necesita proxy en HTTP requests
-          
-          if (PROXY_ENABLED) {
-            logger.info(`[${tenantId}] 🛡️ Sistema Anti-Ban: ${PROXY_TYPE.toUpperCase()} Proxy configurado`);
-            logger.info(`[${tenantId}] 📝 WebSocket: Directo (Railway)`);
-            logger.info(`[${tenantId}] 📨 Mensajes: Sin multimedia - No requiere proxy HTTP`);
-          }
+          logger.info(`[${tenantId}] � Sistema de túnel activo - WhatsApp ve IP del restaurante`);
 
           // Obtener información del número
           const socket = this.sessions.get(tenantId);
@@ -639,9 +568,6 @@ class SessionManager extends EventEmitter {
         this.sessions.delete(tenantId);
         this.sessionStates.delete(tenantId);
         
-        // 🌐 Liberar proxy asignado (Anti-Ban)
-        proxyManager.releaseProxy(tenantId);
-        
         logger.info(`[${tenantId}] Sesión cerrada`);
       }
     } catch (error) {
@@ -662,9 +588,6 @@ class SessionManager extends EventEmitter {
         
         // 🔥 FIX: Limpiar estado de conexión para forzar nuevo QR
         this.sessionStates.delete(tenantId);
-        
-        // 🌐 Liberar proxy asignado (Anti-Ban)
-        proxyManager.releaseProxy(tenantId);
         
         logger.info(`[${tenantId}] Sesión desconectada (credenciales preservadas, estado limpiado)`);
       }
