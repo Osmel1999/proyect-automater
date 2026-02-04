@@ -129,24 +129,23 @@ class SessionManager extends EventEmitter {
       }
 
       // 🌐 ESTRATEGIA DE PROXY INTELIGENTE
-      // ISP Proxy: Usar desde el inicio (estable, no causa timeout)
+      // TEMPORAL: Deshabilitado para todos los tipos mientras debuggeamos
+      // ISP Proxy: Modo híbrido (QR sin proxy, mensajes con proxy)
       // Residential Proxy: Modo híbrido (puede causar timeout si se usa desde inicio)
       // Sin proxy: Conexión directa
       
-      const PROXY_ENABLED = process.env.ENABLE_PROXY !== 'false';
+      const PROXY_ENABLED = false; // TEMPORAL: Deshabilitado
       const PROXY_TYPE = process.env.PROXY_TYPE || 'none';
-      const USE_HYBRID_PROXY = process.env.USE_HYBRID_PROXY !== 'false';
+      const USE_HYBRID_PROXY = true; // Siempre híbrido por ahora
       
       let proxyAgent = null;
       let useHybridMode = false;
       
       if (PROXY_ENABLED) {
-        // ISP Proxy: Siempre desde el inicio (IP estable, no timeout)
+        // ISP Proxy: Modo híbrido también (no funciona con WebSocket inicial)
         if (PROXY_TYPE === 'isp') {
-          proxyAgent = proxyManager.getProxyAgent(tenantId);
-          if (proxyAgent) {
-            logger.info(`[${tenantId}] 🌐 ISP Proxy: Usando desde inicio (IP estable)`);
-          }
+          useHybridMode = true;
+          logger.info(`[${tenantId}] � ISP Proxy: Modo híbrido (QR sin proxy, mensajes con proxy)`);
         }
         // Residential/Datacenter: Modo híbrido si está habilitado
         else if (USE_HYBRID_PROXY) {

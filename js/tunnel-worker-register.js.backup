@@ -34,6 +34,9 @@
   const eventListeners = new Map();  // Para sistema de eventos
   let indicatorElement = null;       // Referencia al indicador visual
 
+  const eventListeners = new Map();  // Para sistema de eventos
+  let indicatorElement = null;       // Referencia al indicador visual
+
   // ========================================
   // API PÚBLICA
   // ========================================
@@ -230,27 +233,24 @@
     updateIndicatorVisual(status);
   }
 
-  /**
-   * Registrar Service Worker
-   */
-  async function registerTunnelWorker() {
     try {
-      console.log('🔧 [KDSTunnel] Registrando Service Worker...');
+      console.log('🔧 Registrando Service Worker de túnel...');
 
       const registration = await navigator.serviceWorker.register('/sw-tunnel.js', {
         scope: '/'
       });
 
-      console.log('✅ [KDSTunnel] Service Worker registrado:', registration.scope);
+      console.log('✅ Service Worker registrado:', registration.scope);
 
       // Verificar si hay actualización
       registration.addEventListener('updatefound', () => {
         const newWorker = registration.installing;
-        console.log('🔄 [KDSTunnel] Nueva versión detectada');
+        console.log('🔄 Nueva versión del Service Worker detectada');
 
         newWorker.addEventListener('statechange', () => {
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            console.log('✨ [KDSTunnel] Nueva versión instalada');
+            console.log('✨ Nueva versión instalada - Recarga para activar');
+            // Opcional: Notificar al usuario
             showUpdateNotification();
           }
         });
@@ -258,130 +258,45 @@
 
       // Verificar estado del túnel
       if (navigator.serviceWorker.controller) {
-        console.log('🌐 [KDSTunnel] Service Worker controlando página');
-        tunnelState.isServiceWorkerReady = true;
-        updateState('active', null, 'Service Worker activo');
+        console.log('🌐 Túnel de conexión activo');
+        updateTunnelStatus('active');
       } else {
-        console.log('⏳ [KDSTunnel] Esperando activación...');
-        updateState('pending', null, 'Esperando activación');
+        console.log('⏳ Esperando activación del túnel...');
+        updateTunnelStatus('pending');
       }
 
     } catch (error) {
-      console.error('❌ [KDSTunnel] Error registrando Service Worker:', error);
-      updateState('error', error.message, 'Error en registro');
+      console.error('❌ Error registrando Service Worker:', error);
+      updateTunnelStatus('error');
     }
   }
 
   /**
-   * Configurar comunicación con Service Worker
+   * Actualizar indicador visual del túnel
    */
-  function setupCommunication() {
-    if (!navigator.serviceWorker.controller) {
-      console.warn('⚠️ [KDSTunnel] No hay Service Worker activo para comunicación');
-      return;
-    }
-
-    // Escuchar mensajes del Service Worker
-    navigator.serviceWorker.addEventListener('message', (event) => {
-      console.log('📨 [KDSTunnel] Mensaje recibido:', event.data);
-      
-      const { type, data } = event.data;
-
-      switch(type) {
-        case 'tunnel.status':
-          updateState(data.status, null, 'Actualización de estado');
-          break;
-
-        case 'tunnel.connected':
-          console.log('🌐 [KDSTunnel] Túnel conectado:', data.tenantId);
-          tunnelState.tenantId = data.tenantId;
-          updateState('active', null, 'Túnel establecido');
-          break;
-
-        case 'tunnel.disconnected':
-          console.warn('⚠️ [KDSTunnel] Túnel desconectado:', data.reason);
-          updateState('disconnected', null, data.reason);
-          
-          if (data.fallbackToRailway) {
-            showFallbackNotification();
-          }
-          break;
-
-        case 'get.tenantId':
-          // Responder con tenantId
-          const tenantId = getTenantId();
-          if (event.ports && event.ports[0]) {
-            event.ports[0].postMessage({ tenantId });
-          }
-          break;
-
-        default:
-          console.log('📭 [KDSTunnel] Mensaje sin handler:', type);
-      }
-    });
-
-    // Enviar información del tenant al Service Worker
-    const tenantId = getTenantId();
-    if (tenantId) {
-      tunnelState.tenantId = tenantId;
-      navigator.serviceWorker.controller.postMessage({
-        type: 'tenant.info',
-        tenantId: tenantId
-      });
-    }
-  }
-
-  /**
-   * Crear indicador visual
-   */
-  function createIndicator(config) {
-    // Si ya existe, removerlo
-    if (indicatorElement) {
-      indicatorElement.remove();
-    }
-
-    indicatorElement = document.createElement('div');
-    indicatorElement.id = 'kds-tunnel-indicator';
+  function updateTunnelStatus(status) {
+    // Crear o actualizar indicador de túnel
+    let indicator = document.getElementById('tunnel-indicator');
     
-    // Aplicar posición
-    const positions = {
-      'top-left': 'top: 20px; left: 20px;',
-      'top-right': 'top: 20px; right: 20px;',
-      'bottom-left': 'bottom: 20px; left: 20px;',
-      'bottom-right': 'bottom: 20px; right: 20px;'
-    };
-
-    const baseStyle = `
-      position: fixed;
-      ${positions[config.position] || positions['bottom-right']}
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: bold;
-      z-index: 10000;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-      transition: all 0.3s ease;
-      cursor: pointer;
-    `;
-
-    indicatorElement.style.cssText = baseStyle;
-    
-    // Click para ver detalles
-    indicatorElement.addEventListener('click', () => {
-      console.log('🔍 [KDSTunnel] Debug Info:', window.KDSTunnel.getDebugInfo());
-    });
-
-    document.body.appendChild(indicatorElement);
-  }
-
-  /**
-   * Actualizar apariencia del indicador
-   */
-  function updateIndicatorVisual(status) {
-    if (!indicatorElement) return;
+    if (!indicator) {
+      indicator = document.createElement('div');
+      indicator.id = 'tunnel-indicator';
+      indicator.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: bold;
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      `;
+      document.body.appendChild(indicator);
+    }
 
     const statusConfig = {
       'active': {
@@ -393,14 +308,8 @@
       'pending': {
         color: '#f59e0b',
         bg: '#fef3c7',
-        text: '⏳ Activando...',
-        title: 'Conectando túnel'
-      },
-      'initializing': {
-        color: '#6b7280',
-        bg: '#f3f4f6',
-        text: '🔧 Iniciando...',
-        title: 'Registrando Service Worker'
+        text: '⏳ Activando túnel...',
+        title: 'Espere un momento'
       },
       'disconnected': {
         color: '#f59e0b',
@@ -411,16 +320,16 @@
       'error': {
         color: '#ef4444',
         bg: '#fee2e2',
-        text: '❌ Error',
-        title: 'Error en túnel - Click para detalles'
+        text: '❌ Error en túnel',
+        title: 'Recargue la página'
       }
     };
 
-    const config = statusConfig[status] || statusConfig['initializing'];
-    indicatorElement.style.backgroundColor = config.bg;
-    indicatorElement.style.color = config.color;
-    indicatorElement.innerHTML = config.text;
-    indicatorElement.title = config.title;
+    const config = statusConfig[status];
+    indicator.style.backgroundColor = config.bg;
+    indicator.style.color = config.color;
+    indicator.innerHTML = config.text;
+    indicator.title = config.title;
   }
 
   /**
@@ -442,7 +351,6 @@
       flex-direction: column;
       gap: 12px;
       max-width: 300px;
-      animation: slideIn 0.3s ease;
     `;
 
     notification.innerHTML = `
@@ -468,13 +376,53 @@
 
     // Auto-cerrar después de 10 segundos
     setTimeout(() => {
-      notification.style.opacity = '0';
-      setTimeout(() => notification.remove(), 300);
+      notification.remove();
     }, 10000);
   }
 
   /**
-   * Mostrar notificación de fallback
+   * Comunicación con Service Worker
+   */
+  function setupCommunication() {
+    if (!navigator.serviceWorker.controller) {
+      return;
+    }
+
+    // Escuchar mensajes del Service Worker
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      console.log('📨 Mensaje del Service Worker:', event.data);
+      
+      if (event.data.type === 'tunnel.status') {
+        updateTunnelStatus(event.data.status);
+      } else if (event.data.type === 'tunnel.connected') {
+        console.log('🌐 Túnel conectado para tenant:', event.data.tenantId);
+        updateTunnelStatus('active');
+      } else if (event.data.type === 'tunnel.disconnected') {
+        console.warn('⚠️ Túnel desconectado:', event.data.reason);
+        updateTunnelStatus('disconnected');
+        
+        if (event.data.fallbackToRailway) {
+          showFallbackNotification();
+        }
+      } else if (event.data.type === 'get.tenantId') {
+        // Responder con tenantId
+        const tenantId = getTenantId();
+        event.ports[0]?.postMessage({ tenantId });
+      }
+    });
+
+    // Enviar información del tenant al Service Worker
+    const tenantId = getTenantId();
+    if (tenantId) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'tenant.info',
+        tenantId: tenantId
+      });
+    }
+  }
+
+  /**
+   * Mostrar notificación de fallback a Railway
    */
   function showFallbackNotification() {
     const notification = document.createElement('div');
@@ -492,7 +440,6 @@
       flex-direction: column;
       gap: 8px;
       max-width: 320px;
-      animation: slideIn 0.3s ease;
     `;
 
     notification.innerHTML = `
@@ -512,6 +459,7 @@
     // Auto-cerrar después de 5 segundos
     setTimeout(() => {
       notification.style.opacity = '0';
+      notification.style.transition = 'opacity 0.3s';
       setTimeout(() => notification.remove(), 300);
     }, 5000);
   }
@@ -520,56 +468,34 @@
    * Obtener Tenant ID actual
    */
   function getTenantId() {
-    // Obtener de localStorage
-    const stored = localStorage.getItem('tenantId') || 
-                   localStorage.getItem('currentTenantId');
+    // Obtener de localStorage o URL
+    const stored = localStorage.getItem('tenantId');
     if (stored) return stored;
 
-    // Obtener de URL
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.get('tenant') || urlParams.get('tenantId');
   }
 
-  // ========================================
-  // INICIALIZACIÓN
-  // ========================================
-
   /**
-   * Inicializar sistema de túnel
+   * Inicialización
    */
   window.addEventListener('load', () => {
-    console.log('🚀 [KDSTunnel] Inicializando sistema de túnel...');
-    console.log('📄 [KDSTunnel] Página:', window.location.pathname);
-    
     registerTunnelWorker();
     setupCommunication();
 
-    // Mostrar indicador por defecto
-    window.KDSTunnel.showIndicator();
-
-    console.log('✅ [KDSTunnel] Sistema inicializado');
-    console.log('💡 [KDSTunnel] WhatsApp verá la IP de este dispositivo');
-    console.log('🔍 [KDSTunnel] Usa window.KDSTunnel.getDebugInfo() para detalles');
+    console.log('🚀 Sistema de túnel inicializado');
+    console.log('💡 WhatsApp verá la IP de este dispositivo');
   });
 
   // Reconectar si la pestaña estaba inactiva
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) {
-      console.log('👁️ [KDSTunnel] Pestaña visible, verificando túnel...');
-      
       if (navigator.serviceWorker.controller) {
         navigator.serviceWorker.controller.postMessage({
           type: 'ping'
         });
       }
     }
-  });
-
-  // Manejar activación del Service Worker
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    console.log('🔄 [KDSTunnel] Service Worker controller cambió');
-    tunnelState.isServiceWorkerReady = true;
-    updateState('active', null, 'Controller activado');
   });
 
 })();
