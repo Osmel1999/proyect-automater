@@ -360,11 +360,19 @@
         case 'tunnel.disconnected':
           console.warn('⚠️ [KDSTunnel] Túnel WebSocket desconectado:', reason);
           tunnelState.websocketConnected = false;  // ❌ Marcar WebSocket desconectado
-          updateState('disconnected', null, reason);
           
-          if (fallbackToRailway) {
-            showFallbackNotification();
-          }
+          // ⏳ Esperar 5 segundos antes de mostrar como desconectado
+          // El Service Worker se reconecta automáticamente en 3 segundos
+          setTimeout(() => {
+            // Solo mostrar desconectado si sigue sin conexión después de 5 seg
+            if (!tunnelState.websocketConnected) {
+              updateState('disconnected', null, reason);
+              
+              if (fallbackToRailway) {
+                showFallbackNotification();
+              }
+            }
+          }, 5000);
           break;
 
         case 'get.tenantId':

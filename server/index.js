@@ -154,6 +154,9 @@ wss.on('connection', (ws, request, tenantId) => {
     const reasonStr = reason ? reason.toString() : 'unknown';
     console.log(`🔌 [Tunnel] Conexión cerrada: ${currentTenantId || 'sin ID'}`);
     console.log(`   📝 Code: ${code}, Reason: ${reasonStr}`);
+    console.log(`   ⏱️ Duración: ${currentTenantId && tunnelManager.hasTunnel(currentTenantId) ? Math.round((Date.now() - tunnelManager.getTunnelInfo(currentTenantId).connectedAt) / 1000) : '?'}s`);
+    console.log(`   🔍 ReadyState antes de cerrar: ${ws.readyState}`);
+    
     if (currentTenantId) {
       tunnelManager.unregisterTunnel(currentTenantId, reasonStr || 'connection_closed');
     }

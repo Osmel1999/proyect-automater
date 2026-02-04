@@ -40,10 +40,10 @@ class TunnelManager extends EventEmitter {
      */
     this.config = {
       requestTimeout: 30000,      // 30 segundos para respuestas
-      heartbeatInterval: 30000,   // 30 segundos entre heartbeats
+      heartbeatInterval: 20000,   // 20 segundos entre heartbeats (más frecuente)
       reconnectWindow: 60000,     // 1 minuto para reconectar antes de fallback
       maxPendingRequests: 100,    // Máximo de requests pendientes por túnel
-      heartbeatTimeout: 90000     // 90 segundos sin heartbeat antes de considerar muerto (3x intervalo)
+      heartbeatTimeout: 60000     // 60 segundos sin heartbeat antes de considerar muerto (3x intervalo)
     };
     
     /**
@@ -77,8 +77,13 @@ class TunnelManager extends EventEmitter {
     // Si ya existe un túnel, cerrar el anterior
     if (this.tunnels.has(tenantId)) {
       console.log(`🔄 [TunnelManager] Reemplazando túnel existente para ${tenantId}`);
+      console.log(`   ⚠️ Esto puede indicar múltiples Service Workers o pestañas`);
       const oldTunnel = this.tunnels.get(tenantId);
-      oldTunnel.socket.close(1000, 'Nueva conexión establecida');
+      try {
+        oldTunnel.socket.close(1000, 'Nueva conexión establecida');
+      } catch (error) {
+        console.error(`   ❌ Error cerrando túnel anterior: ${error.message}`);
+      }
     }
 
     const tunnelInfo = {
