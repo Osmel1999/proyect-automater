@@ -121,7 +121,21 @@ class EventHandlers {
             logger.info(`[${tenantId}] ✅ Imagen de prueba enviada con éxito`);
           }
         } catch (error) {
-          logger.error(`[${tenantId}] ❌ Error enviando imagen de prueba:`, error);
+          logger.error(`[${tenantId}] ❌ Error enviando imagen de prueba:`, error.message);
+          logger.error(`[${tenantId}] ❌ Stack trace:`, error.stack);
+          
+          // Intentar enviar mensaje de error al usuario
+          try {
+            const sessionManager = require('./session-manager');
+            const socket = sessionManager.getSession(tenantId);
+            if (socket) {
+              await socket.sendMessage(internalMessage.from, {
+                text: `❌ Error en test del túnel:\n\n${error.message}\n\nVerifica los logs del servidor.`
+              });
+            }
+          } catch (e) {
+            logger.error(`[${tenantId}] No se pudo enviar mensaje de error`);
+          }
         }
         
         return; // No procesar más este mensaje
