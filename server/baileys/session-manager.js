@@ -54,18 +54,21 @@ async function loadBaileys() {
  */
 function createTunnelProxyFetch(tenantId, originalFetch) {
   return async function(url, options = {}) {
+    // Log de debug: fetchAgent está siendo llamado
+    logger.info(`[${tenantId}] 🔍 fetchAgent llamado para: ${url.toString().substring(0, 80)}`);
+    
     // Verificar si hay túnel activo
     const hasTunnel = tunnelManager.hasTunnel(tenantId);
     
     if (!hasTunnel) {
       // Sin túnel: usar fetch normal (Railway)
-      logger.info(`[${tenantId}] 📡 Request directo Railway: ${url.toString().substring(0, 60)}...`);
+      logger.info(`[${tenantId}] 📡 Request directo Railway (sin túnel activo)`);
       return originalFetch(url, options);
     }
 
     try {
       // Con túnel: enviar request a través del navegador
-      logger.info(`[${tenantId}] 🔧 Request via túnel: ${url.toString().substring(0, 60)}...`);
+      logger.info(`[${tenantId}] 🌐 Request VIA TÚNEL - IP del restaurante será usada`);
       
       const response = await tunnelManager.proxyRequest(tenantId, {
         url: url.toString(),
@@ -316,6 +319,7 @@ class SessionManager extends EventEmitter {
 
       // 🔧 Crear fetch proxy para túnel del navegador
       const tunnelProxyFetch = createTunnelProxyFetch(tenantId, global.fetch || fetch);
+      logger.info(`[${tenantId}] 🔧 FetchAgent configurado con sistema de túnel`);
       
       // Configurar socket de Baileys
       const socketConfig = {
