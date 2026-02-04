@@ -207,6 +207,28 @@ class TunnelManager extends EventEmitter {
   }
 
   /**
+   * Obtener estadísticas del túnel
+   * @param {string} tenantId - ID del tenant
+   * @returns {Object} - Estadísticas del túnel
+   */
+  getTunnelStats(tenantId) {
+    if (!this.tunnels.has(tenantId)) {
+      return null;
+    }
+
+    const tunnel = this.tunnels.get(tenantId);
+    return {
+      requestsSent: tunnel.stats.requestsSent,
+      requestsSuccess: tunnel.stats.requestsSuccess,
+      requestsFailed: tunnel.stats.requestsFailed,
+      bytesProxied: tunnel.stats.bytesProxied,
+      uptime: Date.now() - tunnel.connectedAt,
+      lastHeartbeat: tunnel.lastHeartbeat,
+      timeSinceHeartbeat: Date.now() - tunnel.lastHeartbeat
+    };
+  }
+
+  /**
    * Hacer request HTTP a través del túnel
    * @param {string} tenantId - ID del tenant
    * @param {Object} options - Opciones del request

@@ -9,6 +9,7 @@ const path = require('node:path');
 const fs = require('node:fs').promises;
 const EventEmitter = require('node:events');
 const proxyManager = require('./proxy-manager'); // 🌐 Importar Proxy Manager
+const tunnelManager = require('../tunnel-manager'); // 🔧 Importar Tunnel Manager
 
 const logger = pino({ level: 'info' });
 
@@ -45,11 +46,161 @@ async function loadBaileys() {
   return baileysPromise;
 }
 
+/**
+ * Crear un proxy de fetch que usa el túnel del navegador si está disponible
+ * @param {string} tenantId - ID del tenant
+ * @param {Function} originalFetch - Función fetch original
+ * @returns {Function} Función fetch con soporte de túnel
+ */
+function createTunnelProxyFetch(tenantId, originalFetch) {
+  return async function(url, options = {}) {
+    // Verificar si hay túnel activo
+    const hasTunnel = tunnelManager.hasTunnel(tenantId);
+    
+    if (!hasTunnel) {
+      // Sin túnel: usar fetch normal (Railway)
+      logger.info(`[${tenantId}] 📡 Request directo Railway: ${url.toString().substring(0, 60)}...`);
+      return originalFetch(url, options);
+    }
+
+    try {
+      // Con túnel: enviar request a través del navegador
+      logger.info(`[${tenantId}] 🔧 Request via túnel: ${url.toString().substring(0, 60)}...`);
+      
+      const response = await tunnelManager.proxyRequest(tenantId, {
+        url: url.toString(),
+        method: options.method || 'GET',
+        headers: options.headers || {},
+        body: options.body
+      });
+
+      // Convertir respuesta del túnel a formato fetch Response compatible
+      const headers = new Map(Object.entries(response.headers || {}));
+      
+      return {
+        ok: response.status >= 200 && response.status < 300,
+        status: response.status,
+        statusText: response.statusText || 'OK',
+        headers: headers,
+        
+        // Métodos para leer el body
+        text: async () => response.body || '',
+        
+        json: async () => {
+          try {
+            return JSON.parse(response.body || '{}');
+          } catch (error) {
+            logger.error(`[${tenantId}] Error parsing JSON response:`, error);
+            return {};
+          }
+        },
+        
+        arrayBuffer: async () => {
+          if (typeof response.body === 'string') {
+            const buffer = Buffer.from(response.body, 'utf-8');
+            return buffer.buffer;
+          } else if (Buffer.isBuffer(response.body)) {
+            return response.body.buffer;
+          } else {
+            return new ArrayBuffer(0);
+          }
+        },
+        
+        blob: async () => {
+          const text = response.body || '';
+          return new Blob([text], { type: headers.get('content-type') || 'text/plain' });
+        },
+        
+        // Para compatibilidad con Baileys
+        get url() {
+          return url.toString();
+        },
+        
+        get redirected() {
+          return false;
+        },
+        
+        get type() {
+          return 'basic';
+        },
+        
+        clone: function() {
+          return { ...this };
+        }
+      };
+
+    } catch (error) {
+      // Error en túnel: fallback automático a Railway
+      logger.warn(`[${tenantId}] ⚠️ Error en túnel, fallback a Railway:`, error.message);
+      return originalFetch(url, options);
+    }
+  };
+}
+
 class SessionManager extends EventEmitter {
   constructor() {
     super();
     this.sessions = new Map(); // tenantId -> socket
     this.sessionStates = new Map(); // tenantId -> connection state
+    this.originalFetchByTenant = new Map(); // tenantId -> original fetch function
+    
+    // 🔧 Escuchar eventos del túnel
+    this.setupTunnelListeners();
+  }
+
+  /**
+   * Configurar listeners para eventos del túnel
+   */
+  setupTunnelListeners() {
+    // Cuando un túnel se conecta
+    tunnelManager.on('tunnel:connected', ({ tenantId }) => {
+      logger.info(`[${tenantId}] 🔧 Túnel conectado - requests usarán IP del restaurante`);
+      
+      // Si hay sesión activa, actualizar para usar túnel
+      if (this.sessions.has(tenantId)) {
+        this.updateSessionWithTunnel(tenantId);
+      }
+    });
+
+    // Cuando un túnel se desconecta
+    tunnelManager.on('tunnel:disconnected', ({ tenantId, reason }) => {
+      logger.warn(`[${tenantId}] ⚠️ Túnel desconectado: ${reason}`);
+      logger.info(`[${tenantId}] 🔄 Fallback a Railway - Sesión WhatsApp persiste`);
+      
+      // NO hacer nada con la sesión de Baileys
+      // El fetch proxy automáticamente usará Railway
+      // La sesión NO se desconecta
+    });
+
+    // Cuando un túnel no está saludable
+    tunnelManager.on('tunnel:unhealthy', ({ tenantId }) => {
+      logger.warn(`[${tenantId}] ⚠️ Túnel no saludable - puede haber latencia`);
+    });
+  }
+
+  /**
+   * Actualizar sesión para usar túnel (re-crear proxy fetch si es necesario)
+   */
+  updateSessionWithTunnel(tenantId) {
+    const socket = this.sessions.get(tenantId);
+    if (!socket) {
+      return;
+    }
+
+    // Crear nuevo fetch proxy con túnel
+    const tunnelProxyFetch = createTunnelProxyFetch(tenantId, global.fetch || fetch);
+    
+    // Actualizar fetchAgent en el socket
+    if (socket.fetchAgent) {
+      socket.fetchAgent.fetch = tunnelProxyFetch;
+      logger.info(`[${tenantId}] ✅ Túnel actualizado en sesión activa, próximos requests lo usarán`);
+    } else {
+      // Si no existe fetchAgent, crearlo
+      socket.fetchAgent = {
+        fetch: tunnelProxyFetch
+      };
+      logger.info(`[${tenantId}] ✅ FetchAgent creado con túnel para sesión activa`);
+    }
   }
 
   /**
@@ -163,6 +314,9 @@ class SessionManager extends EventEmitter {
         logger.warn(`[${tenantId}] ⚠️ Proxy deshabilitado - usando IP directa`);
       }
 
+      // 🔧 Crear fetch proxy para túnel del navegador
+      const tunnelProxyFetch = createTunnelProxyFetch(tenantId, global.fetch || fetch);
+      
       // Configurar socket de Baileys
       const socketConfig = {
         auth: state,
@@ -176,10 +330,15 @@ class SessionManager extends EventEmitter {
         getMessage: async (key) => {
           // Implementar recuperación de mensajes si es necesario
           return { conversation: '' };
+        },
+        // 🔧 CONFIGURAR FETCH AGENT PARA USAR TÚNEL
+        // Baileys usa fetchAgent para todos los HTTP requests a WhatsApp
+        fetchAgent: {
+          fetch: tunnelProxyFetch
         }
       };
 
-      // 🌐 Agregar agente proxy si está disponible
+      // 🌐 Agregar agente proxy si está disponible (solo para WebSocket)
       if (proxyAgent) {
         socketConfig.agent = proxyAgent;
       }
@@ -534,10 +693,29 @@ class SessionManager extends EventEmitter {
         tenantId,
         connected: state.connected,
         phoneNumber: state.phoneNumber,
-        lastSeen: state.lastSeen
+        lastSeen: state.lastSeen,
+        hasTunnel: tunnelManager.hasTunnel(tenantId),
+        tunnelHealthy: tunnelManager.isTunnelHealthy(tenantId)
       });
     }
     return stats;
+  }
+
+  /**
+   * Obtiene información del túnel para un tenant
+   * @param {string} tenantId - ID del tenant
+   * @returns {object|null}
+   */
+  getTunnelInfo(tenantId) {
+    if (!tunnelManager.hasTunnel(tenantId)) {
+      return null;
+    }
+
+    return {
+      active: true,
+      healthy: tunnelManager.isTunnelHealthy(tenantId),
+      stats: tunnelManager.getTunnelStats(tenantId)
+    };
   }
 }
 
