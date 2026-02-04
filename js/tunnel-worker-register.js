@@ -363,14 +363,18 @@
           
           // ⏳ Esperar 5 segundos antes de mostrar como desconectado
           // El Service Worker se reconecta automáticamente en 3 segundos
+          console.log('⏳ [KDSTunnel] Esperando reconexión automática (5s)...');
           setTimeout(() => {
             // Solo mostrar desconectado si sigue sin conexión después de 5 seg
             if (!tunnelState.websocketConnected) {
+              console.warn('❌ [KDSTunnel] No hubo reconexión, mostrando como desconectado');
               updateState('disconnected', null, reason);
               
               if (fallbackToRailway) {
                 showFallbackNotification();
               }
+            } else {
+              console.log('✅ [KDSTunnel] Reconexión exitosa, ignorando desconexión temporal');
             }
           }, 5000);
           break;
