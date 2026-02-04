@@ -343,35 +343,35 @@
     navigator.serviceWorker.addEventListener('message', (event) => {
       console.log('📨 [KDSTunnel] Mensaje recibido:', event.data);
       
-      const { type, data } = event.data;
+      const { type, data, tenantId, reason, fallbackToRailway, status } = event.data;
 
       switch(type) {
         case 'tunnel.status':
-          updateState(data.status, null, 'Actualización de estado');
+          updateState(status, null, 'Actualización de estado');
           break;
 
         case 'tunnel.connected':
-          console.log('🌐 [KDSTunnel] Túnel WebSocket conectado:', data.tenantId);
-          tunnelState.tenantId = data.tenantId;
+          console.log('🌐 [KDSTunnel] Túnel WebSocket conectado:', tenantId);
+          tunnelState.tenantId = tenantId;
           tunnelState.websocketConnected = true;  // ✅ Marcar WebSocket conectado
           updateState('active', null, 'Túnel WebSocket establecido');
           break;
 
         case 'tunnel.disconnected':
-          console.warn('⚠️ [KDSTunnel] Túnel WebSocket desconectado:', data.reason);
+          console.warn('⚠️ [KDSTunnel] Túnel WebSocket desconectado:', reason);
           tunnelState.websocketConnected = false;  // ❌ Marcar WebSocket desconectado
-          updateState('disconnected', null, data.reason);
+          updateState('disconnected', null, reason);
           
-          if (data.fallbackToRailway) {
+          if (fallbackToRailway) {
             showFallbackNotification();
           }
           break;
 
         case 'get.tenantId':
           // Responder con tenantId
-          const tenantId = getTenantId();
+          const responseTenantId = getTenantId();
           if (event.ports && event.ports[0]) {
-            event.ports[0].postMessage({ tenantId });
+            event.ports[0].postMessage({ tenantId: responseTenantId });
           }
           break;
 
