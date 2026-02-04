@@ -471,29 +471,10 @@ class SessionManager extends EventEmitter {
         tenantId,
         connected: state.connected,
         phoneNumber: state.phoneNumber,
-        lastSeen: state.lastSeen,
-        hasTunnel: tunnelManager.hasTunnel(tenantId),
-        tunnelHealthy: tunnelManager.isTunnelHealthy(tenantId)
+        lastSeen: state.lastSeen
       });
     }
     return stats;
-  }
-
-  /**
-   * Obtiene información del túnel para un tenant
-   * @param {string} tenantId - ID del tenant
-   * @returns {object|null}
-   */
-  getTunnelInfo(tenantId) {
-    if (!tunnelManager.hasTunnel(tenantId)) {
-      return null;
-    }
-
-    return {
-      active: true,
-      healthy: tunnelManager.isTunnelHealthy(tenantId),
-      stats: tunnelManager.getTunnelStats(tenantId)
-    };
   }
 }
 

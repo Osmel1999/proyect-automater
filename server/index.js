@@ -191,123 +191,6 @@ console.log('🛡️ Rutas de admin registradas en /api/admin');
 // RUTAS DE API - TÚNEL (Anti-Ban)
 // ====================================
 
-/**
- * Handler CORS para preflight requests del túnel
- * Necesario para que el Service Worker pueda hacer POST
- */
-app.options('/api/tunnel/*', (req, res) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.header('Access-Control-Max-Age', '86400'); // Cache preflight por 24h
-  res.sendStatus(204);
-});
-
-/**
- * Obtener estado del túnel para un tenant
- */
-app.get('/api/tunnel/status/:tenantId', (req, res) => {
-  try {
-    const { tenantId } = req.params;
-    const tunnelInfo = tunnelManager.getTunnelInfo(tenantId);
-    
-    if (!tunnelInfo) {
-      return res.json({
-        success: true,
-        hasTunnel: false,
-        tenantId
-      });
-    }
-
-    res.json({
-      success: true,
-      hasTunnel: true,
-      tunnel: tunnelInfo
-    });
-
-  } catch (error) {
-    console.error('Error obteniendo estado de túnel:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Error interno'
-    });
-  }
-});
-
-/**
- * Notificar desconexión del túnel (llamado desde frontend/Service Worker)
- * OPTIONS handler para preflight CORS
- */
-app.options('/api/tunnel/disconnected', (req, res) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
-  res.sendStatus(200);
-});
-
-app.post('/api/tunnel/disconnected', express.json(), (req, res) => {
-  // Configurar CORS explícitamente para Service Worker
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
-  
-  try {
-    const { tenantId, timestamp, reason } = req.body;
-    
-    if (!tenantId) {
-      return res.status(400).json({
-        success: false,
-        error: 'tenantId requerido'
-      });
-    }
-
-    console.log(`📡 [API] Notificación de desconexión: ${tenantId}`);
-    console.log(`   💡 Razón: ${reason || 'unknown'}`);
-
-    // El tunnel manager ya debe haber detectado la desconexión
-    // pero confirmamos y emitimos evento
-    if (tunnelManager.hasTunnel(tenantId)) {
-      tunnelManager.unregisterTunnel(tenantId, reason || 'frontend_notification');
-    }
-
-    res.json({
-      success: true,
-      message: 'Desconexión registrada',
-      fallbackActive: true
-    });
-
-  } catch (error) {
-    console.error('Error procesando desconexión:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Error interno'
-    });
-  }
-});
-
-/**
- * Obtener estadísticas del túnel
- */
-app.get('/api/tunnel/stats', (req, res) => {
-  try {
-    const stats = tunnelManager.getStats();
-    
-    res.json({
-      success: true,
-      stats
-    });
-
-  } catch (error) {
-    console.error('Error obteniendo estadísticas de túnel:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Error interno'
-    });
-  }
-});
-
-console.log('✅ Rutas de túnel registradas en /api/tunnel');
-
 // ====================================
 // RUTAS DE API - TRACKING DE PEDIDOS
 // ====================================
@@ -529,12 +412,6 @@ server.listen(PORT, () => {
   console.log('   GET  /api/tenant/:tenantId     - Información de tenant');
   console.log('   GET  /api/tenants              - Listar todos los tenants');
   console.log('');
-  console.log('📝 Endpoints - Túnel (Anti-Ban):');
-  console.log('   WS   /tunnel?tenantId=xxx      - WebSocket del túnel');
-  console.log('   GET  /api/tunnel/status/:id    - Estado del túnel');
-  console.log('   POST /api/tunnel/disconnected  - Notificar desconexión');
-  console.log('   GET  /api/tunnel/stats         - Estadísticas del túnel');
-  console.log('');
   console.log('📝 Endpoints - Pagos (Multi-Gateway):');
   console.log('   POST /api/payments/webhook/:restaurantId/:gateway - Webhook de pago');
   console.log('   GET  /api/payments/status/:transactionId          - Estado de transacción');
@@ -561,13 +438,11 @@ server.listen(PORT, () => {
 // Manejo de cierre graceful
 process.on('SIGTERM', () => {
   console.log('🛑 Recibida señal SIGTERM, cerrando servidor...');
-  tunnelManager.cleanup();
   process.exit(0);
 });
 
 process.on('SIGINT', () => {
   console.log('🛑 Recibida señal SIGINT, cerrando servidor...');
-  tunnelManager.cleanup();
   process.exit(0);
 });
 
