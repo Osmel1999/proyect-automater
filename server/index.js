@@ -6,8 +6,6 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const WebSocket = require('ws');
-const url = require('url');
 const path = require('path');
 const axios = require('axios');
 const rateLimit = require('express-rate-limit');
@@ -24,9 +22,6 @@ console.log('  ✅ tenant-service cargado');
 
 const encryptionService = require('./encryption-service');
 console.log('  ✅ encryption-service cargado');
-
-const tunnelManager = require('./tunnel-manager');
-console.log('  ✅ tunnel-manager cargado');
 
 const app = express();
 const server = http.createServer(app);
@@ -47,152 +42,6 @@ const wsHandler = new BaileysWebSocketHandler(io);
 
 // Hacer wsHandler disponible globalmente para que otros módulos puedan emitir eventos
 global.baileysWebSocket = wsHandler;
-
-// 🌐 Configurar WebSocket Server para Túnel de Navegador
-const wss = new WebSocket.Server({ noServer: true });
-
-wss.on('connection', (ws, request, tenantId) => {
-  console.log(`🔌 [Tunnel] Nueva conexión WebSocket: ${tenantId || 'sin ID inicial'}`);
-  
-  // Obtener información del dispositivo de los headers
-  const deviceInfo = {
-    tenantId: tenantId || null,
-    userAgent: request.headers['user-agent'],
-    ip: request.headers['x-forwarded-for'] || request.socket.remoteAddress,
-    timestamp: Date.now()
-  };
-
-  let currentTenantId = tenantId;
-  let isRegistered = false;
-
-  // Si tenemos tenantId, registrar inmediatamente
-  if (tenantId) {
-    isRegistered = tunnelManager.registerTunnel(ws, deviceInfo);
-    if (!isRegistered) {
-      ws.close(1008, 'Error al registrar túnel');
-      return;
-    }
-  }
-
-  // Manejar mensajes del navegador
-  ws.on('message', (message) => {
-    try {
-      const data = JSON.parse(message.toString());
-      
-      switch(data.type) {
-        case 'tunnel.init':
-          // Actualizar info del dispositivo
-          console.log(`🔧 [Tunnel] Túnel inicializado: ${currentTenantId || 'sin ID'}`);
-          if (data.deviceInfo) {
-            Object.assign(deviceInfo, data.deviceInfo);
-          }
-          break;
-
-        case 'tunnel.register':
-          // Registro tardío con tenantId
-          if (!isRegistered && data.tenantId) {
-            currentTenantId = data.tenantId;
-            deviceInfo.tenantId = data.tenantId;
-            
-            console.log(`📝 [Tunnel] Registro tardío: ${data.tenantId}`);
-            isRegistered = tunnelManager.registerTunnel(ws, deviceInfo);
-            
-            if (isRegistered) {
-              ws.send(JSON.stringify({ 
-                type: 'tunnel.registered', 
-                tenantId: data.tenantId,
-                timestamp: Date.now()
-              }));
-            } else {
-              ws.send(JSON.stringify({ 
-                type: 'tunnel.error', 
-                error: 'Error al registrar túnel'
-              }));
-            }
-          }
-          break;
-
-        case 'ping':
-          // Responder pong y actualizar heartbeat
-          if (currentTenantId) {
-            tunnelManager.updateHeartbeat(currentTenantId);
-          }
-          ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
-          break;
-
-        case 'pong':
-          // Actualizar heartbeat
-          if (currentTenantId) {
-            tunnelManager.updateHeartbeat(currentTenantId);
-          }
-          break;
-
-        case 'proxy.response':
-          // Respuesta de request HTTP
-          tunnelManager.handleProxyResponse(data.requestId, {
-            status: data.status,
-            headers: data.headers,
-            body: data.body
-          });
-          break;
-
-        case 'proxy.error':
-          // Error en request HTTP
-          tunnelManager.handleProxyError(data.requestId, data.error);
-          break;
-
-        default:
-          console.warn(`⚠️ [Tunnel] Mensaje desconocido: ${data.type}`);
-      }
-    } catch (error) {
-      console.error('❌ [Tunnel] Error procesando mensaje:', error);
-    }
-  });
-
-  // Manejar cierre de conexión
-  ws.on('close', (code, reason) => {
-    const reasonStr = reason ? reason.toString() : 'unknown';
-    console.log(`🔌 [Tunnel] Conexión cerrada: ${currentTenantId || 'sin ID'}`);
-    console.log(`   📝 Code: ${code}, Reason: ${reasonStr}`);
-    console.log(`   ⏱️ Duración: ${currentTenantId && tunnelManager.hasTunnel(currentTenantId) ? Math.round((Date.now() - tunnelManager.getTunnelInfo(currentTenantId).connectedAt) / 1000) : '?'}s`);
-    console.log(`   🔍 ReadyState antes de cerrar: ${ws.readyState}`);
-    
-    if (currentTenantId) {
-      tunnelManager.unregisterTunnel(currentTenantId, reasonStr || 'connection_closed');
-    }
-  });
-
-  // Manejar errores
-  ws.on('error', (error) => {
-    console.error(`❌ [Tunnel] Error en WebSocket: ${currentTenantId || 'sin ID'}`, error.message);
-    if (currentTenantId) {
-      tunnelManager.unregisterTunnel(currentTenantId, 'websocket_error');
-    }
-  });
-});
-
-// Manejar upgrade de HTTP a WebSocket
-server.on('upgrade', (request, socket, head) => {
-  const pathname = url.parse(request.url).pathname;
-  
-  if (pathname === '/tunnel') {
-    // Extraer tenantId de query params (opcional en conexión inicial)
-    const query = url.parse(request.url, true).query;
-    const tenantId = query.tenantId || null;
-
-    console.log(`🔄 [Tunnel] Upgrade a WebSocket: ${tenantId || 'sin tenant ID inicial'}`);
-    
-    wss.handleUpgrade(request, socket, head, (ws) => {
-      wss.emit('connection', ws, request, tenantId);
-    });
-  } else {
-    // Dejar que otros handlers manejen otros paths
-    console.warn(`⚠️ [Tunnel] Upgrade desconocido: ${pathname}`);
-    socket.destroy();
-  }
-});
-
-console.log('✅ WebSocket Server configurado en /tunnel');
 
 // CORS middleware - DEBE IR ANTES de express.json() para manejar preflight
 app.use((req, res, next) => {
