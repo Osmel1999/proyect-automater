@@ -282,24 +282,41 @@ class SessionManager extends EventEmitter {
         saveCreds = authState.saveCreds;
       }
 
-      // 🌐 ESTRATEGIA DE PROXY INTELIGENTE
-      // TEMPORAL: Deshabilitado para todos los tipos mientras debuggeamos
-      // ISP Proxy: Modo híbrido (QR sin proxy, mensajes con proxy)
-      // Residential Proxy: Modo híbrido (puede causar timeout si se usa desde inicio)
-      // Sin proxy: Conexión directa
+      // 🌐 ESTRATEGIA ANTI-BAN - SISTEMA CONFIGURABLE
+      // ================================================
+      // Hay 3 modos de operación:
+      // 1. TUNNEL: Usa el navegador del restaurante como proxy (IP real del local)
+      // 2. PROXY: Usa Bright Data (IPs residenciales/ISP pagadas)
+      // 3. DIRECT: Sin protección (IP de Railway - RIESGO DE BAN)
+      //
+      // Configurar via variable de entorno ANTI_BAN_MODE:
+      // - 'tunnel' (default): Sistema de túnel por navegador (GRATIS)
+      // - 'proxy': Sistema Bright Data (PAGO ~$0.21-0.42/restaurante)
+      // - 'direct': Sin protección (NO RECOMENDADO)
       
-      const PROXY_ENABLED = false; // TEMPORAL: Deshabilitado
-      const PROXY_TYPE = process.env.PROXY_TYPE || 'none';
+      const ANTI_BAN_MODE = process.env.ANTI_BAN_MODE || 'tunnel';
+      const TUNNEL_ENABLED = ANTI_BAN_MODE === 'tunnel';
+      const PROXY_ENABLED = ANTI_BAN_MODE === 'proxy';
+      const PROXY_TYPE = process.env.PROXY_TYPE || 'isp';
       const USE_HYBRID_PROXY = true; // Siempre híbrido por ahora
+      
+      logger.info(`[${tenantId}] 🛡️ Modo Anti-Ban: ${ANTI_BAN_MODE.toUpperCase()}`);
       
       let proxyAgent = null;
       let useHybridMode = false;
+      let tunnelProxyFetch = null;
       
-      if (PROXY_ENABLED) {
-        // ISP Proxy: Modo híbrido también (no funciona con WebSocket inicial)
+      // 🔧 MODO TÚNEL: Usar navegador del restaurante
+      if (TUNNEL_ENABLED) {
+        tunnelProxyFetch = createTunnelProxyFetch(tenantId, global.fetch || fetch);
+        logger.info(`[${tenantId}] 🔧 Sistema de TÚNEL activado - requests vía navegador del restaurante`);
+      }
+      // 🌐 MODO PROXY: Usar Bright Data
+      else if (PROXY_ENABLED) {
+        // ISP Proxy: Modo híbrido (QR sin proxy, mensajes con proxy)
         if (PROXY_TYPE === 'isp') {
           useHybridMode = true;
-          logger.info(`[${tenantId}] � ISP Proxy: Modo híbrido (QR sin proxy, mensajes con proxy)`);
+          logger.info(`[${tenantId}] 🌐 ISP Proxy: Modo híbrido (QR sin proxy, mensajes con proxy)`);
         }
         // Residential/Datacenter: Modo híbrido si está habilitado
         else if (USE_HYBRID_PROXY) {
@@ -313,14 +330,12 @@ class SessionManager extends EventEmitter {
             logger.info(`[${tenantId}] 🔐 Usando proxy desde inicio (modo legacy)`);
           }
         }
-      } else {
-        logger.warn(`[${tenantId}] ⚠️ Proxy deshabilitado - usando IP directa`);
+      }
+      // ⚠️ MODO DIRECTO: Sin protección
+      else {
+        logger.warn(`[${tenantId}] ⚠️ MODO DIRECTO - Sin protección anti-ban (IP de Railway)`);
       }
 
-      // 🔧 Crear fetch proxy para túnel del navegador
-      const tunnelProxyFetch = createTunnelProxyFetch(tenantId, global.fetch || fetch);
-      logger.info(`[${tenantId}] 🔧 FetchAgent configurado con sistema de túnel`);
-      
       // Configurar socket de Baileys
       const socketConfig = {
         auth: state,
@@ -334,17 +349,20 @@ class SessionManager extends EventEmitter {
         getMessage: async (key) => {
           // Implementar recuperación de mensajes si es necesario
           return { conversation: '' };
-        },
-        // 🔧 CONFIGURAR FETCH AGENT PARA USAR TÚNEL
-        // Baileys usa fetchAgent para todos los HTTP requests a WhatsApp
-        fetchAgent: {
-          fetch: tunnelProxyFetch
         }
       };
+
+      // 🔧 CONFIGURAR FETCH AGENT SEGÚN MODO ANTI-BAN
+      if (TUNNEL_ENABLED && tunnelProxyFetch) {
+        // Baileys usa fetchAgent para todos los HTTP requests a WhatsApp
+        socketConfig.fetchAgent = { fetch: tunnelProxyFetch };
+        logger.info(`[${tenantId}] 🔧 FetchAgent configurado con sistema de TÚNEL`);
+      }
 
       // 🌐 Agregar agente proxy si está disponible (solo para WebSocket)
       if (proxyAgent) {
         socketConfig.agent = proxyAgent;
+        logger.info(`[${tenantId}] 🌐 Agent configurado con sistema de PROXY`);
       }
 
       const socket = makeWASocket(socketConfig);
