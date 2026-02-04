@@ -358,11 +358,22 @@ class SessionManager extends EventEmitter {
         socketConfig.fetchAgent = { fetch: tunnelProxyFetch };
         logger.info(`[${tenantId}] 🔧 FetchAgent configurado con sistema de TÚNEL`);
       }
+      // 🌐 MODO PROXY: Configurar fetchAgent con proxy (para HTTP requests)
+      else if (PROXY_ENABLED) {
+        // En modo híbrido, obtener el proxy agent AHORA para HTTP requests
+        const proxyAgentForFetch = proxyManager.getProxyAgent(tenantId);
+        if (proxyAgentForFetch) {
+          socketConfig.fetchAgent = { 
+            agent: proxyAgentForFetch 
+          };
+          logger.info(`[${tenantId}] 🌐 FetchAgent configurado con PROXY residencial`);
+        }
+      }
 
-      // 🌐 Agregar agente proxy si está disponible (solo para WebSocket)
+      // 🌐 Agregar agente proxy para WebSocket si está disponible (solo modo no-híbrido)
       if (proxyAgent) {
         socketConfig.agent = proxyAgent;
-        logger.info(`[${tenantId}] 🌐 Agent configurado con sistema de PROXY`);
+        logger.info(`[${tenantId}] 🌐 WebSocket Agent configurado con sistema de PROXY`);
       }
 
       const socket = makeWASocket(socketConfig);
