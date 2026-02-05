@@ -1,37 +1,92 @@
-        // ============================================
-        // Capturar código de referido de la URL (?ref=REF-XXXXXX)
-        // ============================================
-        const urlParams = new URLSearchParams(window.location.search);
-        const refCode = urlParams.get('ref');
-        let partnerData = null; // Se llenará si el código es válido
+// Authentication page functionality
+// Firebase is initialized in config.js before this script loads
 
-        if (refCode) {
-            console.log('🔗 Código de referido detectado en URL:', refCode);
-            // Buscar el partner por código de referido
-            firebase.database().ref('partners')
-                .orderByChild('codigoReferido')
-                .equalTo(refCode)
-                .once('value')
-                .then(snapshot => {
-                    if (snapshot.exists()) {
-                        const partners = snapshot.val();
-                        const partnerId = Object.keys(partners)[0];
-                        partnerData = { id: partnerId, ...partners[partnerId] };
-                        console.log('✅ Partner encontrado para referido:', partnerData.nombre, '(ID:', partnerId, ')');
-                    } else {
-                        console.warn('⚠️ Código de referido no válido o no encontrado:', refCode);
-                    }
-                })
-                .catch(err => {
-                    console.error('❌ Error al buscar partner por código de referido:', err);
-                });
-        } else {
-            console.log('ℹ️ Sin código de referido en la URL. Registro normal.');
+// API URL
+const API_URL = 'https://api.kdsapp.site';
+
+// Código de referido (si viene en la URL)
+let codigoReferido = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Auth.js: DOM loaded, initializing...');
+    
+    // Verify Firebase is initialized
+    if (!firebase.apps.length) {
+        console.error('❌ Firebase not initialized!');
+        alert('Error: Firebase no está inicializado. Por favor recarga la página.');
+        return;
+    }
+    
+    console.log('✅ Firebase initialized:', firebase.app().name);
+    
+    // Check URL params for register mode and referral code
+    const urlParams = new URLSearchParams(window.location.search);
+    const mode = urlParams.get('mode');
+    codigoReferido = urlParams.get('ref');
+    
+    // Si hay código de referido, guardarlo y mostrar indicador
+    if (codigoReferido) {
+        console.log('🎯 Código de referido detectado:', codigoReferido);
+        localStorage.setItem('codigoReferido', codigoReferido);
+        verificarYMostrarCodigoReferido(codigoReferido);
+    } else {
+        // Verificar si ya había un código guardado (período de gracia de 30 días)
+        const savedCodigo = localStorage.getItem('codigoReferido');
+        if (savedCodigo) {
+            codigoReferido = savedCodigo;
+            console.log('🎯 Código de referido recuperado de localStorage:', codigoReferido);
+            verificarYMostrarCodigoReferido(codigoReferido);
         }
+    }
 
-        // Tabs functionality
-        const tabs = document.querySelectorAll('.tab');
-        const sections = document.querySelectorAll('.form-section');
+    // Tabs functionality
+    const tabs = document.querySelectorAll('.tab');
+    const sections = document.querySelectorAll('.form-section');
+    
+    // If mode=register, switch to register tab and show trial modal
+    if (mode === 'register') {
+        // Switch to register tab
+        tabs.forEach(t => t.classList.remove('active'));
+        sections.forEach(s => s.classList.remove('active'));
+        
+        const registerTab = document.querySelector('[data-tab="register"]');
+        const registerSection = document.getElementById('registerSection');
+        
+        if (registerTab) registerTab.classList.add('active');
+        if (registerSection) registerSection.classList.add('active');
+        
+        // Show trial modal
+        const trialModal = document.getElementById('trialModal');
+        if (trialModal) {
+            setTimeout(() => {
+                trialModal.classList.add('active');
+            }, 300);
+        }
+    }
+    
+    // Trial modal close button
+    const closeTrialModalBtn = document.getElementById('closeTrialModal');
+    const trialModal = document.getElementById('trialModal');
+    
+    if (closeTrialModalBtn && trialModal) {
+        closeTrialModalBtn.addEventListener('click', () => {
+            trialModal.classList.remove('active');
+        });
+        
+        // Close on backdrop click
+        trialModal.addEventListener('click', (e) => {
+            if (e.target === trialModal) {
+                trialModal.classList.remove('active');
+            }
+        });
+        
+        // Close on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && trialModal.classList.contains('active')) {
+                trialModal.classList.remove('active');
+            }
+        });
+    }
 
         tabs.forEach(tab => {
             tab.addEventListener('click', () => {
@@ -59,7 +114,59 @@
                     pinDigits[index - 1].focus();
                 }
             });
+            
+            // Validar PIN en tiempo real
+            digit.addEventListener('input', () => {
+                const pin = getPin();
+                const pinError = document.getElementById('pinError');
+                if (pin.length === 4) {
+                    if (validatePin(pin)) {
+                        pinError.classList.remove('show');
+                    } else {
+                        pinError.classList.add('show');
+                    }
+                } else {
+                    pinError.classList.remove('show');
+                }
+            });
         });
+
+        // Validación en tiempo real para contraseña
+        const registerPassword = document.getElementById('registerPassword');
+        const registerPasswordConfirm = document.getElementById('registerPasswordConfirm');
+        const passwordError = document.getElementById('passwordError');
+        const passwordConfirmError = document.getElementById('passwordConfirmError');
+
+        if (registerPassword) {
+            registerPassword.addEventListener('input', () => {
+                const password = registerPassword.value;
+                if (password.length > 0 && password.length < 6) {
+                    passwordError.classList.add('show');
+                } else {
+                    passwordError.classList.remove('show');
+                }
+                // También verificar confirmación si ya tiene valor
+                if (registerPasswordConfirm.value.length > 0) {
+                    if (password !== registerPasswordConfirm.value) {
+                        passwordConfirmError.classList.add('show');
+                    } else {
+                        passwordConfirmError.classList.remove('show');
+                    }
+                }
+            });
+        }
+
+        if (registerPasswordConfirm) {
+            registerPasswordConfirm.addEventListener('input', () => {
+                const password = registerPassword.value;
+                const confirm = registerPasswordConfirm.value;
+                if (confirm.length > 0 && password !== confirm) {
+                    passwordConfirmError.classList.add('show');
+                } else {
+                    passwordConfirmError.classList.remove('show');
+                }
+            });
+        }
 
         // Validate PIN
         function validatePin(pin) {
@@ -94,9 +201,21 @@
         // Show alert
         function showAlert(message, type = 'error') {
             const alertContainer = document.getElementById('alertContainer');
+            const icon = type === 'error' 
+                ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                     <circle cx="12" cy="12" r="10"/>
+                     <line x1="15" y1="9" x2="9" y2="15"/>
+                     <line x1="9" y1="9" x2="15" y2="15"/>
+                   </svg>`
+                : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                     <polyline points="22 4 12 14.01 9 11.01"/>
+                   </svg>`;
+            
             alertContainer.innerHTML = `
                 <div class="alert alert-${type} show">
-                    ${message}
+                    ${icon}
+                    <span>${message}</span>
                 </div>
             `;
 
@@ -167,8 +286,36 @@
                     }
                 }
                 
+                // Si no se encontró en users, buscar en partners
                 if (!userSnapshot || !userSnapshot.exists()) {
-                    console.error('❌ Usuario no encontrado después de 3 intentos');
+                    console.log('🔍 Usuario no encontrado en users, buscando en partners...');
+                    
+                    const partnerSnapshot = await firebase.database()
+                        .ref('partners')
+                        .orderByChild('email')
+                        .equalTo(email)
+                        .once('value');
+                    
+                    if (partnerSnapshot.exists()) {
+                        console.log('✅ Usuario es un PARTNER');
+                        const partnerData = Object.values(partnerSnapshot.val())[0];
+                        const partnerId = Object.keys(partnerSnapshot.val())[0];
+                        
+                        // Guardar datos del partner
+                        localStorage.setItem('userEmail', email);
+                        localStorage.setItem('userName', partnerData.nombre);
+                        localStorage.setItem('userRole', 'partner');
+                        localStorage.setItem('partnerId', partnerId);
+                        
+                        console.log('✅ Login exitoso como partner');
+                        
+                        // Redirigir al partner dashboard
+                        window.location.href = 'partner-dashboard.html';
+                        return;
+                    }
+                    
+                    // No se encontró ni en users ni en partners
+                    console.error('❌ Usuario no encontrado en users ni partners');
                     console.log('📧 Email buscado:', email);
                     throw new Error('Usuario no encontrado en la base de datos. Por favor, contacta soporte.');
                 }
@@ -178,6 +325,56 @@
 
                 console.log('✅ Datos de usuario obtenidos:', { userId, tenantId: userData.tenantId });
 
+                // Verificar membresía del tenant
+                const tenantSnapshot = await firebase.database()
+                    .ref(`tenants/${userData.tenantId}/membership`)
+                    .once('value');
+                
+                const membership = tenantSnapshot.val();
+                console.log('📋 Membresía del tenant:', membership);
+                
+                let membershipStatus = 'active';
+                let membershipPlan = 'trial';
+                let daysRemaining = 0;
+                
+                if (membership) {
+                    membershipPlan = membership.plan || 'trial';
+                    
+                    // Verificar si el trial o plan ha expirado
+                    if (membershipPlan === 'trial' && membership.trialEndDate) {
+                        const trialEnd = new Date(membership.trialEndDate);
+                        const now = new Date();
+                        
+                        if (now > trialEnd) {
+                            membershipStatus = 'expired';
+                            console.log('⚠️ Trial expirado');
+                            
+                            // Actualizar estado en Firebase
+                            await firebase.database()
+                                .ref(`tenants/${userData.tenantId}/membership/status`)
+                                .set('expired');
+                        } else {
+                            membershipStatus = 'active';
+                            daysRemaining = Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24));
+                            console.log(`✅ Trial activo - ${daysRemaining} días restantes`);
+                        }
+                    } else if (membership.paidPlanEndDate) {
+                        // Verificar plan de pago
+                        const planEnd = new Date(membership.paidPlanEndDate);
+                        const now = new Date();
+                        
+                        if (now > planEnd) {
+                            membershipStatus = 'expired';
+                            await firebase.database()
+                                .ref(`tenants/${userData.tenantId}/membership/status`)
+                                .set('expired');
+                        } else {
+                            membershipStatus = membership.status || 'active';
+                            daysRemaining = Math.ceil((planEnd - now) / (1000 * 60 * 60 * 24));
+                        }
+                    }
+                }
+
                 // Store user data in localStorage
                 localStorage.setItem('currentUserId', userId);
                 localStorage.setItem('currentTenantId', userData.tenantId);
@@ -185,6 +382,11 @@
                 localStorage.setItem('userEmail', userData.email);
                 localStorage.setItem('userName', userData.name);
                 localStorage.setItem('businessName', userData.businessName);
+                
+                // Guardar datos de membresía
+                localStorage.setItem('membershipPlan', membershipPlan);
+                localStorage.setItem('membershipStatus', membershipStatus);
+                localStorage.setItem('membershipDaysRemaining', daysRemaining.toString());
 
                 console.log('✅ Datos guardados en localStorage');
                 
@@ -198,9 +400,25 @@
                     businessName: localStorage.getItem('businessName')
                 });
 
-                // ✅ FIX: Siempre redirigir a select.html después del login
-                // El usuario decide a dónde ir (KDS o Dashboard)
-                console.log('🔄 Login exitoso, redirigiendo a select...');
+                // ✅ Verificar si es un socio comercial (partner)
+                console.log('🔄 Login exitoso, verificando rol del usuario...');
+                
+                try {
+                    const roleResponse = await fetch(`${API_URL}/api/partners/check-role/${encodeURIComponent(email)}`);
+                    const roleData = await roleResponse.json();
+                    
+                    if (roleData.success && roleData.isPartner) {
+                        console.log('🤝 Usuario es un socio comercial, redirigiendo a partner-dashboard...');
+                        setTimeout(() => {
+                            window.location.href = '/partner-dashboard.html';
+                        }, 100);
+                        return;
+                    }
+                } catch (roleError) {
+                    console.log('⚠️ Error verificando rol de partner (continuando con flujo normal):', roleError);
+                }
+                
+                // Si no es partner, redirigir a select.html
                 console.log('🎯 URL de redirección:', '/select.html');
                 console.log('⏰ Timestamp:', new Date().toISOString());
                 
@@ -297,21 +515,46 @@
                     firebaseUid: user.uid
                 };
 
-                // Si hay partner referido válido, agregar datos de referido al usuario
-                if (partnerData) {
-                    userDataToSave.referidoPor = {
-                        partnerId: partnerData.id,
-                        codigoReferido: partnerData.codigoReferido,
-                        nombrePartner: partnerData.nombre,
-                        fechaReferido: new Date().toISOString()
-                    };
-                    console.log('🤝 Usuario referido por partner:', partnerData.nombre);
+                // Si hay código de referido, buscar el partner directamente en Firebase
+                let partnerReferido = null;
+                if (codigoReferido) {
+                    console.log('🔗 Buscando partner por código de referido:', codigoReferido);
+                    try {
+                        const partnerSnap = await firebase.database().ref('partners')
+                            .orderByChild('codigoReferido')
+                            .equalTo(codigoReferido)
+                            .once('value');
+                        
+                        if (partnerSnap.exists()) {
+                            const partners = partnerSnap.val();
+                            const pId = Object.keys(partners)[0];
+                            partnerReferido = { id: pId, ...partners[pId] };
+                            console.log('✅ Partner encontrado:', partnerReferido.nombre, '(ID:', pId, ')');
+                            
+                            // Agregar datos de referido al usuario
+                            userDataToSave.referidoPor = {
+                                partnerId: partnerReferido.id,
+                                codigoReferido: partnerReferido.codigoReferido,
+                                nombrePartner: partnerReferido.nombre,
+                                fechaReferido: new Date().toISOString()
+                            };
+                        } else {
+                            console.warn('⚠️ Código de referido no encontrado en Firebase:', codigoReferido);
+                        }
+                    } catch (refError) {
+                        console.error('⚠️ Error buscando partner por código:', refError);
+                    }
                 }
 
                 // Create user data in database
                 await firebase.database().ref('users/' + userId).set(userDataToSave);
 
-                // Preparar datos del tenant
+                // Create tenant data in database (nuevo registro)
+                // Calcular fecha de expiración del trial (30 días)
+                const trialStartDate = new Date();
+                const trialEndDate = new Date();
+                trialEndDate.setDate(trialEndDate.getDate() + 30);
+                
                 const tenantDataToSave = {
                     userId: userId,
                     email: email,
@@ -319,6 +562,16 @@
                         name: businessName,
                         phone: '',
                         whatsappConnected: false
+                    },
+                    // Información de membresía
+                    membership: {
+                        plan: 'trial',
+                        status: 'active',
+                        trialStartDate: trialStartDate.toISOString(),
+                        trialEndDate: trialEndDate.toISOString(),
+                        paidPlanStartDate: null,
+                        paidPlanEndDate: null,
+                        lastPaymentDate: null
                     },
                     onboarding: {
                         steps: {
@@ -346,40 +599,36 @@
                 };
 
                 // Si hay partner referido válido, agregar datos al tenant
-                if (partnerData) {
-                    tenantDataToSave.partnerId = partnerData.id;
-                    tenantDataToSave.codigoReferido = partnerData.codigoReferido;
+                if (partnerReferido) {
+                    tenantDataToSave.partnerId = partnerReferido.id;
+                    tenantDataToSave.codigoReferido = partnerReferido.codigoReferido;
+                    tenantDataToSave.fueReferido = true;
+                    tenantDataToSave.fechaVinculacion = Date.now();
                     tenantDataToSave.referidoPor = {
-                        partnerId: partnerData.id,
-                        codigoReferido: partnerData.codigoReferido,
-                        nombrePartner: partnerData.nombre,
+                        partnerId: partnerReferido.id,
+                        codigoReferido: partnerReferido.codigoReferido,
+                        nombrePartner: partnerReferido.nombre,
                         fechaReferido: new Date().toISOString()
                     };
-                    console.log('🏪 Tenant vinculado al partner:', partnerData.id);
+                    console.log('🏪 Tenant vinculado al partner:', partnerReferido.nombre);
                 }
 
-                // Create tenant data in database
                 await firebase.database().ref('tenants/' + tenantId).set(tenantDataToSave);
-
                 console.log('✅ Tenant creado en Firebase:', tenantId);
-
-                // Si hay partner referido, actualizar sus estadísticas y crear registro de referido
-                if (partnerData) {
+                
+                // 🤝 Si hay partner referido, actualizar estadísticas y crear registro
+                if (partnerReferido) {
                     try {
-                        // Incrementar totalReferidos y referidosActivos del partner
-                        const partnerRef = firebase.database().ref('partners/' + partnerData.id);
+                        const partnerRef = firebase.database().ref('partners/' + partnerReferido.id);
                         
-                        await partnerRef.child('estadisticas/totalReferidos').transaction(current => {
-                            return (current || 0) + 1;
-                        });
-                        await partnerRef.child('estadisticas/referidosActivos').transaction(current => {
-                            return (current || 0) + 1;
-                        });
+                        // Incrementar estadísticas del partner
+                        await partnerRef.child('estadisticas/totalReferidos').transaction(current => (current || 0) + 1);
+                        await partnerRef.child('estadisticas/referidosActivos').transaction(current => (current || 0) + 1);
 
                         // Crear registro en comisiones_referidos para tracking
                         await firebase.database().ref('comisiones_referidos').push({
-                            partnerId: partnerData.id,
-                            codigoReferido: partnerData.codigoReferido,
+                            partnerId: partnerReferido.id,
+                            codigoReferido: partnerReferido.codigoReferido,
                             tenantId: tenantId,
                             userId: userId,
                             nombreNegocio: businessName,
@@ -389,8 +638,10 @@
                         });
 
                         console.log('✅ Estadísticas del partner actualizadas y referido registrado');
+                        
+                        // Limpiar código de referido del localStorage
+                        localStorage.removeItem('codigoReferido');
                     } catch (partnerError) {
-                        // No bloquear el registro si falla la actualización del partner
                         console.error('⚠️ Error al actualizar estadísticas del partner (no crítico):', partnerError);
                     }
                 }
@@ -437,3 +688,111 @@
                 showAlert(errorMessage, 'error');
             }
         });
+
+}); // End of DOMContentLoaded
+
+// ==========================================
+// FUNCIONES DE CÓDIGO DE REFERIDO
+// ==========================================
+
+/**
+ * Verifica el código de referido y muestra un indicador si es válido
+ * Usa Firebase directamente (sin depender de API backend)
+ */
+async function verificarYMostrarCodigoReferido(codigo) {
+    try {
+        const snapshot = await firebase.database().ref('partners')
+            .orderByChild('codigoReferido')
+            .equalTo(codigo)
+            .once('value');
+        
+        if (snapshot.exists()) {
+            const partners = snapshot.val();
+            const partnerInfo = Object.values(partners)[0];
+            mostrarIndicadorReferido(codigo, partnerInfo.nombre);
+        } else {
+            console.log('⚠️ Código de referido no válido:', codigo);
+            localStorage.removeItem('codigoReferido');
+        }
+    } catch (error) {
+        console.error('Error verificando código de referido:', error);
+    }
+}
+
+/**
+ * Muestra un indicador visual de que el usuario viene referido
+ */
+function mostrarIndicadorReferido(codigo, partnerNombre) {
+    // Crear el indicador
+    const indicator = document.createElement('div');
+    indicator.id = 'referralIndicator';
+    indicator.className = 'referral-indicator';
+    indicator.innerHTML = `
+        <div class="referral-badge">
+            <span class="referral-icon">🎯</span>
+            <span class="referral-text">
+                Referido por <strong>${partnerNombre || codigo}</strong>
+            </span>
+            <button class="referral-remove" onclick="removerCodigoReferido()" title="Eliminar">×</button>
+        </div>
+    `;
+    
+    // Insertar al inicio del body
+    document.body.insertBefore(indicator, document.body.firstChild);
+    
+    // Agregar estilos
+    const style = document.createElement('style');
+    style.textContent = `
+        .referral-indicator {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            padding: 10px 20px;
+            z-index: 1000;
+            text-align: center;
+        }
+        .referral-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: white;
+            font-size: 14px;
+        }
+        .referral-icon {
+            font-size: 18px;
+        }
+        .referral-remove {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 14px;
+            line-height: 1;
+            margin-left: 8px;
+        }
+        .referral-remove:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .auth-container {
+            margin-top: 50px !important;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+/**
+ * Remueve el código de referido
+ */
+function removerCodigoReferido() {
+    codigoReferido = null;
+    localStorage.removeItem('codigoReferido');
+    const indicator = document.getElementById('referralIndicator');
+    if (indicator) {
+        indicator.remove();
+    }
+}
