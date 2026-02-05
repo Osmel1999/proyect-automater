@@ -29,6 +29,12 @@
       ".indexOn": ["partnerId", "tenantId", "estado", "fechaGenerada"]
     },
     
+    "comisiones_referidos": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      ".indexOn": ["partnerId", "tenantId", "estado", "fechaRegistro"]
+    },
+    
     "tenants": {
       "$tenantId": {
         ".read": true,
