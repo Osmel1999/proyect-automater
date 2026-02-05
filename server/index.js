@@ -47,7 +47,7 @@ global.baileysWebSocket = wsHandler;
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Email');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   
   // Handle preflight requests ANTES de cualquier otro procesamiento
   if (req.method === 'OPTIONS') {
@@ -186,14 +186,6 @@ console.log('✅ Rutas de membresías registradas en /api/membership');
 const adminRoutes = require('./routes/admin-routes');
 app.use('/api/admin', adminRoutes);
 console.log('🛡️ Rutas de admin registradas en /api/admin');
-
-// ====================================
-// RUTAS DE API - SOCIOS COMERCIALES
-// ====================================
-
-const partnerRoutes = require('./routes/partner-routes');
-app.use('/api/partners', partnerRoutes);
-console.log('🤝 Rutas de partners registradas en /api/partners');
 
 // ====================================
 // RUTAS DE API - TRACKING DE PEDIDOS

@@ -1,616 +1,335 @@
 /**
- * 🤝 Partner Service
- * Servicio para gestionar socios comerciales y comisiones
+ * 🤝 Partner Service - Gestión de Socios Comerciales y Comisiones
+ * 
+ * Maneja:
+ * - Generación de comisiones por referidos
+ * - Actualización de estadísticas de partners
+ * - Cálculo de ingresos por comisiones
+ * - Tracking de tenants referidos
  */
 
 const admin = require('firebase-admin');
 
-const ADMIN_EMAIL = 'odfarakm@gmail.com';
-const COMISION_PORCENTAJE = 30; // 30%
-const PERIODO_GRACIA_DIAS = 30; // 30 días para vincular tenant
+// Configuración de comisiones (porcentajes)
+const COMISION_CONFIG = {
+  registro: 10,           // 10% del primer pago
+  pago_membresia: 10,     // 10% de cada pago mensual
+  renovacion: 10          // 10% de cada renovación
+};
 
 /**
- * Genera un código de referido único y anónimo
- * Formato: REF-XXXXXX (6 caracteres alfanuméricos)
+ * Genera una comisión para un partner cuando un tenant realiza un pago
+ * @param {string} tenantId - ID del tenant que realizó el pago
+ * @param {string} tenantNombre - Nombre del restaurante/tenant
+ * @param {number} valorBase - Valor del pago (en pesos)
+ * @param {string} plan - Plan contratado
+ * @param {string} transaccionId - ID de la transacción de Wompi
+ * @returns {Promise<Object|null>} Datos de la comisión generada o null
  */
-function generarCodigoReferido() {
-    const caracteres = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Sin I, O, 0, 1 para evitar confusiones
-    let codigo = '';
-    for (let i = 0; i < 6; i++) {
-        codigo += caracteres.charAt(Math.floor(Math.random() * caracteres.length));
-    }
-    return `REF-${codigo}`;
-}
-
-/**
- * Verifica si un código de referido existe y está activo
- */
-async function verificarCodigoReferido(codigo) {
-    try {
-        const db = admin.database();
-        const snapshot = await db.ref('partners')
-            .orderByChild('codigoReferido')
-            .equalTo(codigo)
-            .once('value');
-        
-        if (!snapshot.exists()) {
-            return { valid: false, error: 'Código de referido no encontrado' };
-        }
-        
-        const partners = snapshot.val();
-        const partnerId = Object.keys(partners)[0];
-        const partner = partners[partnerId];
-        
-        if (partner.estado !== 'activo') {
-            return { valid: false, error: 'Código de referido inactivo' };
-        }
-        
-        return {
-            valid: true,
-            partnerId,
-            partnerNombre: partner.nombre
-        };
-        
-    } catch (error) {
-        console.error('Error verificando código referido:', error);
-        return { valid: false, error: 'Error verificando código' };
-    }
-}
-
-/**
- * Crea un nuevo socio comercial (solo admin)
- */
-async function crearPartner(datosPartner, adminEmail) {
-    if (adminEmail !== ADMIN_EMAIL) {
-        throw new Error('No autorizado');
+async function generarComision(tenantId, tenantNombre, valorBase, plan, transaccionId) {
+  try {
+    console.log(`💰 [PartnerService] Generando comisión para tenant ${tenantId}`);
+    
+    // 1. Obtener datos del tenant para saber si tiene partner
+    const tenantSnapshot = await admin.database()
+      .ref(`tenants/${tenantId}`)
+      .once('value');
+    
+    if (!tenantSnapshot.exists()) {
+      console.warn(`⚠️ [PartnerService] Tenant ${tenantId} no encontrado`);
+      return null;
     }
     
-    try {
-        const db = admin.database();
-        const partnerId = db.ref('partners').push().key;
-        
-        // Generar código único y anónimo
-        let codigoReferido = generarCodigoReferido();
-        
-        // Verificar que no exista
-        let intentos = 0;
-        while (intentos < 10) {
-            const existe = await verificarCodigoReferido(codigoReferido);
-            if (!existe.valid) break;
-            codigoReferido = generarCodigoReferido();
-            intentos++;
-        }
-        
-        const partner = {
-            id: partnerId,
-            nombre: datosPartner.nombre,
-            email: datosPartner.email.toLowerCase(),
-            telefono: datosPartner.telefono || '',
-            codigoReferido,
-            enlaceReferido: `https://kdsapp.site/auth.html?ref=${codigoReferido}`,
-            estado: 'activo',
-            fechaRegistro: Date.now(),
-            creadoPor: adminEmail,
-            datosPago: {
-                banco: datosPartner.banco || '',
-                tipoCuenta: datosPartner.tipoCuenta || '',
-                numeroCuenta: datosPartner.numeroCuenta || '',
-                cedula: datosPartner.cedula || '',
-                titular: datosPartner.titular || datosPartner.nombre
-            },
-            estadisticas: {
-                totalReferidos: 0,
-                referidosActivos: 0,
-                totalComisionesGeneradas: 0,
-                totalComisionesPagadas: 0,
-                comisionesPendientes: 0
-            },
-            requiereCambioPassword: true // Flag para solicitar cambio de contraseña
-        };
-        
-        await db.ref(`partners/${partnerId}`).set(partner);
-        
-        // Crear cuenta de Firebase Auth con la cédula como contraseña temporal
-        let firebaseAuthCreated = false;
-        if (datosPartner.cedula) {
-            try {
-                await admin.auth().createUser({
-                    email: datosPartner.email.toLowerCase(),
-                    password: datosPartner.cedula, // Contraseña temporal = cédula
-                    displayName: datosPartner.nombre,
-                    emailVerified: false
-                });
-                firebaseAuthCreated = true;
-                console.log(`✅ Cuenta Firebase Auth creada para partner: ${datosPartner.email}`);
-            } catch (authError) {
-                // Si el usuario ya existe, no es error crítico
-                if (authError.code === 'auth/email-already-exists') {
-                    console.log(`⚠️ Email ya existe en Firebase Auth: ${datosPartner.email}`);
-                    firebaseAuthCreated = true; // Ya tiene cuenta
-                } else {
-                    console.error('Error creando cuenta Firebase Auth:', authError);
-                }
-            }
-        }
-        
-        console.log(`✅ Partner creado: ${partner.nombre} (${codigoReferido})`);
-        
-        return {
-            ...partner,
-            firebaseAuthCreated,
-            passwordTemporal: firebaseAuthCreated ? 'Cédula del socio' : null
-        };
-        
-    } catch (error) {
-        console.error('Error creando partner:', error);
-        throw error;
-    }
-}
-
-/**
- * Obtiene todos los partners (solo admin)
- */
-async function obtenerPartners(adminEmail) {
-    if (adminEmail !== ADMIN_EMAIL) {
-        throw new Error('No autorizado');
+    const tenantData = tenantSnapshot.val();
+    const partnerId = tenantData.partnerId;
+    
+    if (!partnerId) {
+      console.log(`ℹ️ [PartnerService] Tenant ${tenantId} no tiene partner asociado`);
+      return null;
     }
     
-    try {
-        const db = admin.database();
-        const snapshot = await db.ref('partners').once('value');
-        
-        if (!snapshot.exists()) {
-            return [];
-        }
-        
-        const partners = [];
-        snapshot.forEach(child => {
-            partners.push({
-                id: child.key,
-                ...child.val()
-            });
-        });
-        
-        return partners;
-        
-    } catch (error) {
-        console.error('Error obteniendo partners:', error);
-        throw error;
-    }
-}
-
-/**
- * Obtiene un partner por email (para login de partner)
- */
-async function obtenerPartnerPorEmail(email) {
-    try {
-        const db = admin.database();
-        const snapshot = await db.ref('partners')
-            .orderByChild('email')
-            .equalTo(email.toLowerCase())
-            .once('value');
-        
-        if (!snapshot.exists()) {
-            return null;
-        }
-        
-        const partners = snapshot.val();
-        const partnerId = Object.keys(partners)[0];
-        
-        return {
-            id: partnerId,
-            ...partners[partnerId]
-        };
-        
-    } catch (error) {
-        console.error('Error obteniendo partner por email:', error);
-        return null;
-    }
-}
-
-/**
- * Obtiene un partner por ID
- */
-async function obtenerPartnerPorId(partnerId, solicitanteEmail) {
-    try {
-        const db = admin.database();
-        const snapshot = await db.ref(`partners/${partnerId}`).once('value');
-        
-        if (!snapshot.exists()) {
-            return null;
-        }
-        
-        const partner = snapshot.val();
-        
-        // Verificar permiso: solo admin o el mismo partner
-        if (solicitanteEmail !== ADMIN_EMAIL && partner.email !== solicitanteEmail) {
-            throw new Error('No autorizado');
-        }
-        
-        return {
-            id: partnerId,
-            ...partner
-        };
-        
-    } catch (error) {
-        console.error('Error obteniendo partner:', error);
-        throw error;
-    }
-}
-
-/**
- * Actualiza un partner (solo admin)
- */
-async function actualizarPartner(partnerId, datos, adminEmail) {
-    if (adminEmail !== ADMIN_EMAIL) {
-        throw new Error('No autorizado');
+    // 2. Obtener datos del partner
+    const partnerSnapshot = await admin.database()
+      .ref(`partners/${partnerId}`)
+      .once('value');
+    
+    if (!partnerSnapshot.exists()) {
+      console.warn(`⚠️ [PartnerService] Partner ${partnerId} no encontrado`);
+      return null;
     }
     
-    try {
-        const db = admin.database();
-        
-        const updates = {};
-        
-        if (datos.nombre) updates.nombre = datos.nombre;
-        if (datos.telefono !== undefined) updates.telefono = datos.telefono;
-        if (datos.estado) updates.estado = datos.estado;
-        if (datos.datosPago) updates.datosPago = datos.datosPago;
-        
-        await db.ref(`partners/${partnerId}`).update(updates);
-        
-        console.log(`✅ Partner actualizado: ${partnerId}`);
-        
-        return true;
-        
-    } catch (error) {
-        console.error('Error actualizando partner:', error);
-        throw error;
+    const partnerData = partnerSnapshot.val();
+    
+    // 3. Verificar si ya existe una comisión para esta transacción (evitar duplicados)
+    const existingComisionSnapshot = await admin.database()
+      .ref(`comisiones_referidos/${partnerId}`)
+      .orderByChild('transaccionId')
+      .equalTo(transaccionId)
+      .once('value');
+    
+    if (existingComisionSnapshot.exists()) {
+      console.warn(`⚠️ [PartnerService] Ya existe comisión para transacción ${transaccionId}`);
+      return null;
     }
+    
+    // 4. Determinar tipo de comisión (primera vez o recurrente)
+    const paymentsSnapshot = await admin.database()
+      .ref(`tenants/${tenantId}/payments`)
+      .once('value');
+    
+    const payments = paymentsSnapshot.val() || {};
+    const paymentCount = Object.keys(payments).length;
+    const tipo = paymentCount <= 1 ? 'registro' : 'pago_membresia';
+    
+    // 5. Calcular comisión
+    const porcentajeComision = COMISION_CONFIG[tipo];
+    const valorComision = Math.round(valorBase * (porcentajeComision / 100));
+    
+    // 6. Crear registro de comisión
+    const comisionData = {
+      tipo: tipo,
+      tenantId: tenantId,
+      tenantNombre: tenantNombre,
+      valorBase: valorBase,
+      porcentajeComision: porcentajeComision,
+      valorComision: valorComision,
+      plan: plan,
+      transaccionId: transaccionId,
+      estado: 'pendiente',  // pendiente, pagada, cancelada
+      fechaCreacion: admin.database.ServerValue.TIMESTAMP,
+      // Datos del partner (por referencia)
+      partnerNombre: partnerData.nombre || partnerData.email,
+      partnerEmail: partnerData.email
+    };
+    
+    const comisionRef = await admin.database()
+      .ref(`comisiones_referidos/${partnerId}`)
+      .push(comisionData);
+    
+    // 7. Actualizar estadísticas del partner
+    await actualizarEstadisticasPartner(partnerId, valorComision);
+    
+    console.log(`✅ [PartnerService] Comisión generada: $${valorComision} para partner ${partnerData.nombre}`);
+    
+    return {
+      comisionId: comisionRef.key,
+      partnerId: partnerId,
+      partnerNombre: partnerData.nombre || partnerData.email,
+      valorComision: valorComision,
+      tipo: tipo,
+      ...comisionData
+    };
+    
+  } catch (error) {
+    console.error('❌ [PartnerService] Error generando comisión:', error);
+    throw error;
+  }
 }
 
 /**
- * Vincula un tenant a un partner (al registrarse con código de referido)
+ * Actualiza las estadísticas de un partner después de generar una comisión
+ * @param {string} partnerId - ID del partner
+ * @param {number} valorComision - Valor de la comisión generada
  */
-async function vincularTenantAPartner(tenantId, codigoReferido) {
-    try {
-        // Verificar código
-        const resultado = await verificarCodigoReferido(codigoReferido);
-        
-        if (!resultado.valid) {
-            console.log(`⚠️ Código de referido inválido: ${codigoReferido}`);
-            return false;
-        }
-        
-        const db = admin.database();
-        
-        // Actualizar tenant con datos de referido
-        await db.ref(`tenants/${tenantId}`).update({
-            partnerId: resultado.partnerId,
-            codigoReferido: codigoReferido,
-            fueReferido: true,
-            fechaVinculacion: Date.now()
-        });
-        
-        // Actualizar estadísticas del partner
-        const partnerRef = db.ref(`partners/${resultado.partnerId}/estadisticas`);
-        const statsSnapshot = await partnerRef.once('value');
-        const stats = statsSnapshot.val() || {};
-        
-        await partnerRef.update({
-            totalReferidos: (stats.totalReferidos || 0) + 1
-        });
-        
-        console.log(`✅ Tenant ${tenantId} vinculado a partner ${resultado.partnerId}`);
-        
-        return true;
-        
-    } catch (error) {
-        console.error('Error vinculando tenant a partner:', error);
+async function actualizarEstadisticasPartner(partnerId, valorComision) {
+  try {
+    const statsRef = admin.database().ref(`partners/${partnerId}/estadisticas`);
+    
+    // Usar transacción para actualizar contadores de forma atómica
+    await statsRef.transaction((stats) => {
+      if (!stats) {
+        // Primera comisión
+        return {
+          totalComisiones: valorComision,
+          totalReferidos: 1,
+          comisionesGeneradas: 1,
+          ultimaActualizacion: Date.now()
+        };
+      }
+      
+      // Incrementar valores existentes
+      return {
+        ...stats,
+        totalComisiones: (stats.totalComisiones || 0) + valorComision,
+        comisionesGeneradas: (stats.comisionesGeneradas || 0) + 1,
+        ultimaActualizacion: Date.now()
+      };
+    });
+    
+    console.log(`✅ [PartnerService] Estadísticas actualizadas para partner ${partnerId}`);
+    
+  } catch (error) {
+    console.error('❌ [PartnerService] Error actualizando estadísticas:', error);
+    // No lanzar error para no bloquear el webhook
+  }
+}
+
+/**
+ * Obtiene el resumen de comisiones de un partner
+ * @param {string} partnerId - ID del partner
+ * @returns {Promise<Object>} Resumen de comisiones
+ */
+async function obtenerResumenComisiones(partnerId) {
+  try {
+    const comisionesSnapshot = await admin.database()
+      .ref(`comisiones_referidos/${partnerId}`)
+      .once('value');
+    
+    const comisiones = comisionesSnapshot.val() || {};
+    const comisionesArray = Object.entries(comisiones).map(([key, val]) => ({
+      id: key,
+      ...val
+    }));
+    
+    // Calcular totales
+    const total = comisionesArray.reduce((sum, c) => sum + (c.valorComision || 0), 0);
+    const pendiente = comisionesArray
+      .filter(c => c.estado === 'pendiente')
+      .reduce((sum, c) => sum + (c.valorComision || 0), 0);
+    const pagado = comisionesArray
+      .filter(c => c.estado === 'pagada')
+      .reduce((sum, c) => sum + (c.valorComision || 0), 0);
+    
+    return {
+      total: total,
+      pendiente: pendiente,
+      pagado: pagado,
+      cantidad: comisionesArray.length,
+      comisiones: comisionesArray.sort((a, b) => (b.fechaCreacion || 0) - (a.fechaCreacion || 0))
+    };
+    
+  } catch (error) {
+    console.error('❌ [PartnerService] Error obteniendo resumen:', error);
+    throw error;
+  }
+}
+
+/**
+ * Marca una comisión como pagada
+ * @param {string} partnerId - ID del partner
+ * @param {string} comisionId - ID de la comisión
+ * @param {Object} datosTransferencia - Datos de la transferencia realizada
+ */
+async function marcarComisionPagada(partnerId, comisionId, datosTransferencia = {}) {
+  try {
+    await admin.database()
+      .ref(`comisiones_referidos/${partnerId}/${comisionId}`)
+      .update({
+        estado: 'pagada',
+        fechaPago: admin.database.ServerValue.TIMESTAMP,
+        ...datosTransferencia
+      });
+    
+    console.log(`✅ [PartnerService] Comisión ${comisionId} marcada como pagada`);
+    
+  } catch (error) {
+    console.error('❌ [PartnerService] Error marcando comisión como pagada:', error);
+    throw error;
+  }
+}
+
+/**
+ * Obtiene todos los tenants referidos por un partner que están activos
+ * @param {string} partnerId - ID del partner
+ * @returns {Promise<Array>} Lista de tenants activos
+ */
+async function obtenerTenantActivos(partnerId) {
+  try {
+    // Buscar todos los tenants que tienen este partnerId
+    const tenantsSnapshot = await admin.database()
+      .ref('tenants')
+      .orderByChild('partnerId')
+      .equalTo(partnerId)
+      .once('value');
+    
+    const tenants = tenantsSnapshot.val() || {};
+    const tenantsArray = Object.entries(tenants).map(([key, val]) => ({
+      id: key,
+      ...val
+    }));
+    
+    // Filtrar solo los activos
+    const activos = tenantsArray.filter(t => {
+      const membership = t.membership;
+      if (!membership) return false;
+      
+      // Verificar si el plan está activo
+      if (membership.status === 'cancelled' || membership.status === 'expired') {
         return false;
-    }
-}
-
-/**
- * Genera una comisión cuando un tenant paga membresía
- */
-async function generarComision(tenantId, tenantNombre, valorMembresia, tipoMembresia, transaccionId) {
-    try {
-        const db = admin.database();
-        
-        // Obtener datos del tenant
-        const tenantSnapshot = await db.ref(`tenants/${tenantId}`).once('value');
-        const tenant = tenantSnapshot.val();
-        
-        if (!tenant || !tenant.partnerId) {
-            console.log(`ℹ️ Tenant ${tenantId} no tiene partner asociado`);
-            return null;
-        }
-        
-        // Verificar período de gracia (30 días desde registro)
-        const fechaVinculacion = tenant.fechaVinculacion || tenant.createdAt;
-        const diasDesdeVinculacion = (Date.now() - fechaVinculacion) / (1000 * 60 * 60 * 24);
-        
-        // Obtener datos del partner
-        const partnerSnapshot = await db.ref(`partners/${tenant.partnerId}`).once('value');
-        const partner = partnerSnapshot.val();
-        
-        if (!partner || partner.estado !== 'activo') {
-            console.log(`⚠️ Partner ${tenant.partnerId} no activo`);
-            return null;
-        }
-        
-        // Calcular comisión
-        const valorComision = Math.round(valorMembresia * COMISION_PORCENTAJE / 100);
-        
-        // Crear registro de comisión
-        const comisionId = db.ref('comisiones').push().key;
-        
-        const comision = {
-            id: comisionId,
-            partnerId: tenant.partnerId,
-            partnerNombre: partner.nombre,
-            partnerEmail: partner.email,
-            tenantId: tenantId,
-            tenantNombre: tenantNombre || tenant.restaurantName || tenantId,
-            tipoMembresia: tipoMembresia,
-            valorMembresia: valorMembresia,
-            porcentajeComision: COMISION_PORCENTAJE,
-            valorComision: valorComision,
-            estado: 'pendiente',
-            fechaGenerada: Date.now(),
-            fechaPago: null,
-            transaccionWompiId: transaccionId || null,
-            referenciaPagoSocio: null,
-            periodoMembresia: obtenerPeriodoActual(),
-            esRenovacion: diasDesdeVinculacion > 30
-        };
-        
-        await db.ref(`comisiones/${comisionId}`).set(comision);
-        
-        // Actualizar estadísticas del partner
-        const statsRef = db.ref(`partners/${tenant.partnerId}/estadisticas`);
-        const statsSnapshot = await statsRef.once('value');
-        const stats = statsSnapshot.val() || {};
-        
-        await statsRef.update({
-            totalComisionesGeneradas: (stats.totalComisionesGeneradas || 0) + valorComision,
-            comisionesPendientes: (stats.comisionesPendientes || 0) + valorComision
-        });
-        
-        console.log(`💰 Comisión generada: $${valorComision} para partner ${partner.nombre}`);
-        
-        return comision;
-        
-    } catch (error) {
-        console.error('Error generando comisión:', error);
-        throw error;
-    }
-}
-
-/**
- * Marca una comisión como pagada (solo admin)
- */
-async function marcarComisionPagada(comisionId, referenciaPago, adminEmail) {
-    if (adminEmail !== ADMIN_EMAIL) {
-        throw new Error('No autorizado');
-    }
+      }
+      
+      // Verificar si no ha expirado
+      const now = new Date();
+      if (membership.paidPlanEndDate) {
+        const endDate = new Date(membership.paidPlanEndDate);
+        if (now > endDate) return false;
+      }
+      if (membership.trialEndDate) {
+        const trialEnd = new Date(membership.trialEndDate);
+        if (now > trialEnd) return false;
+      }
+      
+      return true;
+    });
     
-    try {
-        const db = admin.database();
-        
-        // Obtener comisión
-        const comisionSnapshot = await db.ref(`comisiones/${comisionId}`).once('value');
-        const comision = comisionSnapshot.val();
-        
-        if (!comision) {
-            throw new Error('Comisión no encontrada');
-        }
-        
-        if (comision.estado === 'pagada') {
-            throw new Error('La comisión ya fue pagada');
-        }
-        
-        // Actualizar comisión
-        await db.ref(`comisiones/${comisionId}`).update({
-            estado: 'pagada',
-            fechaPago: Date.now(),
-            referenciaPagoSocio: referenciaPago
-        });
-        
-        // Actualizar estadísticas del partner
-        const statsRef = db.ref(`partners/${comision.partnerId}/estadisticas`);
-        const statsSnapshot = await statsRef.once('value');
-        const stats = statsSnapshot.val() || {};
-        
-        await statsRef.update({
-            totalComisionesPagadas: (stats.totalComisionesPagadas || 0) + comision.valorComision,
-            comisionesPendientes: Math.max(0, (stats.comisionesPendientes || 0) - comision.valorComision)
-        });
-        
-        console.log(`✅ Comisión ${comisionId} marcada como pagada`);
-        
-        return true;
-        
-    } catch (error) {
-        console.error('Error marcando comisión como pagada:', error);
-        throw error;
-    }
+    return activos;
+    
+  } catch (error) {
+    console.error('❌ [PartnerService] Error obteniendo tenants activos:', error);
+    throw error;
+  }
 }
 
 /**
- * Obtiene comisiones (filtradas según permisos)
+ * Calcula las comisiones proyectadas para el próximo mes
+ * basado en los tenants activos
+ * @param {string} partnerId - ID del partner
+ * @returns {Promise<Object>} Proyección de comisiones
  */
-async function obtenerComisiones(filtros = {}, solicitanteEmail) {
-    try {
-        const db = admin.database();
-        let query = db.ref('comisiones');
-        
-        const snapshot = await query.once('value');
-        
-        if (!snapshot.exists()) {
-            return [];
-        }
-        
-        let comisiones = [];
-        snapshot.forEach(child => {
-            comisiones.push({
-                id: child.key,
-                ...child.val()
-            });
-        });
-        
-        // Si no es admin, filtrar solo las del partner
-        if (solicitanteEmail !== ADMIN_EMAIL) {
-            const partner = await obtenerPartnerPorEmail(solicitanteEmail);
-            if (partner) {
-                comisiones = comisiones.filter(c => c.partnerId === partner.id);
-            } else {
-                return [];
-            }
-        }
-        
-        // Aplicar filtros
-        if (filtros.estado) {
-            comisiones = comisiones.filter(c => c.estado === filtros.estado);
-        }
-        
-        if (filtros.partnerId) {
-            comisiones = comisiones.filter(c => c.partnerId === filtros.partnerId);
-        }
-        
-        // Ordenar por fecha (más reciente primero)
-        comisiones.sort((a, b) => b.fechaGenerada - a.fechaGenerada);
-        
-        return comisiones;
-        
-    } catch (error) {
-        console.error('Error obteniendo comisiones:', error);
-        throw error;
-    }
-}
-
-/**
- * Obtiene los tenants referidos por un partner
- */
-async function obtenerReferidos(partnerId, solicitanteEmail) {
-    try {
-        // Verificar permiso
-        const partner = await obtenerPartnerPorId(partnerId, solicitanteEmail);
-        if (!partner) {
-            throw new Error('Partner no encontrado');
-        }
-        
-        const db = admin.database();
-        const snapshot = await db.ref('tenants')
-            .orderByChild('partnerId')
-            .equalTo(partnerId)
-            .once('value');
-        
-        if (!snapshot.exists()) {
-            return [];
-        }
-        
-        const referidos = [];
-        snapshot.forEach(child => {
-            const tenant = child.val();
-            referidos.push({
-                id: child.key,
-                nombre: tenant.restaurantName || tenant.config?.restaurantName || child.key,
-                email: tenant.email || tenant.config?.email,
-                fechaRegistro: tenant.fechaVinculacion || tenant.createdAt,
-                plan: tenant.membership?.plan || 'trial',
-                estado: tenant.membership?.status || 'active'
-            });
-        });
-        
-        return referidos;
-        
-    } catch (error) {
-        console.error('Error obteniendo referidos:', error);
-        throw error;
-    }
-}
-
-/**
- * Obtiene estadísticas para el dashboard del partner
- */
-async function obtenerEstadisticasPartner(partnerId, solicitanteEmail) {
-    try {
-        const partner = await obtenerPartnerPorId(partnerId, solicitanteEmail);
-        if (!partner) {
-            throw new Error('Partner no encontrado');
-        }
-        
-        const comisiones = await obtenerComisiones({ partnerId }, solicitanteEmail);
-        const referidos = await obtenerReferidos(partnerId, solicitanteEmail);
-        
-        // Calcular estadísticas
-        const comisionesPendientes = comisiones.filter(c => c.estado === 'pendiente');
-        const comisionesPagadas = comisiones.filter(c => c.estado === 'pagada');
-        
-        return {
-            partner: {
-                nombre: partner.nombre,
-                codigoReferido: partner.codigoReferido,
-                enlaceReferido: partner.enlaceReferido,
-                requiereCambioPassword: partner.requiereCambioPassword || false
-            },
-            estadisticas: {
-                totalReferidos: referidos.length,
-                referidosActivos: referidos.filter(r => r.estado === 'active').length,
-                totalComisionesGeneradas: comisiones.reduce((sum, c) => sum + c.valorComision, 0),
-                totalComisionesPagadas: comisionesPagadas.reduce((sum, c) => sum + c.valorComision, 0),
-                comisionesPendientes: comisionesPendientes.reduce((sum, c) => sum + c.valorComision, 0),
-                cantidadPendientes: comisionesPendientes.length
-            },
-            ultimasComisiones: comisiones.slice(0, 10),
-            referidos: referidos
-        };
-        
-    } catch (error) {
-        console.error('Error obteniendo estadísticas partner:', error);
-        throw error;
-    }
-}
-
-/**
- * Marca que el partner cambió su contraseña temporal
- */
-async function marcarPasswordCambiado(partnerId) {
-    try {
-        const db = admin.database();
-        await db.ref(`partners/${partnerId}/requiereCambioPassword`).set(false);
-        console.log(`✅ Partner ${partnerId} marcó cambio de contraseña`);
-        return true;
-    } catch (error) {
-        console.error('Error marcando password cambiado:', error);
-        throw error;
-    }
-}
-
-// Utilidad para obtener período actual
-function obtenerPeriodoActual() {
-    const fecha = new Date();
-    const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-                   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-    return `${meses[fecha.getMonth()]} ${fecha.getFullYear()}`;
+async function calcularComisionesProyectadas(partnerId) {
+  try {
+    const tenantsActivos = await obtenerTenantActivos(partnerId);
+    
+    let proyeccion = {
+      emprendedor: 0,
+      profesional: 0,
+      empresarial: 0,
+      total: 0
+    };
+    
+    // Precios de planes
+    const precios = {
+      emprendedor: 90000,
+      profesional: 120000,
+      empresarial: 150000
+    };
+    
+    tenantsActivos.forEach(tenant => {
+      const plan = tenant.membership?.plan;
+      if (plan && precios[plan]) {
+        const comision = Math.round(precios[plan] * 0.1); // 10%
+        proyeccion[plan] += comision;
+        proyeccion.total += comision;
+      }
+    });
+    
+    return {
+      tenantsActivos: tenantsActivos.length,
+      proyeccion: proyeccion
+    };
+    
+  } catch (error) {
+    console.error('❌ [PartnerService] Error calculando proyección:', error);
+    throw error;
+  }
 }
 
 module.exports = {
-    ADMIN_EMAIL,
-    COMISION_PORCENTAJE,
-    generarCodigoReferido,
-    verificarCodigoReferido,
-    crearPartner,
-    obtenerPartners,
-    obtenerPartnerPorEmail,
-    obtenerPartnerPorId,
-    actualizarPartner,
-    vincularTenantAPartner,
-    generarComision,
-    marcarComisionPagada,
-    obtenerComisiones,
-    obtenerReferidos,
-    obtenerEstadisticasPartner,
-    marcarPasswordCambiado
+  generarComision,
+  actualizarEstadisticasPartner,
+  obtenerResumenComisiones,
+  marcarComisionPagada,
+  obtenerTenantActivos,
+  calcularComisionesProyectadas,
+  COMISION_CONFIG
 };
