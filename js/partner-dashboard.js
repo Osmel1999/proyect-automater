@@ -16,6 +16,8 @@ let enlaceReferido = '';
 // ==========================================
 
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('🔧 API Base URL:', API_URL);
+    
     userEmail = localStorage.getItem('userEmail');
     
     if (!userEmail) {
@@ -26,7 +28,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
     
-    await verificarAcceso();
+    // ✅ Esperar a que Firebase Auth esté listo antes de acceder a la base de datos
+    firebase.auth().onAuthStateChanged(async (user) => {
+        if (user) {
+            console.log('✅ Firebase Auth: usuario autenticado:', user.email);
+            await verificarAcceso();
+        } else {
+            console.log('❌ Firebase Auth: no hay usuario autenticado, redirigiendo...');
+            showToast('Sesión expirada. Inicia sesión nuevamente.', 'error');
+            setTimeout(() => {
+                window.location.href = 'auth.html';
+            }, 1500);
+        }
+    });
 });
 
 async function verificarAcceso() {
