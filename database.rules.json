@@ -19,6 +19,16 @@
         ".write": true,
         ".indexOn": ["status", "createdAt"],
         
+        "historial": {
+          ".read": true,
+          ".write": true,
+          ".indexOn": ["timestamp", "estado", "paymentStatus", "fecha"],
+          "$pedidoId": {
+            ".read": true,
+            ".write": true
+          }
+        },
+        
         "pedidos": {
           ".read": true,
           ".write": true,

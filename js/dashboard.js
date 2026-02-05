@@ -1,6 +1,6 @@
 // Dashboard functionality
 // Firebase is initialized in config.js before this script loads
-// Version: 2026-02-05 - Fix: Usar tenants/${tenantId}/pedidos en vez de restaurants/${tenantId}/orders
+// Version: 2026-02-05-v2 - Fix: Usar tenants/${tenantId}/historial (ruta real de pedidos)
 
 // API URL del backend
 const API_URL = 'https://api.kdsapp.site';
@@ -333,15 +333,16 @@ document.addEventListener('DOMContentLoaded', function() {
       try {
         console.log('🔍 [Dashboard] Cargando stats para tenant:', tenantId);
         
-        // Obtener pedidos de hoy
+        // Obtener pedidos de hoy desde historial (la ruta real donde se guardan)
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const todayTimestamp = today.getTime();
         
         console.log('📅 [Dashboard] Timestamp de hoy:', todayTimestamp, 'Fecha:', today);
 
+        // Usar la ruta correcta: tenants/{tenantId}/historial
         const ordersSnapshot = await firebase.database()
-          .ref(`tenants/${tenantId}/pedidos`)
+          .ref(`tenants/${tenantId}/historial`)
           .orderByChild('timestamp')
           .startAt(todayTimestamp)
           .once('value');
