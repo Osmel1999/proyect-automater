@@ -188,10 +188,6 @@ app.use('/api/admin', adminRoutes);
 console.log('🛡️ Rutas de admin registradas en /api/admin');
 
 // ====================================
-// RUTAS DE API - TÚNEL (Anti-Ban)
-// ====================================
-
-// ====================================
 // RUTAS DE API - TRACKING DE PEDIDOS
 // ====================================
 
