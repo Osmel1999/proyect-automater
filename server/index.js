@@ -395,7 +395,6 @@ server.listen(PORT, () => {
   console.log(`   🔥 Firebase: ${process.env.FIREBASE_PROJECT_ID ? '✅ ' + process.env.FIREBASE_PROJECT_ID : '❌ No configurado'}`);
   console.log(`   📱 Baileys (WhatsApp): ✅ Habilitado`);
   console.log(`   🔐 Cifrado: ${process.env.ENCRYPTION_KEY ? '✅ Configurado' : '❌ No configurado'}`);
-  console.log(`   🔧 Túnel de Navegador: ✅ Habilitado (Anti-Ban)`);
   console.log('');
   console.log('━'.repeat(50));
   console.log('📝 Endpoints - Baileys (WhatsApp):');
