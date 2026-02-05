@@ -1,5 +1,6 @@
 // Dashboard functionality
 // Firebase is initialized in config.js before this script loads
+// Version: 2026-02-05 - Fix: Usar tenants/${tenantId}/pedidos en vez de restaurants/${tenantId}/orders
 
 // API URL del backend
 const API_URL = 'https://api.kdsapp.site';
