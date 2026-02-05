@@ -440,6 +440,39 @@ body {
   font-style: italic;
 }
 
+/* ===== ORDER COMMENT ===== */
+.order-comment {
+  background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+  border: 1px solid #ffd700;
+  border-radius: var(--border-radius);
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin: var(--spacing-md) 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  box-shadow: var(--shadow-sm);
+}
+
+.order-comment svg {
+  width: 16px;
+  height: 16px;
+  stroke: #d4a000;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.order-comment span {
+  flex: 1;
+  line-height: 1.5;
+}
+
+.order-comment strong {
+  font-weight: var(--font-weight-semibold);
+  color: #b8860b;
+}
+
 /* ===== ORDER ACTIONS ===== */
 .order-actions {
   display: flex;

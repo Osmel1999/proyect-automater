@@ -333,6 +333,7 @@ Es muy facil! 😊`;
     const formularioMsg = `━━━━━━━━━━━━━━━━━━
 📦 *MI PEDIDO:*
 • (escribe aqui los productos)
+• Puedes agregar notas: 1 Pizza (sin cebolla)
 
 📍 *DIRECCION:*
 • (tu direccion completa)
@@ -340,7 +341,7 @@ Es muy facil! 😊`;
 📞 *TELEFONO:*
 • (numero de contacto)
 
-💵 *PAGO:* ${opcionPago}
+ *PAGO:* ${opcionPago}
 ━━━━━━━━━━━━━━━━━━`;
 
     // Retornamos un objeto especial que indica múltiples mensajes
@@ -359,6 +360,7 @@ Es muy facil! 😊`;
         `━━━━━━━━━━━━━━━━━━
 📦 *MI PEDIDO:*
 • (productos)
+• Puedes agregar notas: 1 Pizza (sin cebolla)
 
 📍 *DIRECCION:*
 • (direccion)
@@ -366,7 +368,7 @@ Es muy facil! 😊`;
 📞 *TELEFONO:*
 • (telefono)
 
-💵 *PAGO:* Efectivo
+ *PAGO:* Efectivo
 ━━━━━━━━━━━━━━━━━━`
       ]
     };
@@ -406,6 +408,7 @@ function parsearPedidoRapido(texto) {
     pedidoTexto: null,
     direccion: null,
     telefono: null,
+    comentario: null, // 📝 Nuevo campo para comentarios
     metodoPago: null,
     valido: false
   };
@@ -451,6 +454,17 @@ function parsearPedidoRapido(texto) {
       if (match && match[1] && !match[1].startsWith('•') && match[1].trim() !== '') {
         contenidoSeccion.push(match[1].trim());
       }
+    } else if (lineaLower.includes('comentario:') || lineaLower.includes('nota:') || lineaLower.includes('observación:') || lineaLower.includes('observacion:')) {
+      // 📝 Nueva sección para comentarios
+      if (seccionActual && contenidoSeccion.length > 0) {
+        guardarSeccion(resultado, seccionActual, contenidoSeccion.join(' '));
+      }
+      seccionActual = 'comentario';
+      contenidoSeccion = [];
+      const match = lineaOriginal.match(/(?:comentario|nota|observaci[oó]n):\s*(.+)/i);
+      if (match && match[1] && !match[1].startsWith('•') && match[1].trim() !== '') {
+        contenidoSeccion.push(match[1].trim());
+      }
     } else if (lineaLower.includes('pago:')) {
       if (seccionActual && contenidoSeccion.length > 0) {
         guardarSeccion(resultado, seccionActual, contenidoSeccion.join(' '));
@@ -472,6 +486,7 @@ function parsearPedidoRapido(texto) {
           !contenido.includes('(productos)') &&
           !contenido.includes('(dirección)') &&
           !contenido.includes('(teléfono)') &&
+          !contenido.includes('(opcional)') &&
           contenido !== '') {
         contenidoSeccion.push(contenido);
       }
@@ -517,6 +532,9 @@ function guardarSeccion(resultado, seccion, contenido) {
       break;
     case 'telefono':
       resultado.telefono = contenido.trim();
+      break;
+    case 'comentario': // 📝 Nuevo caso para comentarios
+      resultado.comentario = contenido.trim();
       break;
     case 'pago':
       resultado.metodoPago = contenido.trim();
@@ -583,9 +601,11 @@ No pude identificar los productos en tu pedido:
   
   console.log(`📦 [Pedido Rápido] Nuevo carrito:`, JSON.stringify(sesion.carrito, null, 2));
   
-  // Guardar dirección, teléfono y método de pago
+  // Guardar dirección, teléfono, comentario y método de pago
   sesion.direccion = datosPedido.direccion;
   sesion.telefonoContacto = datosPedido.telefono || sesion.telefono;
+  // 📝 Usar notas del parseo si existen, si no usar el comentario del pedido rápido
+  sesion.comentario = resultadoParseo.notas || datosPedido.comentario || null;
   sesion.metodoPago = datosPedido.metodoPago || 'efectivo';
   
   // Calcular totales
@@ -628,7 +648,7 @@ No pude identificar los productos en tu pedido:
   return `📋 *Resumen de tu pedido:*
 
 ${resumenItems}
-
+${sesion.comentario ? `\n📝 *Nota:* ${sesion.comentario}\n` : ''}
 ----------------------
 💰 Subtotal: $${formatearPrecio(subtotal)}
 ${lineaEnvio}
@@ -810,6 +830,7 @@ Por favor, envia nuevamente el formulario con los cambios que deseas:
 ━━━━━━━━━━━━━━━━━━
 📦 *MI PEDIDO:*
 • (escribe aqui los productos)
+• Puedes agregar notas: 1 Pizza (sin cebolla)
 
 📍 *DIRECCION:*
 • ${sesion.direccion || 'tu direccion'}
@@ -817,7 +838,7 @@ Por favor, envia nuevamente el formulario con los cambios que deseas:
 📞 *TELEFONO:*
 • ${sesion.telefonoContacto || 'tu numero'}
 
-💵 *PAGO:* Efectivo
+ *PAGO:* Efectivo
 ━━━━━━━━━━━━━━━━━━
 
 📝 Copia, edita y envia el formulario con tus cambios.`;
@@ -938,13 +959,20 @@ async function processMessage(tenantId, from, texto) {
   const telefono = from.replace('whatsapp:', '').replace(/\D/g, '');
   const sesion = obtenerSesion(tenantId, telefono);
   
-  // Normalizar texto
+  // Normalizar texto: eliminar tildes y convertir a minúsculas
   const textoOriginal = texto.trim();
-  texto = textoOriginal.toLowerCase();
+  const normalizarTexto = (str) => {
+    return str
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, ''); // Eliminar tildes
+  };
+  texto = normalizarTexto(textoOriginal);
   
   console.log(`📩 Procesando mensaje en tenant ${tenantId}`);
   console.log(`   Cliente: ${telefono}`);
   console.log(`   Mensaje: "${textoOriginal}"`);
+  console.log(`   Normalizado: "${texto}"`);
   
   // ====================================
   // VALIDAR ESTADO DEL BOT (SOLO TOGGLE)
@@ -1069,8 +1097,21 @@ async function processMessage(tenantId, from, texto) {
   // COMANDOS PRINCIPALES
   // ====================================
   
-  // Saludo inicial o ayuda
-  if (texto === 'hola' || texto === 'menu' || texto === 'empezar' || texto === 'start') {
+  // Saludos y comandos de inicio (con normalización, ahora acepta tildes)
+  const saludosInicio = [
+    'hola', 'menu', 'empezar', 'start', 'iniciar',
+    'buenas', 'buenos dias', 'buenas tardes', 'buenas noches',
+    'hola buenas', 'hola buenos dias', 'que tal', 'saludos',
+    'holi', 'ola', 'hey', 'hi', 'hello', 'buenas!', 'holaa'
+  ];
+  
+  // Verificar si el mensaje coincide con algún saludo
+  const esSaludo = saludosInicio.some(saludo => {
+    // Match exacto o que empiece con el saludo
+    return texto === saludo || texto.startsWith(saludo + ' ');
+  });
+  
+  if (esSaludo) {
     // Limpiar cualquier estado pendiente
     sesion.esperandoConfirmacion = false;
     sesion.pedidoPendiente = null;
@@ -1151,7 +1192,7 @@ async function processMessage(tenantId, from, texto) {
     return await procesarTelefono(sesion, textoOriginal);
   }
   
-  // ✨ NUEVO: Si está esperando método de pago, procesar respuesta
+  // ✨ Si está esperando método de pago, procesar respuesta
   if (sesion.esperandoMetodoPago) {
     return await procesarMetodoPago(sesion, texto, textoOriginal);
   }
@@ -1225,6 +1266,8 @@ async function processMessage(tenantId, from, texto) {
       // Guardar items parseados para confirmación
       sesion.esperandoConfirmacion = true;
       sesion.pedidoPendiente = resultado.items;
+      // 📝 NUEVO: Guardar notas del pedido si existen
+      sesion.comentario = resultado.notas || sesion.comentario || null;
       
       return generarMensajeConfirmacion(resultado);
     }
@@ -1283,6 +1326,9 @@ async function mostrarMenu(tenantId) {
     mensaje += '*Opcion 2 - Por Nombre:*\n';
     mensaje += 'Envia el nombre del producto.\n';
     mensaje += 'Ejemplo: *pizza* para agregar una pizza\n\n';
+    mensaje += '📝 *Agregar notas:*\n';
+    mensaje += 'Usa parentesis para notas especiales:\n';
+    mensaje += '_"2 hamburguesas (sin cebolla)"_\n\n';
     mensaje += '━'.repeat(25) + '\n\n';
     mensaje += '💡 Escribe *ver* para revisar tu carrito\n';
     mensaje += 'y *confirmar* para finalizar tu pedido.';
@@ -1408,9 +1454,14 @@ function verCarrito(sesion) {
     total += subtotal;
   });
   
+  // 📝 Mostrar notas del pedido si existen
+  if (sesion.comentario) {
+    mensaje += `\n📝 *Nota:* ${sesion.comentario}\n`;
+  }
+  
   mensaje += `\n💰 Total: $${formatearPrecio(total)}\n\n`;
   mensaje += '¿Está todo correcto?\n\n';
-  mensaje += 'Responde *sí* para confirmar o *cancelar* si quieres modificar algo.';
+  mensaje += 'Responde *sí* para confirmar, *editar* o *cambiar* si quieres modificar algo, o *cancelar* para empezar de nuevo.';
   
   return mensaje;
 }
@@ -1473,6 +1524,7 @@ async function confirmarPedido(sesion) {
         telefono: sesion.telefono,
         telefonoContacto: sesion.telefonoContacto || sesion.telefono,
         direccion: sesion.direccion || 'No especificada',
+        comentario: sesion.comentario || null, // 📝 Comentario del cliente
         items: Object.values(itemsAgrupados),
         subtotal: subtotal,
         costoEnvio: costoEnvio,
@@ -1528,9 +1580,11 @@ async function confirmarPedido(sesion) {
       sesion.carrito = [];
       const direccionEntrega = sesion.direccion;
       const telefonoContacto = sesion.telefonoContacto;
+      const comentarioPedido = sesion.comentario;
       sesion.direccion = null;
       sesion.telefonoContacto = null;
       sesion.metodoPago = null;
+      sesion.comentario = null;
       
       const telefonoFormateado = telefonoContacto.replace(/(\d{3})(\d{3})(\d{4})/, '$1 $2 $3');
       
@@ -1564,7 +1618,7 @@ async function confirmarPedido(sesion) {
     console.log(`   Creando pedido en KDS inmediatamente...`);
     
     // Generar tracking token para seguimiento del pedido
-    const trackingToken = generateTrackingToken(tenantId, numeroHex + Date.now());
+    const trackingToken = generateTrackingToken(sesion.tenantId, numeroHex + Date.now());
     
     // Crear pedido normal
     const pedido = {
@@ -1574,6 +1628,7 @@ async function confirmarPedido(sesion) {
       telefono: sesion.telefono,
       telefonoContacto: sesion.telefonoContacto || sesion.telefono,
       direccion: sesion.direccion || 'No especificada',
+      comentario: sesion.comentario || null, // 📝 Comentario del cliente
       items: Object.values(itemsAgrupados),
       total: total,
       estado: 'pendiente', // Estado normal
@@ -1611,9 +1666,11 @@ async function confirmarPedido(sesion) {
     sesion.carrito = [];
     const direccionEntrega = sesion.direccion;
     const telefonoContacto = sesion.telefonoContacto;
+    const comentarioPedido = sesion.comentario;
     sesion.direccion = null;
     sesion.telefonoContacto = null;
     sesion.metodoPago = null;
+    sesion.comentario = null;
     
     const telefonoFormateado = telefonoContacto.replace(/(\d{3})(\d{3})(\d{4})/, '$1 $2 $3');
     
@@ -1632,7 +1689,7 @@ async function confirmarPedido(sesion) {
     mensaje += `Ya lo enviamos a la cocina de ${restaurantName}. 🛵\n\n`;
     
     // Obtener tiempo de entrega configurado
-    const tiempoEntrega = await obtenerTiempoEntrega(tenantId);
+    const tiempoEntrega = await obtenerTiempoEntrega(sesion.tenantId);
     mensaje += `🕒 Tiempo estimado: ${tiempoEntrega}\n\n`;
     mensaje += '_Te avisaremos cuando esté listo para entrega_ ✅';
     
@@ -1707,6 +1764,7 @@ async function confirmarPedidoEfectivo(sesion, pedidoKey = null, numeroHex = nul
         telefono: sesion.telefono,
         telefonoContacto: sesion.telefonoContacto || sesion.telefono,
         direccion: sesion.direccion || 'No especificada',
+        comentario: sesion.comentario || null, // 📝 Comentario del cliente
         items: Object.values(itemsAgrupados),
         subtotal: subtotal,
         costoEnvio: costoEnvio,
@@ -1754,9 +1812,11 @@ async function confirmarPedidoEfectivo(sesion, pedidoKey = null, numeroHex = nul
     sesion.carrito = [];
     const direccionEntrega = sesion.direccion;
     const telefonoContacto = sesion.telefonoContacto;
+    const comentarioPedido = sesion.comentario;
     sesion.direccion = null;
     sesion.telefonoContacto = null;
     sesion.metodoPago = null;
+    sesion.comentario = null;
     
     // Formatear teléfono para mostrar: 300 123 4567
     const telefonoFormateado = telefonoContacto.replace(/(\d{3})(\d{3})(\d{4})/, '$1 $2 $3');
@@ -1966,6 +2026,62 @@ async function procesarTelefono(sesion, telefono) {
   sesion.telefonoContacto = telefonoLimpio;
   sesion.esperandoTelefono = false;
   
+  // ✨ Verificar si el restaurante tiene pagos configurados
+  const gatewayConfig = await paymentConfigService.getConfig(sesion.tenantId, false);
+  
+  // Si NO tiene gateway configurado o no está habilitado, ir directo a confirmar (flujo tradicional)
+  if (!gatewayConfig || !gatewayConfig.enabled || !gatewayConfig.hasCredentials) {
+    return await confirmarPedido(sesion);
+  }
+  
+  // Si SÍ tiene gateway configurado, solicitar método de pago
+  return solicitarMetodoPago(sesion);
+}
+
+/**
+ * 📝 Solicita comentarios opcionales del cliente para el pedido
+ * ⚠️ OBSOLETO: Las notas ahora se agregan directamente con el pedido usando paréntesis
+ * Ejemplo: "2 hamburguesas (sin cebolla)"
+ * Mantenido comentado por retrocompatibilidad
+ */
+/*
+function solicitarComentario(sesion) {
+  sesion.esperandoComentario = true;
+  
+  let mensaje = '📝 *¿Algún comentario sobre tu pedido?*\n\n';
+  mensaje += '💡 *Ejemplos:*\n';
+  mensaje += '• "Sin cebolla en la hamburguesa"\n';
+  mensaje += '• "Extra salsa por favor"\n';
+  mensaje += '• "Bien cocido el termo de la carne"\n';
+  mensaje += '• "Sin verduras"\n\n';
+  mensaje += '━'.repeat(30) + '\n\n';
+  mensaje += 'Escribe tu comentario o responde *no* si no tienes ninguno.';
+  
+  return mensaje;
+}
+*/
+
+/**
+ * 📝 Procesa el comentario del cliente (opcional)
+ * ⚠️ OBSOLETO: Las notas ahora se agregan directamente con el pedido usando paréntesis
+ * Mantenido comentado por retrocompatibilidad
+ */
+/*
+async function procesarComentario(sesion, textoOriginal) {
+  const texto = textoOriginal.toLowerCase().trim();
+  
+  // Si responde "no" o similar, continuar sin comentario
+  const respuestasNegativas = ['no', 'nada', 'ninguno', 'no tengo', 'skip', 'omitir', 'continuar'];
+  
+  if (respuestasNegativas.includes(texto)) {
+    sesion.esperandoComentario = false;
+    sesion.comentario = null;
+  } else {
+    // Guardar el comentario
+    sesion.esperandoComentario = false;
+    sesion.comentario = textoOriginal.trim();
+  }
+  
   // ✨ NUEVO: Verificar si el restaurante tiene pagos configurados usando el nuevo servicio
   const gatewayConfig = await paymentConfigService.getConfig(sesion.tenantId, false);
   
@@ -1977,18 +2093,44 @@ async function procesarTelefono(sesion, telefono) {
   // Si tiene gateway configurado, preguntar método de pago
   return solicitarMetodoPago(sesion);
 }
+*/
 
 /**
  * ✨ NUEVO: Solicita al cliente cómo desea pagar
  */
-function solicitarMetodoPago(sesion) {
+async function solicitarMetodoPago(sesion) {
   sesion.esperandoMetodoPago = true;
   
   // Calcular total del carrito para mostrarlo
-  const total = sesion.carrito.reduce((sum, item) => sum + item.precio, 0);
+  const subtotal = sesion.carrito.reduce((sum, item) => sum + item.precio, 0);
+  
+  // Obtener costo de envío y verificar si califica para domicilio gratis
+  const envioData = await obtenerCostoEnvio(sesion.tenantId, subtotal);
+  const costoEnvio = envioData.cost;
+  const total = subtotal + costoEnvio;
   
   let mensaje = '💳 *¿Cómo deseas pagar tu pedido?*\n\n';
   mensaje += `💰 Total a pagar: *$${formatearPrecio(total)}*\n\n`;
+  
+  // 🎁 NUEVO: Recomendación de domicilio gratis
+  if (envioData.isFreeShipping && envioData.freeShippingThreshold) {
+    const diferencia = envioData.freeShippingThreshold - subtotal;
+    
+    if (diferencia > 0 && diferencia <= envioData.freeShippingThreshold * 0.3) {
+      // Si está cerca del monto de domicilio gratis (dentro del 30%)
+      mensaje += `🎁 *¡Estás cerca del domicilio gratis!*\n`;
+      mensaje += `   Solo te faltan *$${formatearPrecio(diferencia)}* para obtener envío sin costo.\n`;
+      mensaje += `   ¿Quieres agregar algo más? 😊\n\n`;
+      mensaje += `   Escribe *menu* para ver opciones o continúa con tu pago.\n\n`;
+      mensaje += '━'.repeat(30) + '\n\n';
+    }
+  } else if (envioData.isFreeShipping && envioData.freeShippingThreshold && subtotal >= envioData.freeShippingThreshold) {
+    // Ya calificó para domicilio gratis
+    mensaje += `🎉 *¡Felicidades! Tu domicilio es GRATIS*\n`;
+    mensaje += `   Tu pedido supera los $${formatearPrecio(envioData.freeShippingThreshold)} ✨\n\n`;
+    mensaje += '━'.repeat(30) + '\n\n';
+  }
+  
   mensaje += '📱 Selecciona una opción:\n\n';
   mensaje += '1️⃣ *Tarjeta* - Pago seguro en línea\n';
   mensaje += '   • Tarjeta de crédito/débito\n';

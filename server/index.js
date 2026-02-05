@@ -63,6 +63,14 @@ app.use(express.json({ limit: '15mb' }));
 
 // Logging middleware
 app.use((req, res, next) => {
+  // Ignorar rutas del túnel obsoleto (requests de clientes cacheados)
+  if (req.path.startsWith('/api/tunnel')) {
+    return res.status(410).json({ 
+      error: 'Tunnel API deprecated', 
+      message: 'El sistema de túnel ha sido eliminado. Por favor recarga la página.' 
+    });
+  }
+  
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
   next();
 });

@@ -1,11 +1,11 @@
 # Railway Configuration
-# Este archivo fuerza a Railway a usar nixpacks y ejecutar correctamente
+# Este archivo fuerza a Railway a usar Dockerfile para build consistente
 
 [build]
-builder = "nixpacks"
-buildCommand = "npm install"
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "npm start"
+startCommand = "node server/index.js"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10

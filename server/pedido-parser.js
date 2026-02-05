@@ -51,6 +51,29 @@ function normalizarTexto(texto) {
 }
 
 /**
+ * Normaliza plurales comunes en español
+ */
+function normalizarPlural(texto) {
+  let normalizado = texto;
+  
+  // Plurales terminados en "s"
+  if (normalizado.endsWith('s') && normalizado.length > 3) {
+    // No quitar la "s" si es parte del nombre (ej: "papas fritas")
+    const excepciones = ['papas', 'fritas', 'migas'];
+    const palabras = normalizado.split(/\s+/);
+    
+    normalizado = palabras.map(palabra => {
+      if (!excepciones.includes(palabra) && palabra.endsWith('s') && palabra.length > 3) {
+        return palabra.slice(0, -1); // Quitar la "s" final
+      }
+      return palabra;
+    }).join(' ');
+  }
+  
+  return normalizado;
+}
+
+/**
  * Normalización fonética para español
  * Convierte palabras con errores ortográficos comunes a su forma fonética
  */
@@ -134,19 +157,25 @@ function obtenerVariaciones(producto) {
 function buscarProducto(textoProducto, menuCustom = null) {
   const menuAUsar = menuCustom || menuActivo;
   const textoNormalizado = normalizarTexto(textoProducto);
+  const textoSinPlural = normalizarPlural(textoNormalizado);
   const textoFonetico = normalizarFonetica(textoProducto);
   const palabrasTexto = textoNormalizado.split(/\s+/).filter(p => p.length > 2);
   
   // Log para debugging
-  console.log(`🔎 [buscarProducto] Buscando: "${textoProducto}" → normalizado: "${textoNormalizado}"`);
+  console.log(`🔎 [buscarProducto] Buscando: "${textoProducto}"`);
+  console.log(`   → Normalizado: "${textoNormalizado}"`);
+  console.log(`   → Sin plural: "${textoSinPlural}"`);
   
   // Sistema de puntuación: evaluar TODOS los productos
   let mejorProducto = null;
   let mejorScore = 0;
+  let segundoMejor = null;
+  let segundoScore = 0;
   const UMBRAL_MINIMO = 50; // Score mínimo para considerar un match
   
   for (const producto of menuAUsar) {
     const nombreNormalizado = normalizarTexto(producto.nombre);
+    const nombreSinPlural = normalizarPlural(nombreNormalizado);
     const nombreFonetico = normalizarFonetica(producto.nombre);
     const palabrasProducto = nombreNormalizado.split(/\s+/).filter(p => p.length > 2);
     let score = 0;
@@ -154,16 +183,19 @@ function buscarProducto(textoProducto, menuCustom = null) {
     // ==========================================
     // NIVEL 1: Match exacto (100 puntos)
     // ==========================================
-    if (textoNormalizado === nombreNormalizado) {
-      console.log(`✅ [buscarProducto] Match EXACTO: "${textoNormalizado}" → "${producto.nombre}"`);
+    if (textoNormalizado === nombreNormalizado || textoSinPlural === nombreSinPlural) {
+      console.log(`✅ [buscarProducto] Match EXACTO: "${textoProducto}" → "${producto.nombre}"`);
       return producto; // Match perfecto, retornar inmediatamente
     }
     
     // ==========================================
     // NIVEL 2: Similitud del texto completo (0-40 puntos)
+    // Incluir comparación sin plural
     // ==========================================
     const similitudCompleta = calcularSimilitud(textoNormalizado, nombreNormalizado);
-    score += (similitudCompleta / 100) * 40; // Max 40 puntos
+    const similitudSinPlural = calcularSimilitud(textoSinPlural, nombreSinPlural);
+    const mejorSimilitud = Math.max(similitudCompleta, similitudSinPlural);
+    score += (mejorSimilitud / 100) * 40; // Max 40 puntos
     
     // ==========================================
     // NIVEL 3: Match por palabras individuales (0-35 puntos)
@@ -218,20 +250,34 @@ function buscarProducto(textoProducto, menuCustom = null) {
     const penalizacionLongitud = Math.min(diffLongitud * 0.5, 10); // Max 10 puntos de penalización
     score -= penalizacionLongitud;
     
-    // Actualizar mejor producto si este tiene mejor score
+    // Actualizar mejor y segundo mejor producto
     if (score > mejorScore) {
+      segundoScore = mejorScore;
+      segundoMejor = mejorProducto;
       mejorScore = score;
       mejorProducto = producto;
+    } else if (score > segundoScore) {
+      segundoScore = score;
+      segundoMejor = producto;
     }
   }
   
   // Retornar si el score supera el umbral mínimo
   if (mejorProducto && mejorScore >= UMBRAL_MINIMO) {
-    console.log(`✅ [buscarProducto] Match por SCORE: "${textoNormalizado}" → "${mejorProducto.nombre}" (score: ${mejorScore.toFixed(1)})`);
+    console.log(`✅ [buscarProducto] Match por SCORE: "${textoProducto}" → "${mejorProducto.nombre}" (score: ${mejorScore.toFixed(1)})`);
+    if (segundoMejor && segundoScore >= UMBRAL_MINIMO - 10) {
+      console.log(`   Segundo lugar: "${segundoMejor.nombre}" (score: ${segundoScore.toFixed(1)})`);
+    }
     return mejorProducto;
   }
   
-  console.log(`❌ [buscarProducto] No encontrado: "${textoNormalizado}" (mejor score: ${mejorScore.toFixed(1)})`);
+  // Logging mejorado cuando no encuentra
+  console.log(`❌ [buscarProducto] No encontrado: "${textoProducto}"`);
+  console.log(`   Mejor candidato: "${mejorProducto?.nombre || 'ninguno'}" (score: ${mejorScore.toFixed(1)}/${UMBRAL_MINIMO})`);
+  if (segundoMejor) {
+    console.log(`   Segundo lugar: "${segundoMejor.nombre}" (score: ${segundoScore.toFixed(1)})`);
+  }
+  
   return null;
 }
 
@@ -290,9 +336,24 @@ function parsearPedido(textoPedido, menuCustom = null) {
   const menuAUsar = menuCustom || menuActivo;
   const items = [];
   const errores = [];
+  let notasPedido = null; // 📝 NUEVO: Notas a nivel de pedido completo
   
   // Normalizar texto
   let texto = textoPedido.toLowerCase();
+  
+  // PASO 0.5: Extraer notas entre paréntesis del pedido completo
+  // Las notas se extraen primero y se eliminan del texto antes de parsear
+  const matchNotasPedido = texto.match(/\(([^)]+)\)/);
+  if (matchNotasPedido && matchNotasPedido[1]) {
+    notasPedido = matchNotasPedido[1].trim();
+    // Eliminar las notas del texto para que no interfieran con el parsing
+    texto = texto.replace(/\([^)]+\)/g, '').trim();
+  }
+  
+  // PASO 0: Limpiar palabras de cortesía al final del mensaje
+  // Esto evita que "por favor" interfiera con la búsqueda
+  const cortesiaFinal = /\s+(por\s*favor|porfa|porfavor|porfi|porfis|plis|please|plz|gracias|grax|thanks|thx|xfa|xfavor|x\s*favor)[\s!.]*$/gi;
+  texto = texto.replace(cortesiaFinal, '');
   
   // PASO 1: Separar números pegados a palabras (muy importante para "2hamburguesas")
   // Esto convierte "2hamburguesas" → "2 hamburguesas"
@@ -317,7 +378,7 @@ function parsearPedido(textoPedido, menuCustom = null) {
     // Palabras amables y cortesía (punto 3)
     'porfa', 'porfavor', 'por favor', 'porfis', 'plis', 'please', 'plz', 
     'x favor', 'xfavor', 'xfa', 'porfi', 'porfiiis',
-    'gracias', 'grax', 'grax', 'thx', 'thanks', 'muchas gracias'
+    'gracias', 'grax', 'thx', 'thanks', 'muchas gracias'
   ];
   
   // Dividir por separadores comunes (incluyendo variaciones con errores)
@@ -366,11 +427,26 @@ function parsearPedido(textoPedido, menuCustom = null) {
   fragmentos = fragmentosProcesados;
   
   for (const fragmento of fragmentos) {
+    // 🧹 Limpiar palabras de cortesía del fragmento
+    let fragmentoLimpio = fragmento.trim();
+    
+    // Eliminar cortesías en medio o al final del fragmento
+    const palabrasCortesia = ['por favor', 'porfavor', 'porfa', 'porfis', 'porfi', 'plis', 'please', 'plz', 'gracias', 'grax', 'thanks', 'thx'];
+    for (const cortesia of palabrasCortesia) {
+      // Eliminar si está al final
+      const regexFinal = new RegExp(`\\s+${cortesia}\\s*$`, 'i');
+      fragmentoLimpio = fragmentoLimpio.replace(regexFinal, '');
+      
+      // Eliminar si está en medio (con espacios alrededor)
+      const regexMedio = new RegExp(`\\s+${cortesia}\\s+`, 'gi');
+      fragmentoLimpio = fragmentoLimpio.replace(regexMedio, ' ');
+    }
+    
     // Extraer cantidad
-    const cantidad = extraerCantidad(fragmento);
+    const cantidad = extraerCantidad(fragmentoLimpio);
     
     // Limpiar fragmento de números y conectores
-    let nombreProducto = fragmento
+    let nombreProducto = fragmentoLimpio
       .replace(/\d+/g, '') // Quitar números
       .trim();
     
@@ -396,18 +472,19 @@ function parsearPedido(textoPedido, menuCustom = null) {
     const producto = buscarProducto(nombreProducto, menuAUsar);
     
     if (producto) {
-      // Verificar si ya existe en el carrito
+      // Verificar si ya existe en el carrito (sin considerar notas)
       const itemExistente = items.find(i => i.numero === producto.numero);
       
       if (itemExistente) {
         itemExistente.cantidad += cantidad;
       } else {
-        items.push({
+        const item = {
           numero: producto.numero,
           nombre: producto.nombre,
           precio: producto.precio,
           cantidad: cantidad
-        });
+        };
+        items.push(item);
       }
     } else if (nombreProducto.length > 3) {
       // Solo agregar error si el fragmento tiene contenido significativo
@@ -418,6 +495,7 @@ function parsearPedido(textoPedido, menuCustom = null) {
   return {
     items,
     errores,
+    notas: notasPedido, // 📝 NUEVO: Retornar notas del pedido completo
     exitoso: items.length > 0
   };
 }
@@ -437,6 +515,9 @@ function generarMensajeConfirmacion(resultado) {
     mensaje += '• "Quiero 2 hamburguesas y 1 coca cola"\n';
     mensaje += '• "1 pizza con 3 cervezas"\n';
     mensaje += '• "Dame una milanesa y papas fritas"\n\n';
+    mensaje += '📝 *Agregar notas:* Usa paréntesis\n';
+    mensaje += '• "2 hamburguesas (sin cebolla)"\n';
+    mensaje += '• "1 pizza (extra queso, bien cocida)"\n\n';
     mensaje += 'O escribe *menu* para ver todas las opciones.';
     
     return mensaje;
@@ -473,14 +554,22 @@ function generarMensajeConfirmacion(resultado) {
     mensaje += `• ${item.cantidad}x ${item.nombre} - $${formatearPrecio(subtotal)}\n`;
   });
   
+  // 📝 Mostrar notas del pedido si existen
+  if (resultado.notas) {
+    mensaje += `\n📝 *Nota:* ${resultado.notas}\n`;
+  }
+  
   mensaje += `\n💰 Total: $${formatearPrecio(total)}\n\n`;
   
   if (resultado.errores.length > 0) {
     mensaje += `⚠️ No encontré: ${resultado.errores.join(', ')}\n\n`;
   }
   
-  // Llamado a la acción más natural
-  mensaje += 'Responde *sí* para confirmar o *cancelar* si quieres modificar algo.';
+  // Llamado a la acción con opción de editar
+  mensaje += 'Responde:\n';
+  mensaje += '• *sí* o *confirmar* - para continuar\n';
+  mensaje += '• *editar* o *cambiar* - para modificar\n';
+  mensaje += '• *cancelar* - para empezar de nuevo';
   
   return mensaje;
 }
