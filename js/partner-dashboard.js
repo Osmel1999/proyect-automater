@@ -39,15 +39,16 @@ async function verificarAcceso() {
             return;
         }
         
-        // Si no, verificar con la API
-        const response = await fetch(`${API_URL}/api/partners/check-role/${encodeURIComponent(userEmail)}`);
-        const data = await response.json();
+        // Si no, verificar directamente en Firebase (sin API)
+        console.log('🔍 Buscando partner en Firebase:', userEmail);
+        const partnerSnapshot = await firebase.database()
+            .ref('partners')
+            .orderByChild('email')
+            .equalTo(userEmail)
+            .once('value');
         
-        if (!data.success) {
-            throw new Error('Error verificando rol');
-        }
-        
-        if (!data.isPartner) {
+        if (!partnerSnapshot.exists()) {
+            console.log('❌ No es partner, redirigiendo a dashboard...');
             showToast('No tienes acceso a este panel', 'error');
             setTimeout(() => {
                 window.location.href = 'dashboard.html';
@@ -56,8 +57,10 @@ async function verificarAcceso() {
         }
         
         // Es partner, guardar en localStorage y cargar datos
+        const partnerId = Object.keys(partnerSnapshot.val())[0];
         localStorage.setItem('userRole', 'partner');
-        localStorage.setItem('partnerId', data.partnerId);
+        localStorage.setItem('partnerId', partnerId);
+        console.log('✅ Usuario es partner, ID:', partnerId);
         await cargarDatosPartner();
         
     } catch (error) {
@@ -71,20 +74,61 @@ async function verificarAcceso() {
 
 async function cargarDatosPartner() {
     try {
-        const response = await fetch(`${API_URL}/api/partners/mi-cuenta/info`, {
-            headers: {
-                'X-User-Email': userEmail
-            }
-        });
+        const partnerId = localStorage.getItem('partnerId');
         
-        const data = await response.json();
+        // Cargar datos del partner desde Firebase
+        const partnerSnapshot = await firebase.database().ref(`partners/${partnerId}`).once('value');
         
-        if (!data.success) {
-            throw new Error(data.error || 'Error cargando datos');
+        if (!partnerSnapshot.exists()) {
+            throw new Error('Partner no encontrado');
         }
         
-        partnerData = data;
-        enlaceReferido = data.partner.enlaceReferido;
+        const partner = partnerSnapshot.val();
+        
+        // Cargar referidos (buscar en comisiones_referidos)
+        const referidosSnapshot = await firebase.database()
+            .ref('comisiones_referidos')
+            .orderByChild('partnerId')
+            .equalTo(partnerId)
+            .once('value');
+        
+        const referidos = [];
+        if (referidosSnapshot.exists()) {
+            referidosSnapshot.forEach(child => {
+                const ref = child.val();
+                referidos.push({
+                    id: child.key,
+                    nombre: ref.nombreNegocio || 'N/A',
+                    email: ref.emailNegocio || '',
+                    fechaRegistro: ref.fechaRegistro,
+                    plan: 'trial', // Por defecto, se puede mejorar consultando el tenant
+                    estado: ref.estado || 'activo'
+                });
+            });
+        }
+        
+        // Construir objeto de datos compatible con la UI
+        partnerData = {
+            success: true,
+            partner: {
+                id: partnerId,
+                nombre: partner.nombre,
+                email: partner.email,
+                codigoReferido: partner.codigoReferido,
+                enlaceReferido: partner.enlaceReferido || `https://kdsapp.site/auth.html?ref=${partner.codigoReferido}`,
+                estado: partner.estado || 'activo'
+            },
+            estadisticas: {
+                totalReferidos: partner.estadisticas?.totalReferidos || 0,
+                referidosActivos: partner.estadisticas?.referidosActivos || 0,
+                totalComisionesGeneradas: partner.estadisticas?.totalComisionesGeneradas || 0,
+                comisionesPendientes: partner.estadisticas?.comisionesPendientes || 0
+            },
+            referidos: referidos,
+            ultimasComisiones: [] // Se puede agregar después si hay comisiones
+        };
+        
+        enlaceReferido = partnerData.partner.enlaceReferido;
         
         // Ocultar loading y mostrar contenido usando clases CSS
         const loadingOverlay = document.getElementById('loadingOverlay');
@@ -308,22 +352,6 @@ function showToast(message, type = 'info') {
 // CAMBIO DE CONTRASEÑA
 // ==========================================
 
-// Firebase config
-const firebaseConfig = {
-    apiKey: "AIzaSyAI0DN6Vy2vnBXOcSsKUXAcLqI0kB3Y7EE",
-    authDomain: "automater-whatsapp.firebaseapp.com",
-    databaseURL: "https://automater-whatsapp-default-rtdb.firebaseio.com",
-    projectId: "automater-whatsapp",
-    storageBucket: "automater-whatsapp.firebasestorage.app",
-    messagingSenderId: "455122736882",
-    appId: "1:455122736882:web:fcd6c0d5e9e845e8bf1ec4"
-};
-
-// Inicializar Firebase si no está inicializado
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-}
-
 function abrirModalCambiarPassword() {
     document.getElementById('currentPassword').value = '';
     document.getElementById('newPassword').value = '';
@@ -372,14 +400,12 @@ async function cambiarPassword() {
         // Cambiar la contraseña
         await firebase.auth().currentUser.updatePassword(newPassword);
         
-        // Marcar que ya no requiere cambio de password
-        await fetch(`${API_URL}/api/partners/mi-cuenta/password-cambiado`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-User-Email': userEmail
-            }
-        });
+        // Marcar que ya no requiere cambio de password directamente en Firebase
+        const partnerId = localStorage.getItem('partnerId');
+        if (partnerId) {
+            await firebase.database().ref(`partners/${partnerId}/requiereCambioPassword`).set(false);
+            console.log('✅ Campo requiereCambioPassword actualizado en Firebase');
+        }
         
         showToast('¡Contraseña actualizada correctamente!', 'success');
         cerrarModalCambiarPassword();
