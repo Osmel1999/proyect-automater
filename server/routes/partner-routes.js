@@ -369,4 +369,40 @@ router.get('/check-role/:email', async (req, res) => {
     }
 });
 
+/**
+ * POST /api/partners/mi-cuenta/password-cambiado - Marcar que el partner cambió su contraseña
+ */
+router.post('/mi-cuenta/password-cambiado', async (req, res) => {
+    try {
+        const email = getEmailFromRequest(req);
+        
+        if (!email) {
+            return res.status(401).json({ success: false, error: 'No autenticado' });
+        }
+        
+        const partner = await partnerService.obtenerPartnerPorEmail(email);
+        
+        if (!partner) {
+            return res.status(404).json({
+                success: false,
+                error: 'No eres un socio comercial registrado'
+            });
+        }
+        
+        await partnerService.marcarPasswordCambiado(partner.id);
+        
+        res.json({
+            success: true,
+            message: 'Marcado correctamente'
+        });
+        
+    } catch (error) {
+        console.error('Error POST /api/partners/mi-cuenta/password-cambiado:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 module.exports = router;

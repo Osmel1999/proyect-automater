@@ -293,3 +293,99 @@ function showToast(message, type = 'info') {
         }
     }, 4000);
 }
+
+// ==========================================
+// CAMBIO DE CONTRASEÑA
+// ==========================================
+
+// Firebase config
+const firebaseConfig = {
+    apiKey: "AIzaSyAI0DN6Vy2vnBXOcSsKUXAcLqI0kB3Y7EE",
+    authDomain: "automater-whatsapp.firebaseapp.com",
+    databaseURL: "https://automater-whatsapp-default-rtdb.firebaseio.com",
+    projectId: "automater-whatsapp",
+    storageBucket: "automater-whatsapp.firebasestorage.app",
+    messagingSenderId: "455122736882",
+    appId: "1:455122736882:web:fcd6c0d5e9e845e8bf1ec4"
+};
+
+// Inicializar Firebase si no está inicializado
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+
+function abrirModalCambiarPassword() {
+    document.getElementById('currentPassword').value = '';
+    document.getElementById('newPassword').value = '';
+    document.getElementById('confirmPassword').value = '';
+    document.getElementById('passwordModal').classList.add('active');
+}
+
+function cerrarModalCambiarPassword() {
+    document.getElementById('passwordModal').classList.remove('active');
+}
+
+async function cambiarPassword() {
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    
+    // Validaciones
+    if (!currentPassword || !newPassword || !confirmPassword) {
+        showToast('Todos los campos son obligatorios', 'error');
+        return;
+    }
+    
+    if (newPassword.length < 6) {
+        showToast('La nueva contraseña debe tener al menos 6 caracteres', 'error');
+        return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+        showToast('Las contraseñas no coinciden', 'error');
+        return;
+    }
+    
+    try {
+        const user = firebase.auth().currentUser;
+        
+        if (!user) {
+            // Si no hay usuario activo, re-autenticar
+            const credential = firebase.auth.EmailAuthProvider.credential(userEmail, currentPassword);
+            await firebase.auth().signInWithEmailAndPassword(userEmail, currentPassword);
+        }
+        
+        // Re-autenticar antes de cambiar la contraseña (requerido por Firebase)
+        const credential = firebase.auth.EmailAuthProvider.credential(userEmail, currentPassword);
+        await firebase.auth().currentUser.reauthenticateWithCredential(credential);
+        
+        // Cambiar la contraseña
+        await firebase.auth().currentUser.updatePassword(newPassword);
+        
+        // Marcar que ya no requiere cambio de password
+        await fetch(`${API_URL}/api/partners/mi-cuenta/password-cambiado`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-User-Email': userEmail
+            }
+        });
+        
+        showToast('¡Contraseña actualizada correctamente!', 'success');
+        cerrarModalCambiarPassword();
+        
+    } catch (error) {
+        console.error('Error cambiando contraseña:', error);
+        
+        if (error.code === 'auth/wrong-password') {
+            showToast('La contraseña actual es incorrecta', 'error');
+        } else if (error.code === 'auth/user-not-found') {
+            showToast('Usuario no encontrado', 'error');
+        } else if (error.code === 'auth/too-many-requests') {
+            showToast('Demasiados intentos. Intenta más tarde.', 'error');
+        } else {
+            showToast('Error al cambiar la contraseña: ' + error.message, 'error');
+        }
+    }
+}
+

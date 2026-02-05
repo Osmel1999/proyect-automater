@@ -184,11 +184,61 @@
                 </ul>
             </div>
         </section>
+        
+        <!-- Configuración de Cuenta -->
+        <section class="settings-section">
+            <div class="settings-card">
+                <h3>⚙️ Configuración de Cuenta</h3>
+                <div class="settings-item">
+                    <div class="settings-info">
+                        <span class="settings-label">Cambiar Contraseña</span>
+                        <span class="settings-description">Actualiza tu contraseña de acceso</span>
+                    </div>
+                    <button class="btn btn-secondary" onclick="abrirModalCambiarPassword()">
+                        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                        </svg>
+                        Cambiar
+                    </button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Modal Cambiar Contraseña -->
+    <div class="modal-overlay" id="passwordModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>🔐 Cambiar Contraseña</h3>
+                <button class="modal-close" onclick="cerrarModalCambiarPassword()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="currentPassword">Contraseña Actual</label>
+                    <input type="password" id="currentPassword" placeholder="Tu contraseña actual">
+                </div>
+                <div class="form-group">
+                    <label for="newPassword">Nueva Contraseña</label>
+                    <input type="password" id="newPassword" placeholder="Mínimo 6 caracteres">
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassword">Confirmar Nueva Contraseña</label>
+                    <input type="password" id="confirmPassword" placeholder="Repite la nueva contraseña">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="cerrarModalCambiarPassword()">Cancelar</button>
+                <button class="btn btn-primary" onclick="cambiarPassword()">Guardar</button>
+            </div>
+        </div>
     </div>
 
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
-
+    
+    <!-- Firebase Auth SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="js/partner-dashboard.js"></script>
 </body>
 </html>

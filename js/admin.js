@@ -675,7 +675,22 @@ async function crearNuevoPartner() {
         const data = await response.json();
         
         if (data.success) {
-            alert(`✅ Socio creado!\n\nCódigo de referido: ${data.partner.codigoReferido}\nEnlace: ${data.partner.enlaceReferido}`);
+            let mensaje = `✅ Socio creado exitosamente!\n\n`;
+            mensaje += `📋 Código de referido: ${data.partner.codigoReferido}\n`;
+            mensaje += `🔗 Enlace: ${data.partner.enlaceReferido}\n\n`;
+            
+            if (data.partner.firebaseAuthCreated) {
+                mensaje += `🔐 CREDENCIALES DE ACCESO:\n`;
+                mensaje += `   Email: ${data.partner.email}\n`;
+                mensaje += `   Contraseña temporal: Su número de cédula\n\n`;
+                mensaje += `⚠️ El socio debe cambiar su contraseña al ingresar por primera vez.\n`;
+                mensaje += `   Página de acceso: https://kdsapp.site/auth.html`;
+            } else {
+                mensaje += `⚠️ No se pudo crear la cuenta de acceso automáticamente.\n`;
+                mensaje += `   El socio debe registrarse manualmente en: https://kdsapp.site/auth.html`;
+            }
+            
+            alert(mensaje);
             closeNewPartnerModal();
             loadPartnersData();
         } else {

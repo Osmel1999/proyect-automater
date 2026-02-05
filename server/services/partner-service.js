@@ -10,20 +10,16 @@ const COMISION_PORCENTAJE = 30; // 30%
 const PERIODO_GRACIA_DIAS = 30; // 30 días para vincular tenant
 
 /**
- * Genera un código de referido único basado en el nombre
+ * Genera un código de referido único y anónimo
+ * Formato: REF-XXXXXX (6 caracteres alfanuméricos)
  */
-function generarCodigoReferido(nombre) {
-    const nombreLimpio = nombre
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '') // Remover acentos
-        .replace(/[^a-zA-Z]/g, '') // Solo letras
-        .toUpperCase()
-        .substring(0, 6);
-    
-    const year = new Date().getFullYear();
-    const random = Math.floor(Math.random() * 100).toString().padStart(2, '0');
-    
-    return `${nombreLimpio}${year}${random}`;
+function generarCodigoReferido() {
+    const caracteres = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Sin I, O, 0, 1 para evitar confusiones
+    let codigo = '';
+    for (let i = 0; i < 6; i++) {
+        codigo += caracteres.charAt(Math.floor(Math.random() * caracteres.length));
+    }
+    return `REF-${codigo}`;
 }
 
 /**
@@ -73,15 +69,15 @@ async function crearPartner(datosPartner, adminEmail) {
         const db = admin.database();
         const partnerId = db.ref('partners').push().key;
         
-        // Generar código único
-        let codigoReferido = generarCodigoReferido(datosPartner.nombre);
+        // Generar código único y anónimo
+        let codigoReferido = generarCodigoReferido();
         
         // Verificar que no exista
         let intentos = 0;
         while (intentos < 10) {
             const existe = await verificarCodigoReferido(codigoReferido);
             if (!existe.valid) break;
-            codigoReferido = generarCodigoReferido(datosPartner.nombre);
+            codigoReferido = generarCodigoReferido();
             intentos++;
         }
         
@@ -108,14 +104,42 @@ async function crearPartner(datosPartner, adminEmail) {
                 totalComisionesGeneradas: 0,
                 totalComisionesPagadas: 0,
                 comisionesPendientes: 0
-            }
+            },
+            requiereCambioPassword: true // Flag para solicitar cambio de contraseña
         };
         
         await db.ref(`partners/${partnerId}`).set(partner);
         
+        // Crear cuenta de Firebase Auth con la cédula como contraseña temporal
+        let firebaseAuthCreated = false;
+        if (datosPartner.cedula) {
+            try {
+                await admin.auth().createUser({
+                    email: datosPartner.email.toLowerCase(),
+                    password: datosPartner.cedula, // Contraseña temporal = cédula
+                    displayName: datosPartner.nombre,
+                    emailVerified: false
+                });
+                firebaseAuthCreated = true;
+                console.log(`✅ Cuenta Firebase Auth creada para partner: ${datosPartner.email}`);
+            } catch (authError) {
+                // Si el usuario ya existe, no es error crítico
+                if (authError.code === 'auth/email-already-exists') {
+                    console.log(`⚠️ Email ya existe en Firebase Auth: ${datosPartner.email}`);
+                    firebaseAuthCreated = true; // Ya tiene cuenta
+                } else {
+                    console.error('Error creando cuenta Firebase Auth:', authError);
+                }
+            }
+        }
+        
         console.log(`✅ Partner creado: ${partner.nombre} (${codigoReferido})`);
         
-        return partner;
+        return {
+            ...partner,
+            firebaseAuthCreated,
+            passwordTemporal: firebaseAuthCreated ? 'Cédula del socio' : null
+        };
         
     } catch (error) {
         console.error('Error creando partner:', error);
@@ -528,7 +552,8 @@ async function obtenerEstadisticasPartner(partnerId, solicitanteEmail) {
             partner: {
                 nombre: partner.nombre,
                 codigoReferido: partner.codigoReferido,
-                enlaceReferido: partner.enlaceReferido
+                enlaceReferido: partner.enlaceReferido,
+                requiereCambioPassword: partner.requiereCambioPassword || false
             },
             estadisticas: {
                 totalReferidos: referidos.length,
@@ -544,6 +569,21 @@ async function obtenerEstadisticasPartner(partnerId, solicitanteEmail) {
         
     } catch (error) {
         console.error('Error obteniendo estadísticas partner:', error);
+        throw error;
+    }
+}
+
+/**
+ * Marca que el partner cambió su contraseña temporal
+ */
+async function marcarPasswordCambiado(partnerId) {
+    try {
+        const db = admin.database();
+        await db.ref(`partners/${partnerId}/requiereCambioPassword`).set(false);
+        console.log(`✅ Partner ${partnerId} marcó cambio de contraseña`);
+        return true;
+    } catch (error) {
+        console.error('Error marcando password cambiado:', error);
         throw error;
     }
 }
@@ -571,5 +611,6 @@ module.exports = {
     marcarComisionPagada,
     obtenerComisiones,
     obtenerReferidos,
-    obtenerEstadisticasPartner
+    obtenerEstadisticasPartner,
+    marcarPasswordCambiado
 };
