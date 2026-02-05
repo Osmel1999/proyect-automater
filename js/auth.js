@@ -286,8 +286,39 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
                 
+                // Si no se encontró en users, buscar en partners
                 if (!userSnapshot || !userSnapshot.exists()) {
-                    console.error('❌ Usuario no encontrado después de 3 intentos');
+                    console.log('🔍 Usuario no encontrado en users, buscando en partners...');
+                    
+                    const partnerSnapshot = await firebase.database()
+                        .ref('partners')
+                        .orderByChild('email')
+                        .equalTo(email)
+                        .once('value');
+                    
+                    if (partnerSnapshot.exists()) {
+                        console.log('✅ Usuario es un PARTNER');
+                        const partnerData = Object.values(partnerSnapshot.val())[0];
+                        const partnerId = Object.keys(partnerSnapshot.val())[0];
+                        
+                        // Guardar datos del partner
+                        localStorage.setItem('userEmail', email);
+                        localStorage.setItem('userName', partnerData.nombre);
+                        localStorage.setItem('userRole', 'partner');
+                        localStorage.setItem('partnerId', partnerId);
+                        
+                        console.log('✅ Login exitoso como partner');
+                        showMessage('¡Bienvenido, ' + partnerData.nombre + '!', 'success');
+                        
+                        // Redirigir al partner dashboard
+                        setTimeout(() => {
+                            window.location.href = 'partner-dashboard.html';
+                        }, 1000);
+                        return;
+                    }
+                    
+                    // No se encontró ni en users ni en partners
+                    console.error('❌ Usuario no encontrado en users ni partners');
                     console.log('📧 Email buscado:', email);
                     throw new Error('Usuario no encontrado en la base de datos. Por favor, contacta soporte.');
                 }

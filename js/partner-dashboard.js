@@ -31,7 +31,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function verificarAcceso() {
     try {
-        // Verificar si es partner
+        // Verificar si ya está marcado como partner en localStorage
+        const userRole = localStorage.getItem('userRole');
+        if (userRole === 'partner') {
+            console.log('✅ Usuario marcado como partner en localStorage');
+            await cargarDatosPartner();
+            return;
+        }
+        
+        // Si no, verificar con la API
         const response = await fetch(`${API_URL}/api/partners/check-role/${encodeURIComponent(userEmail)}`);
         const data = await response.json();
         
@@ -47,7 +55,9 @@ async function verificarAcceso() {
             return;
         }
         
-        // Es partner, cargar datos
+        // Es partner, guardar en localStorage y cargar datos
+        localStorage.setItem('userRole', 'partner');
+        localStorage.setItem('partnerId', data.partnerId);
         await cargarDatosPartner();
         
     } catch (error) {
