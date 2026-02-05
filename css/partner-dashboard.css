@@ -328,8 +328,8 @@ body {
 }
 
 .stat-card.highlight {
-    background: linear-gradient(135deg, #fef3c7, #fde68a);
-    border: 2px solid var(--gold);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
 }
 
 .stat-icon {
