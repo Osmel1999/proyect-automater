@@ -308,12 +308,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         localStorage.setItem('partnerId', partnerId);
                         
                         console.log('✅ Login exitoso como partner');
-                        showMessage('¡Bienvenido, ' + partnerData.nombre + '!', 'success');
                         
                         // Redirigir al partner dashboard
-                        setTimeout(() => {
-                            window.location.href = 'partner-dashboard.html';
-                        }, 1000);
+                        window.location.href = 'partner-dashboard.html';
                         return;
                     }
                     
