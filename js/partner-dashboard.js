@@ -1,6 +1,7 @@
 /**
  * 🤝 Partner Dashboard JavaScript
  * Panel de control para socios comerciales
+ * Consistente con el diseño del dashboard principal
  */
 
 const API_URL = 'https://api.kdsapp.site';
@@ -75,9 +76,14 @@ async function cargarDatosPartner() {
         partnerData = data;
         enlaceReferido = data.partner.enlaceReferido;
         
-        // Mostrar contenido
-        document.getElementById('loadingOverlay').style.display = 'none';
-        document.getElementById('mainContent').style.display = 'block';
+        // Ocultar loading y mostrar contenido usando clases CSS
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const mainContent = document.getElementById('mainContent');
+        const partnerHeader = document.getElementById('partnerHeader');
+        
+        if (loadingOverlay) loadingOverlay.classList.add('hidden');
+        if (mainContent) mainContent.classList.remove('hidden');
+        if (partnerHeader) partnerHeader.classList.remove('hidden');
         
         // Actualizar UI
         actualizarUI();
@@ -118,11 +124,8 @@ function renderReferidos(referidos) {
             <tr>
                 <td colspan="4" class="empty">
                     <div class="empty-state">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                            <circle cx="9" cy="7" r="4"/>
-                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 48px; height: 48px;">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
                         </svg>
                         <p>Aún no tienes referidos</p>
                         <span>¡Comparte tu código para empezar a ganar!</span>
@@ -156,9 +159,8 @@ function renderComisiones(comisiones) {
             <tr>
                 <td colspan="5" class="empty">
                     <div class="empty-state">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="12" y1="1" x2="12" y2="23"/>
-                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 48px; height: 48px;">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
                         </svg>
                         <p>Aún no tienes comisiones</p>
                         <span>Cuando tus referidos paguen membresías, verás tus comisiones aquí.</span>
