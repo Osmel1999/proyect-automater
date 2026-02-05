@@ -1,6 +1,12 @@
 // Authentication page functionality
 // Firebase is initialized in config.js before this script loads
 
+// API URL
+const API_URL = 'https://api.kdsapp.site';
+
+// Código de referido (si viene en la URL)
+let codigoReferido = null;
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 Auth.js: DOM loaded, initializing...');
     
@@ -13,10 +19,26 @@ document.addEventListener('DOMContentLoaded', function() {
     
     console.log('✅ Firebase initialized:', firebase.app().name);
     
-    // Check URL params for register mode
+    // Check URL params for register mode and referral code
     const urlParams = new URLSearchParams(window.location.search);
     const mode = urlParams.get('mode');
+    codigoReferido = urlParams.get('ref');
     
+    // Si hay código de referido, guardarlo y mostrar indicador
+    if (codigoReferido) {
+        console.log('🎯 Código de referido detectado:', codigoReferido);
+        localStorage.setItem('codigoReferido', codigoReferido);
+        verificarYMostrarCodigoReferido(codigoReferido);
+    } else {
+        // Verificar si ya había un código guardado (período de gracia de 30 días)
+        const savedCodigo = localStorage.getItem('codigoReferido');
+        if (savedCodigo) {
+            codigoReferido = savedCodigo;
+            console.log('🎯 Código de referido recuperado de localStorage:', codigoReferido);
+            verificarYMostrarCodigoReferido(codigoReferido);
+        }
+    }
+
     // Tabs functionality
     const tabs = document.querySelectorAll('.tab');
     const sections = document.querySelectorAll('.form-section');
@@ -350,9 +372,25 @@ document.addEventListener('DOMContentLoaded', function() {
                     businessName: localStorage.getItem('businessName')
                 });
 
-                // ✅ FIX: Siempre redirigir a select.html después del login
-                // El usuario decide a dónde ir (KDS o Dashboard)
-                console.log('🔄 Login exitoso, redirigiendo a select...');
+                // ✅ Verificar si es un socio comercial (partner)
+                console.log('🔄 Login exitoso, verificando rol del usuario...');
+                
+                try {
+                    const roleResponse = await fetch(`${API_URL}/api/partners/check-role/${encodeURIComponent(email)}`);
+                    const roleData = await roleResponse.json();
+                    
+                    if (roleData.success && roleData.isPartner) {
+                        console.log('🤝 Usuario es un socio comercial, redirigiendo a partner-dashboard...');
+                        setTimeout(() => {
+                            window.location.href = '/partner-dashboard.html';
+                        }, 100);
+                        return;
+                    }
+                } catch (roleError) {
+                    console.log('⚠️ Error verificando rol de partner (continuando con flujo normal):', roleError);
+                }
+                
+                // Si no es partner, redirigir a select.html
                 console.log('🎯 URL de redirección:', '/select.html');
                 console.log('⏰ Timestamp:', new Date().toISOString());
                 
@@ -500,6 +538,33 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
 
                 console.log('✅ Tenant creado en Firebase:', tenantId);
+                
+                // 🤝 Vincular tenant a partner si hay código de referido
+                if (codigoReferido) {
+                    console.log('🔗 Intentando vincular tenant a partner con código:', codigoReferido);
+                    try {
+                        const vincularResponse = await fetch(`${API_URL}/api/partners/verificar-codigo/${codigoReferido}`);
+                        const vincularData = await vincularResponse.json();
+                        
+                        if (vincularData.valid) {
+                            // Actualizar tenant con datos de referido
+                            await firebase.database().ref('tenants/' + tenantId).update({
+                                partnerId: vincularData.partnerId || null,
+                                codigoReferido: codigoReferido,
+                                fueReferido: true,
+                                fechaVinculacion: Date.now()
+                            });
+                            console.log('✅ Tenant vinculado a partner:', vincularData.partnerNombre);
+                            
+                            // Limpiar código de referido del localStorage
+                            localStorage.removeItem('codigoReferido');
+                        } else {
+                            console.log('⚠️ Código de referido inválido o expirado');
+                        }
+                    } catch (vincularError) {
+                        console.error('⚠️ Error vinculando tenant a partner:', vincularError);
+                    }
+                }
 
                 // Store user data in localStorage
                 localStorage.setItem('currentUserId', userId);
@@ -545,3 +610,104 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
 }); // End of DOMContentLoaded
+
+// ==========================================
+// FUNCIONES DE CÓDIGO DE REFERIDO
+// ==========================================
+
+/**
+ * Verifica el código de referido y muestra un indicador si es válido
+ */
+async function verificarYMostrarCodigoReferido(codigo) {
+    try {
+        const response = await fetch(`${API_URL}/api/partners/verificar-codigo/${codigo}`);
+        const data = await response.json();
+        
+        if (data.valid) {
+            mostrarIndicadorReferido(codigo, data.partnerNombre);
+        } else {
+            console.log('⚠️ Código de referido no válido:', data.error);
+            localStorage.removeItem('codigoReferido');
+        }
+    } catch (error) {
+        console.error('Error verificando código de referido:', error);
+    }
+}
+
+/**
+ * Muestra un indicador visual de que el usuario viene referido
+ */
+function mostrarIndicadorReferido(codigo, partnerNombre) {
+    // Crear el indicador
+    const indicator = document.createElement('div');
+    indicator.id = 'referralIndicator';
+    indicator.className = 'referral-indicator';
+    indicator.innerHTML = `
+        <div class="referral-badge">
+            <span class="referral-icon">🎯</span>
+            <span class="referral-text">
+                Referido por <strong>${partnerNombre || codigo}</strong>
+            </span>
+            <button class="referral-remove" onclick="removerCodigoReferido()" title="Eliminar">×</button>
+        </div>
+    `;
+    
+    // Insertar al inicio del body
+    document.body.insertBefore(indicator, document.body.firstChild);
+    
+    // Agregar estilos
+    const style = document.createElement('style');
+    style.textContent = `
+        .referral-indicator {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            padding: 10px 20px;
+            z-index: 1000;
+            text-align: center;
+        }
+        .referral-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: white;
+            font-size: 14px;
+        }
+        .referral-icon {
+            font-size: 18px;
+        }
+        .referral-remove {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 14px;
+            line-height: 1;
+            margin-left: 8px;
+        }
+        .referral-remove:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .auth-container {
+            margin-top: 50px !important;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+/**
+ * Remueve el código de referido
+ */
+function removerCodigoReferido() {
+    codigoReferido = null;
+    localStorage.removeItem('codigoReferido');
+    const indicator = document.getElementById('referralIndicator');
+    if (indicator) {
+        indicator.remove();
+    }
+}

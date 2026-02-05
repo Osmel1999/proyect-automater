@@ -479,3 +479,355 @@ function getDaysClass(days) {
     if (days <= 7) return 'warning';
     return 'ok';
 }
+
+// ==========================================
+// GESTIÓN DE SOCIOS COMERCIALES
+// ==========================================
+
+let allPartners = [];
+let allComisiones = [];
+
+/**
+ * Cargar datos de partners
+ */
+async function loadPartnersData() {
+    try {
+        // Cargar partners
+        const partnersResponse = await fetch(`${API_URL}/api/partners`, {
+            headers: {
+                'X-User-Email': adminEmail
+            }
+        });
+        const partnersData = await partnersResponse.json();
+        
+        if (partnersData.success) {
+            allPartners = partnersData.partners || [];
+            renderPartners(allPartners);
+            updatePartnersStats();
+        }
+        
+        // Cargar comisiones pendientes
+        const comisionesResponse = await fetch(`${API_URL}/api/partners/comisiones/all?estado=pendiente`, {
+            headers: {
+                'X-User-Email': adminEmail
+            }
+        });
+        const comisionesData = await comisionesResponse.json();
+        
+        if (comisionesData.success) {
+            allComisiones = comisionesData.comisiones || [];
+            renderComisionesAdmin(allComisiones);
+        }
+        
+    } catch (error) {
+        console.error('Error cargando datos de partners:', error);
+    }
+}
+
+/**
+ * Actualizar estadísticas de partners
+ */
+function updatePartnersStats() {
+    const activos = allPartners.filter(p => p.estado === 'activo');
+    const totalReferidos = allPartners.reduce((sum, p) => sum + (p.estadisticas?.totalReferidos || 0), 0);
+    const pendientes = allPartners.reduce((sum, p) => sum + (p.estadisticas?.comisionesPendientes || 0), 0);
+    
+    document.getElementById('totalPartners').textContent = activos.length;
+    document.getElementById('totalReferidosPartners').textContent = totalReferidos;
+    document.getElementById('comisionesPendientes').textContent = formatCurrency(pendientes);
+}
+
+/**
+ * Renderizar tabla de partners
+ */
+function renderPartners(partners) {
+    const tbody = document.getElementById('partnersTableBody');
+    
+    if (!partners || partners.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty">No hay socios registrados</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = partners.map(partner => `
+        <tr>
+            <td>
+                <div class="partner-info">
+                    <span class="partner-name">${escapeHtml(partner.nombre)}</span>
+                    <span class="partner-email">${escapeHtml(partner.email)}</span>
+                </div>
+            </td>
+            <td><code class="code-badge">${partner.codigoReferido}</code></td>
+            <td>${partner.estadisticas?.totalReferidos || 0}</td>
+            <td>${formatCurrency(partner.estadisticas?.totalComisionesGeneradas || 0)}</td>
+            <td class="amount-pending">${formatCurrency(partner.estadisticas?.comisionesPendientes || 0)}</td>
+            <td><span class="status-badge ${partner.estado}">${partner.estado}</span></td>
+            <td class="actions-cell">
+                <button class="action-btn" onclick="verPartner('${partner.id}')" title="Ver detalles">👁️</button>
+                <button class="action-btn" onclick="copiarCodigoPartner('${partner.codigoReferido}')" title="Copiar código">📋</button>
+                <button class="action-btn" onclick="togglePartnerEstado('${partner.id}', '${partner.estado}')" title="${partner.estado === 'activo' ? 'Desactivar' : 'Activar'}">
+                    ${partner.estado === 'activo' ? '🔴' : '🟢'}
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+/**
+ * Renderizar comisiones pendientes
+ */
+function renderComisionesAdmin(comisiones) {
+    const tbody = document.getElementById('comisionesAdminTableBody');
+    
+    if (!comisiones || comisiones.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty">No hay comisiones pendientes</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = comisiones.map(com => `
+        <tr>
+            <td>${formatDateShort(com.fechaGenerada)}</td>
+            <td>${escapeHtml(com.partnerNombre)}</td>
+            <td>${escapeHtml(com.tenantNombre)}</td>
+            <td><span class="membership-badge">${com.tipoMembresia}</span></td>
+            <td class="amount">${formatCurrency(com.valorComision)}</td>
+            <td>
+                <button class="btn btn-primary btn-sm" onclick="openPayCommissionModal('${com.id}', '${escapeHtml(com.partnerNombre)}', ${com.valorComision})">
+                    💵 Pagar
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+/**
+ * Cambiar tab de partners
+ */
+function cambiarPartnerTab(tabId) {
+    document.querySelectorAll('.partners-tab').forEach(tab => {
+        tab.classList.remove('active');
+        if (tab.dataset.tab === tabId) {
+            tab.classList.add('active');
+        }
+    });
+    
+    document.querySelectorAll('.partners-tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    
+    const tabContentId = tabId === 'socios' ? 'sociosTab' : 'comisionesAdminTab';
+    document.getElementById(tabContentId).classList.add('active');
+}
+
+/**
+ * Modal nuevo partner
+ */
+function openNewPartnerModal() {
+    document.getElementById('partnerNombre').value = '';
+    document.getElementById('partnerEmail').value = '';
+    document.getElementById('partnerTelefono').value = '';
+    document.getElementById('partnerBanco').value = '';
+    document.getElementById('partnerTipoCuenta').value = '';
+    document.getElementById('partnerNumeroCuenta').value = '';
+    document.getElementById('partnerCedula').value = '';
+    document.getElementById('newPartnerModal').style.display = 'flex';
+}
+
+function closeNewPartnerModal() {
+    document.getElementById('newPartnerModal').style.display = 'none';
+}
+
+/**
+ * Crear nuevo partner
+ */
+async function crearNuevoPartner() {
+    const nombre = document.getElementById('partnerNombre').value.trim();
+    const emailPartner = document.getElementById('partnerEmail').value.trim();
+    const telefono = document.getElementById('partnerTelefono').value.trim();
+    const banco = document.getElementById('partnerBanco').value.trim();
+    const tipoCuenta = document.getElementById('partnerTipoCuenta').value;
+    const numeroCuenta = document.getElementById('partnerNumeroCuenta').value.trim();
+    const cedula = document.getElementById('partnerCedula').value.trim();
+    
+    if (!nombre || !emailPartner) {
+        alert('Nombre y email son obligatorios');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_URL}/api/partners`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-User-Email': adminEmail
+            },
+            body: JSON.stringify({
+                nombre,
+                emailPartner,
+                telefono,
+                banco,
+                tipoCuenta,
+                numeroCuenta,
+                cedula,
+                titular: nombre
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(`✅ Socio creado!\n\nCódigo de referido: ${data.partner.codigoReferido}\nEnlace: ${data.partner.enlaceReferido}`);
+            closeNewPartnerModal();
+            loadPartnersData();
+        } else {
+            alert('❌ Error: ' + data.error);
+        }
+        
+    } catch (error) {
+        console.error('Error creando partner:', error);
+        alert('Error de conexión');
+    }
+}
+
+/**
+ * Ver detalles de un partner
+ */
+async function verPartner(partnerId) {
+    const partner = allPartners.find(p => p.id === partnerId);
+    if (!partner) return;
+    
+    alert(`
+📋 Detalles del Socio
+
+Nombre: ${partner.nombre}
+Email: ${partner.email}
+Teléfono: ${partner.telefono || 'No registrado'}
+Código: ${partner.codigoReferido}
+
+📊 Estadísticas:
+- Referidos: ${partner.estadisticas?.totalReferidos || 0}
+- Total generado: ${formatCurrency(partner.estadisticas?.totalComisionesGeneradas || 0)}
+- Total pagado: ${formatCurrency(partner.estadisticas?.totalComisionesPagadas || 0)}
+- Pendiente: ${formatCurrency(partner.estadisticas?.comisionesPendientes || 0)}
+
+💳 Datos de Pago:
+- Banco: ${partner.datosPago?.banco || 'No registrado'}
+- Cuenta: ${partner.datosPago?.tipoCuenta || ''} ${partner.datosPago?.numeroCuenta || 'No registrada'}
+- Cédula: ${partner.datosPago?.cedula || 'No registrada'}
+    `.trim());
+}
+
+/**
+ * Copiar código de partner
+ */
+function copiarCodigoPartner(codigo) {
+    navigator.clipboard.writeText(codigo)
+        .then(() => alert('✅ Código copiado: ' + codigo))
+        .catch(() => alert('Código: ' + codigo));
+}
+
+/**
+ * Activar/Desactivar partner
+ */
+async function togglePartnerEstado(partnerId, estadoActual) {
+    const nuevoEstado = estadoActual === 'activo' ? 'inactivo' : 'activo';
+    
+    if (!confirm(`¿${nuevoEstado === 'activo' ? 'Activar' : 'Desactivar'} este socio?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_URL}/api/partners/${partnerId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-User-Email': adminEmail
+            },
+            body: JSON.stringify({ estado: nuevoEstado })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ Estado actualizado');
+            loadPartnersData();
+        } else {
+            alert('❌ Error: ' + data.error);
+        }
+        
+    } catch (error) {
+        console.error('Error actualizando partner:', error);
+        alert('Error de conexión');
+    }
+}
+
+/**
+ * Modal pagar comisión
+ */
+function openPayCommissionModal(comisionId, partnerName, amount) {
+    document.getElementById('payCommissionId').value = comisionId;
+    document.getElementById('payPartnerName').textContent = partnerName;
+    document.getElementById('payCommissionAmount').textContent = formatCurrency(amount);
+    document.getElementById('payReference').value = '';
+    document.getElementById('payCommissionModal').style.display = 'flex';
+}
+
+function closePayCommissionModal() {
+    document.getElementById('payCommissionModal').style.display = 'none';
+}
+
+/**
+ * Confirmar pago de comisión
+ */
+async function confirmarPagoComision() {
+    const comisionId = document.getElementById('payCommissionId').value;
+    const referencia = document.getElementById('payReference').value.trim();
+    
+    if (!referencia) {
+        alert('Ingresa la referencia del pago');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_URL}/api/partners/comisiones/${comisionId}/pagar`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-User-Email': adminEmail
+            },
+            body: JSON.stringify({ referenciaPago: referencia })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ Comisión marcada como pagada');
+            closePayCommissionModal();
+            loadPartnersData();
+        } else {
+            alert('❌ Error: ' + data.error);
+        }
+        
+    } catch (error) {
+        console.error('Error pagando comisión:', error);
+        alert('Error de conexión');
+    }
+}
+
+/**
+ * Formatear fecha corta
+ */
+function formatDateShort(timestamp) {
+    if (!timestamp) return 'N/A';
+    const date = new Date(timestamp);
+    return date.toLocaleDateString('es-CO', {
+        day: '2-digit',
+        month: 'short'
+    });
+}
+
+// Cargar datos de partners cuando se muestra el panel
+const originalShowAdminPanel = showAdminPanel;
+showAdminPanel = function() {
+    originalShowAdminPanel();
+    loadPartnersData();
+};

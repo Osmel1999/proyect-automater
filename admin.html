@@ -265,6 +265,167 @@
                 </div>
             </div>
         </div>
+
+        <!-- Partners Section -->
+        <section class="partners-section" id="partnersSection">
+            <div class="section-header">
+                <h2>🤝 Socios Comerciales</h2>
+                <button class="btn btn-primary" onclick="openNewPartnerModal()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    Nuevo Socio
+                </button>
+            </div>
+            
+            <!-- Partners Stats -->
+            <div class="partners-stats">
+                <div class="partner-stat-card">
+                    <span class="partner-stat-value" id="totalPartners">0</span>
+                    <span class="partner-stat-label">Socios Activos</span>
+                </div>
+                <div class="partner-stat-card">
+                    <span class="partner-stat-value" id="totalReferidosPartners">0</span>
+                    <span class="partner-stat-label">Total Referidos</span>
+                </div>
+                <div class="partner-stat-card highlight">
+                    <span class="partner-stat-value" id="comisionesPendientes">$0</span>
+                    <span class="partner-stat-label">Comisiones Pendientes</span>
+                </div>
+            </div>
+            
+            <!-- Partners Tabs -->
+            <div class="partners-tabs">
+                <button class="partners-tab active" data-tab="socios" onclick="cambiarPartnerTab('socios')">Socios</button>
+                <button class="partners-tab" data-tab="comisiones" onclick="cambiarPartnerTab('comisiones')">Comisiones Pendientes</button>
+            </div>
+            
+            <!-- Socios Tab -->
+            <div class="partners-tab-content active" id="sociosTab">
+                <div class="table-container">
+                    <table class="partners-table">
+                        <thead>
+                            <tr>
+                                <th>Socio</th>
+                                <th>Código</th>
+                                <th>Referidos</th>
+                                <th>Comisiones</th>
+                                <th>Pendiente</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="partnersTableBody">
+                            <tr>
+                                <td colspan="7" class="loading">Cargando socios...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Comisiones Tab -->
+            <div class="partners-tab-content" id="comisionesAdminTab">
+                <div class="table-container">
+                    <table class="comisiones-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Socio</th>
+                                <th>Restaurante</th>
+                                <th>Membresía</th>
+                                <th>Comisión</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="comisionesAdminTableBody">
+                            <tr>
+                                <td colspan="6" class="loading">Cargando comisiones...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- New Partner Modal -->
+        <div class="modal-overlay" id="newPartnerModal" style="display: none;">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2>➕ Nuevo Socio Comercial</h2>
+                    <button class="close-btn" onclick="closeNewPartnerModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Nombre completo *</label>
+                        <input type="text" id="partnerNombre" placeholder="Ej: Juan Pérez" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email *</label>
+                        <input type="email" id="partnerEmail" placeholder="Ej: juan@email.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Teléfono</label>
+                        <input type="tel" id="partnerTelefono" placeholder="Ej: +573001234567">
+                    </div>
+                    
+                    <h4 style="margin: 16px 0 8px;">💳 Datos de Pago</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Banco</label>
+                            <input type="text" id="partnerBanco" placeholder="Ej: Bancolombia">
+                        </div>
+                        <div class="form-group">
+                            <label>Tipo de Cuenta</label>
+                            <select id="partnerTipoCuenta">
+                                <option value="">Seleccionar...</option>
+                                <option value="Ahorros">Ahorros</option>
+                                <option value="Corriente">Corriente</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Número de Cuenta</label>
+                            <input type="text" id="partnerNumeroCuenta" placeholder="Ej: 123456789">
+                        </div>
+                        <div class="form-group">
+                            <label>Cédula</label>
+                            <input type="text" id="partnerCedula" placeholder="Ej: 1234567890">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeNewPartnerModal()">Cancelar</button>
+                    <button class="btn btn-primary" onclick="crearNuevoPartner()">Crear Socio</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pay Commission Modal -->
+        <div class="modal-overlay" id="payCommissionModal" style="display: none;">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2>💵 Pagar Comisión</h2>
+                    <button class="close-btn" onclick="closePayCommissionModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Socio:</strong> <span id="payPartnerName"></span></p>
+                    <p><strong>Valor:</strong> <span id="payCommissionAmount"></span></p>
+                    <input type="hidden" id="payCommissionId">
+                    
+                    <div class="form-group" style="margin-top: 16px;">
+                        <label>Referencia de Pago *</label>
+                        <input type="text" id="payReference" placeholder="Ej: Nequi-05022026, Trans#123456">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closePayCommissionModal()">Cancelar</button>
+                    <button class="btn btn-primary" onclick="confirmarPagoComision()">Confirmar Pago</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="js/admin.js"></script>

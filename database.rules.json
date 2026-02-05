@@ -13,11 +13,27 @@
       }
     },
     
+    "partners": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      ".indexOn": ["email", "codigoReferido", "estado"],
+      "$partnerId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    
+    "comisiones": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      ".indexOn": ["partnerId", "tenantId", "estado", "fechaGenerada"]
+    },
+    
     "tenants": {
       "$tenantId": {
         ".read": true,
         ".write": true,
-        ".indexOn": ["status", "createdAt"],
+        ".indexOn": ["status", "createdAt", "partnerId", "codigoReferido"],
         
         "historial": {
           ".read": true,

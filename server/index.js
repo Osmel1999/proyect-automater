@@ -63,14 +63,6 @@ app.use(express.json({ limit: '15mb' }));
 
 // Logging middleware
 app.use((req, res, next) => {
-  // Ignorar rutas del túnel obsoleto (requests de clientes cacheados)
-  if (req.path.startsWith('/api/tunnel')) {
-    return res.status(410).json({ 
-      error: 'Tunnel API deprecated', 
-      message: 'El sistema de túnel ha sido eliminado. Por favor recarga la página.' 
-    });
-  }
-  
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
   next();
 });
@@ -194,6 +186,14 @@ console.log('✅ Rutas de membresías registradas en /api/membership');
 const adminRoutes = require('./routes/admin-routes');
 app.use('/api/admin', adminRoutes);
 console.log('🛡️ Rutas de admin registradas en /api/admin');
+
+// ====================================
+// RUTAS DE API - SOCIOS COMERCIALES
+// ====================================
+
+const partnerRoutes = require('./routes/partner-routes');
+app.use('/api/partners', partnerRoutes);
+console.log('🤝 Rutas de partners registradas en /api/partners');
 
 // ====================================
 // RUTAS DE API - TRACKING DE PEDIDOS

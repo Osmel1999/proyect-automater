@@ -16,6 +16,7 @@ const wompiService = require('../wompi-service');
 const membershipService = require('../membership-service');
 const planRecommendationService = require('../plan-recommendation-service');
 const notificationService = require('../notification-service');
+const partnerService = require('../services/partner-service');
 
 /**
  * GET /api/membership/plans
@@ -170,6 +171,30 @@ router.post('/webhook', async (req, res) => {
       // 🔔 Notificar al dueño por WhatsApp
       notificationService.notifyPaymentSuccess(paymentData.tenantId, paymentData.plan)
         .catch(err => console.error('⚠️ Error enviando notificación de pago:', err));
+      
+      // 💰 Generar comisión para el partner (si aplica)
+      try {
+        // Obtener nombre del restaurante
+        const tenantSnapshot = await admin.database()
+          .ref(`tenants/${paymentData.tenantId}`)
+          .once('value');
+        const tenantData = tenantSnapshot.val();
+        const tenantNombre = tenantData?.restaurant?.name || tenantData?.restaurantName || paymentData.tenantId;
+        
+        const comision = await partnerService.generarComision(
+          paymentData.tenantId,
+          tenantNombre,
+          paymentData.amount,
+          paymentData.plan,
+          paymentData.transactionId
+        );
+        
+        if (comision) {
+          console.log(`💰 [Webhook] Comisión generada: $${comision.valorComision} para partner ${comision.partnerNombre}`);
+        }
+      } catch (comisionError) {
+        console.error('⚠️ Error generando comisión:', comisionError);
+      }
       
       console.log(`✅ [Webhook] Plan ${paymentData.plan} activado para tenant ${paymentData.tenantId}`);
     });
