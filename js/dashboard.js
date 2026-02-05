@@ -322,8 +322,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const todayTimestamp = today.getTime();
 
         const ordersSnapshot = await firebase.database()
-          .ref(`restaurants/${tenantId}/orders`)
-          .orderByChild('createdAt')
+          .ref(`tenants/${tenantId}/pedidos`)
+          .orderByChild('timestamp')
           .startAt(todayTimestamp)
           .once('value');
 

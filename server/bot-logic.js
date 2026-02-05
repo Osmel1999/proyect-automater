@@ -1269,7 +1269,12 @@ async function processMessage(tenantId, from, texto) {
       // 📝 NUEVO: Guardar notas del pedido si existen
       sesion.comentario = resultado.notas || sesion.comentario || null;
       
-      return generarMensajeConfirmacion(resultado);
+      // Calcular costo de envío para mostrar el desglose
+      const subtotal = resultado.items.reduce((sum, item) => sum + (item.precio * item.cantidad), 0);
+      const envioData = await obtenerCostoEnvio(tenantId, subtotal);
+      const costoEnvio = envioData.cost || 0;
+      
+      return generarMensajeConfirmacion(resultado, costoEnvio, envioData);
     }
   }
   
@@ -1674,12 +1679,30 @@ async function confirmarPedido(sesion) {
     
     const telefonoFormateado = telefonoContacto.replace(/(\d{3})(\d{3})(\d{4})/, '$1 $2 $3');
     
-    // Respuesta de confirmación
+    // Respuesta de confirmación con desglose
     let mensaje = '🎉 *Tu pedido está confirmado*\n\n';
     mensaje += `📋 Número de pedido: #${numeroHex}\n`;
     mensaje += `📍 Dirección: ${direccionEntrega}\n`;
-    mensaje += `📱 Teléfono de contacto: ${telefonoFormateado}\n`;
-    mensaje += `💰 Total: $${formatearPrecio(total)}\n`;
+    mensaje += `📱 Teléfono de contacto: ${telefonoFormateado}\n\n`;
+    
+    // Desglose de costos
+    mensaje += '*Detalle del pedido:*\n';
+    Object.values(itemsAgrupados).forEach(item => {
+      const itemTotal = item.precio * item.cantidad;
+      mensaje += `• ${item.cantidad}x ${item.nombre} - $${formatearPrecio(itemTotal)}\n`;
+    });
+    
+    if (comentarioPedido) {
+      mensaje += `\n📝 *Nota:* ${comentarioPedido}\n`;
+    }
+    
+    mensaje += `\n💰 Subtotal: $${formatearPrecio(subtotal)}\n`;
+    if (costoEnvio === 0) {
+      mensaje += `🚚 Envío: GRATIS\n`;
+    } else {
+      mensaje += `🚚 Envío: $${formatearPrecio(costoEnvio)}\n`;
+    }
+    mensaje += `💳 *Total:* $${formatearPrecio(total)}\n`;
     mensaje += `💵 Método de pago: Efectivo\n\n`;
     
     // 📦 Link de seguimiento del pedido

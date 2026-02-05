@@ -502,8 +502,11 @@ function parsearPedido(textoPedido, menuCustom = null) {
 
 /**
  * Genera un mensaje de confirmación del pedido parseado
+ * @param {Object} resultado - Resultado del parseo con items, errores y notas
+ * @param {Number} costoEnvio - Costo de envío (opcional)
+ * @param {Object} envioData - Datos del envío con información de envío gratis (opcional)
  */
-function generarMensajeConfirmacion(resultado) {
+function generarMensajeConfirmacion(resultado, costoEnvio = 0, envioData = null) {
   if (!resultado.exitoso || resultado.items.length === 0) {
     let mensaje = '❌ No pude entender tu pedido.\n\n';
     
@@ -547,11 +550,11 @@ function generarMensajeConfirmacion(resultado) {
   
   // Detalles del pedido (opcional pero útil)
   mensaje += '*Detalle:*\n';
-  let total = 0;
+  let subtotal = 0;
   resultado.items.forEach((item) => {
-    const subtotal = item.precio * item.cantidad;
-    total += subtotal;
-    mensaje += `• ${item.cantidad}x ${item.nombre} - $${formatearPrecio(subtotal)}\n`;
+    const itemTotal = item.precio * item.cantidad;
+    subtotal += itemTotal;
+    mensaje += `• ${item.cantidad}x ${item.nombre} - $${formatearPrecio(itemTotal)}\n`;
   });
   
   // 📝 Mostrar notas del pedido si existen
@@ -559,7 +562,22 @@ function generarMensajeConfirmacion(resultado) {
     mensaje += `\n📝 *Nota:* ${resultado.notas}\n`;
   }
   
-  mensaje += `\n💰 Total: $${formatearPrecio(total)}\n\n`;
+  // Desglose de costos
+  mensaje += `\n💰 Subtotal: $${formatearPrecio(subtotal)}\n`;
+  
+  // Mostrar costo de envío
+  if (costoEnvio !== undefined && costoEnvio !== null) {
+    if (envioData && envioData.isFree && envioData.freeDeliveryMin && subtotal >= envioData.freeDeliveryMin) {
+      mensaje += `🚚 Envío: GRATIS (pedido mayor a $${formatearPrecio(envioData.freeDeliveryMin)})\n`;
+    } else if (costoEnvio === 0) {
+      mensaje += `🚚 Envío: GRATIS\n`;
+    } else {
+      mensaje += `🚚 Envío: $${formatearPrecio(costoEnvio)}\n`;
+    }
+  }
+  
+  const total = subtotal + (costoEnvio || 0);
+  mensaje += `💳 *Total:* $${formatearPrecio(total)}\n\n`;
   
   if (resultado.errores.length > 0) {
     mensaje += `⚠️ No encontré: ${resultado.errores.join(', ')}\n\n`;
