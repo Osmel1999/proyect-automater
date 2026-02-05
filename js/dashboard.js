@@ -269,6 +269,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (isCompleted) {
           showCompletionScreen();
+          // Refrescar stats cada minuto
+          setInterval(() => {
+            console.log('🔄 [Dashboard] Refrescando stats automáticamente...');
+            loadDashboardStats();
+          }, 60000); // Cada 60 segundos
         } else {
           showWizard();
         }
@@ -308,18 +313,31 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Show completion screen
     function showCompletionScreen() {
+      console.log('📊 [Dashboard] Mostrando pantalla de completado...');
       document.getElementById('completion-container').style.display = 'block';
+      
+      // Cargar stats inmediatamente
       loadDashboardStats();
       loadMenuPreview();
+      
+      // También refrescar después de un segundo para asegurar que el DOM esté listo
+      setTimeout(() => {
+        console.log('🔄 [Dashboard] Segundo intento de carga de stats...');
+        loadDashboardStats();
+      }, 1000);
     }
 
     // Load dashboard stats
     async function loadDashboardStats() {
       try {
+        console.log('🔍 [Dashboard] Cargando stats para tenant:', tenantId);
+        
         // Obtener pedidos de hoy
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const todayTimestamp = today.getTime();
+        
+        console.log('📅 [Dashboard] Timestamp de hoy:', todayTimestamp, 'Fecha:', today);
 
         const ordersSnapshot = await firebase.database()
           .ref(`tenants/${tenantId}/pedidos`)
@@ -330,20 +348,50 @@ document.addEventListener('DOMContentLoaded', function() {
         const orders = ordersSnapshot.val() || {};
         const ordersList = Object.values(orders);
         
+        console.log('📦 [Dashboard] Pedidos obtenidos:', ordersList.length);
+        console.log('📦 [Dashboard] Pedidos raw:', orders);
+        
         // Contar pedidos y calcular ventas
         const ordersCount = ordersList.length;
-        const salesTotal = ordersList.reduce((sum, order) => sum + (order.total || 0), 0);
+        const salesTotal = ordersList.reduce((sum, order) => {
+          console.log('💰 Order total:', order.total, 'Order:', order.id);
+          return sum + (order.total || 0);
+        }, 0);
+        
+        console.log('📊 [Dashboard] Total pedidos:', ordersCount);
+        console.log('📊 [Dashboard] Total ventas:', salesTotal);
 
         // Actualizar UI
-        document.getElementById('orders-today').textContent = ordersCount;
-        document.getElementById('sales-today').textContent = '$' + salesTotal.toLocaleString('es-CO');
+        const ordersElement = document.getElementById('orders-today');
+        const salesElement = document.getElementById('sales-today');
+        
+        if (ordersElement) {
+          ordersElement.textContent = ordersCount;
+          console.log('✅ [Dashboard] orders-today actualizado:', ordersCount);
+        } else {
+          console.error('❌ [Dashboard] Elemento orders-today no encontrado');
+        }
+        
+        if (salesElement) {
+          salesElement.textContent = '$' + salesTotal.toLocaleString('es-CO');
+          console.log('✅ [Dashboard] sales-today actualizado:', salesTotal);
+        } else {
+          console.error('❌ [Dashboard] Elemento sales-today no encontrado');
+        }
 
         // Estado de WhatsApp
         const whatsappStatus = await checkWhatsAppConnection();
-        document.getElementById('whatsapp-status-main').textContent = whatsappStatus ? 'Conectado' : 'Desconectado';
+        const whatsappElement = document.getElementById('whatsapp-status-main');
+        
+        if (whatsappElement) {
+          whatsappElement.textContent = whatsappStatus ? 'Conectado' : 'Desconectado';
+          console.log('✅ [Dashboard] whatsapp-status actualizado:', whatsappStatus);
+        } else {
+          console.error('❌ [Dashboard] Elemento whatsapp-status-main no encontrado');
+        }
         
       } catch (error) {
-        console.error('Error loading dashboard stats:', error);
+        console.error('❌ [Dashboard] Error loading dashboard stats:', error);
       }
     }
 

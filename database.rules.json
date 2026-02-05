@@ -17,7 +17,37 @@
       "$tenantId": {
         ".read": true,
         ".write": true,
-        ".indexOn": ["status", "createdAt"]
+        ".indexOn": ["status", "createdAt"],
+        
+        "pedidos": {
+          ".read": true,
+          ".write": true,
+          ".indexOn": ["timestamp", "estado", "paymentStatus"],
+          "$pedidoId": {
+            ".read": true,
+            ".write": true
+          }
+        },
+        
+        "menu": {
+          ".read": true,
+          ".write": true
+        },
+        
+        "paymentConfig": {
+          ".read": true,
+          ".write": true
+        },
+        
+        "deliveryCost": {
+          ".read": true,
+          ".write": true
+        },
+        
+        "deliveryTime": {
+          ".read": true,
+          ".write": true
+        }
       }
     },
     
@@ -30,24 +60,6 @@
     "appConfig": {
       ".read": true,
       ".write": false
-    },
-    
-    "pedidos": {
-      ".read": true,
-      ".write": true,
-      ".indexOn": ["timestamp", "estado"]
-    },
-    
-    "historial": {
-      ".read": true,
-      ".write": true,
-      ".indexOn": ["timestamp", "estado", "horaEntrega"]
-    },
-    
-    "orders": {
-      ".read": true,
-      ".write": true,
-      ".indexOn": ["timestamp", "status"]
     },
     
     "transactions": {
