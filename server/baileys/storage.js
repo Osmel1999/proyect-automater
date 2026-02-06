@@ -358,7 +358,7 @@ class Storage {
   async getAuthState(tenantId) {
     const logger = pino({ level: 'info' });
     
-    // Inicializar state vacío
+    // 🔥 FIX: Inicializar state con estructura completa y válida
     let state = {
       creds: undefined,
       keys: {
@@ -416,18 +416,43 @@ class Storage {
     // Intentar cargar credenciales existentes
     try {
       const sessionData = await this.loadSessionFromFirebase(tenantId);
-      if (sessionData && sessionData.creds) {
+      
+      // 🔥 VALIDACIÓN: Verificar que las credenciales son válidas
+      if (sessionData && 
+          sessionData.creds && 
+          typeof sessionData.creds === 'object' && 
+          Object.keys(sessionData.creds).length > 0) {
+        
         state.creds = sessionData.creds;
-        logger.info(`[${tenantId}] Credenciales cargadas desde Firestore`);
+        logger.info(`[${tenantId}] ✅ Credenciales válidas cargadas desde Firestore`);
+        logger.info(`[${tenantId}]    📋 Propiedades en creds: ${Object.keys(sessionData.creds).length}`);
+        
+      } else {
+        logger.warn(`[${tenantId}] ⚠️  Credenciales en Firestore vacías o inválidas`);
+        // state.creds permanecerá undefined
       }
     } catch (error) {
-      logger.warn(`[${tenantId}] No hay credenciales previas, iniciando nueva sesión:`, error.message);
-      // No hacer nada, state.creds quedará undefined (nueva sesión)
+      logger.warn(`[${tenantId}] ℹ️  No hay credenciales previas en Firestore:`, error.message);
+      // state.creds permanecerá undefined (nueva sesión)
     }
     
     // Función para guardar credenciales
     const saveCreds = async () => {
-      if (!firebaseService || !state.creds) return;
+      // 🔥 VALIDACIÓN: Solo guardar si state y creds son válidos
+      if (!firebaseService) {
+        logger.warn(`[${tenantId}] ⚠️  Firebase no disponible, no se pueden guardar credenciales`);
+        return;
+      }
+      
+      if (!state || !state.creds) {
+        logger.warn(`[${tenantId}] ⚠️  State o creds undefined, no se puede guardar`);
+        return;
+      }
+      
+      if (typeof state.creds !== 'object' || Object.keys(state.creds).length === 0) {
+        logger.warn(`[${tenantId}] ⚠️  Creds vacío o inválido, no se puede guardar`);
+        return;
+      }
       
       try {
         const db = firebaseService.db;
@@ -439,7 +464,7 @@ class Storage {
           savedAt: Date.now()
         }, { merge: true });
         
-        logger.info(`[${tenantId}] ✅ Credenciales guardadas en Firestore`);
+        logger.info(`[${tenantId}] ✅ Credenciales guardadas en Firestore (${Object.keys(state.creds).length} propiedades)`);
         
         // Actualizar flag en Realtime Database
         await firebaseService.database.ref(`tenants/${tenantId}/restaurant/whatsappConnected`).set(true);

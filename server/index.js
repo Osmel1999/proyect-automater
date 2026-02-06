@@ -336,6 +336,142 @@ eventHandlers.onMessage('*', async (message) => {
 console.log('✅ Bot Logic inicializado y callback registrado');
 
 // ====================================
+// AUTO-RECONEXIÓN DE SESIONES AL INICIAR
+// ====================================
+
+// 🔥 FIX: Restaurar automáticamente las sesiones guardadas después del deploy
+// Esto evita que los usuarios tengan que escanear el QR nuevamente
+const sessionHydrator = require('./baileys/session-hydrator');
+
+// Ejecutar hidratación después de que el servidor esté listo (con delay)
+setTimeout(async () => {
+  try {
+    console.log('💧 Iniciando auto-reconexión de sesiones WhatsApp...');
+    
+    // 🔥 FIX: Obtener TODOS los tenants (sin filtrar por status)
+    // porque el campo "status" no existe en la estructura actual
+    const firebaseService = require('./firebase-service');
+    const snapshot = await firebaseService.database.ref('tenants').once('value');
+    
+    if (!snapshot.exists()) {
+      console.log('ℹ️  No hay tenants registrados, saltando hidratación');
+      return;
+    }
+    
+    const allTenants = [];
+    snapshot.forEach((childSnapshot) => {
+      const tenantId = childSnapshot.key;
+      const tenantData = childSnapshot.val();
+      
+      // Ignorar campos meta
+      if (tenantId.startsWith('_')) {
+        return;
+      }
+      
+      // Solo procesar tenants con WhatsApp previamente conectado
+      if (tenantData.restaurant?.whatsappConnected === true) {
+        allTenants.push({
+          id: tenantId,
+          name: tenantData.restaurant?.name || 'Sin nombre',
+          connectedAt: tenantData.restaurant?.connectedAt
+        });
+      }
+    });
+    
+    if (allTenants.length === 0) {
+      console.log('ℹ️  No hay tenants con WhatsApp conectado anteriormente');
+      return;
+    }
+    
+    console.log(`📋 Encontrados ${allTenants.length} tenants con WhatsApp conectado:`);
+    allTenants.forEach(t => {
+      console.log(`   - ${t.name} (${t.id})`);
+      console.log(`     Conectado: ${t.connectedAt || 'fecha desconocida'}`);
+    });
+    
+    // Filtrar solo tenants que necesitan hidratación
+    const tenantsToHydrate = [];
+    const tenantsToReconnect = [];
+    
+    for (const tenant of allTenants) {
+      const needsHydration = await sessionHydrator.needsHydration(tenant.id);
+      if (needsHydration) {
+        tenantsToHydrate.push(tenant.id);
+        console.log(`[${tenant.id}] 💧 Necesita hidratación desde Firestore`);
+      } else {
+        tenantsToReconnect.push(tenant.id);
+        console.log(`[${tenant.id}] 📂 Tiene archivos locales, intentará reconectar`);
+      }
+    }
+    
+    // Hidratar sesiones que no tienen archivos locales
+    if (tenantsToHydrate.length > 0) {
+      console.log('━'.repeat(50));
+      console.log(`🔄 Hidratando ${tenantsToHydrate.length} sesiones desde Firestore...`);
+      
+      const result = await sessionHydrator.hydrateBatch(tenantsToHydrate, 3);
+      
+      console.log('━'.repeat(50));
+      console.log('💧 RESULTADO DE HIDRATACIÓN:');
+      console.log(`   ✅ Exitosas: ${result.success.length}/${result.total}`);
+      console.log(`   ❌ Fallidas: ${result.failed.length}/${result.total}`);
+      console.log('━'.repeat(50));
+      
+      // Agregar sesiones hidratadas a la lista de reconexión
+      tenantsToReconnect.push(...result.success);
+    }
+    
+    // Reconectar todas las sesiones (hidratadas + con archivos locales)
+    if (tenantsToReconnect.length > 0) {
+      console.log('━'.repeat(50));
+      console.log(`🔌 Reconectando ${tenantsToReconnect.length} sesiones...`);
+      
+      let reconnected = 0;
+      let failed = 0;
+      
+      for (const tenantId of tenantsToReconnect) {
+        try {
+          console.log(`[${tenantId}] 🔌 Inicializando sesión...`);
+          const result = await baileys.initializeSession(tenantId);
+          
+          if (result.success) {
+            if (result.method === 'already_connected' || result.method === 'reconnect') {
+              console.log(`[${tenantId}] ✅ ${result.message}`);
+              reconnected++;
+            } else {
+              console.log(`[${tenantId}] ⚠️  ${result.message} (esperando conexión)`);
+              reconnected++;
+            }
+          } else {
+            console.error(`[${tenantId}] ❌ ${result.error}`);
+            failed++;
+          }
+          
+          // Pequeña pausa entre reconexiones
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+        } catch (err) {
+          console.error(`[${tenantId}] ❌ Error reconectando:`, err.message);
+          failed++;
+        }
+      }
+      
+      console.log('━'.repeat(50));
+      console.log('🔌 RESULTADO DE RECONEXIÓN:');
+      console.log(`   ✅ Exitosas: ${reconnected}/${tenantsToReconnect.length}`);
+      console.log(`   ❌ Fallidas: ${failed}/${tenantsToReconnect.length}`);
+      console.log('━'.repeat(50));
+    }
+    
+    console.log('✅ Auto-reconexión de sesiones completada');
+    
+  } catch (error) {
+    console.error('❌ Error durante auto-reconexión de sesiones:', error);
+    console.error('Stack:', error.stack);
+  }
+}, 5000); // Esperar 5 segundos después del inicio del servidor
+
+// ====================================
 // MANEJADOR DE ERRORES GLOBAL
 // ====================================
 

@@ -347,7 +347,7 @@
               <h3>Costo de Envío</h3>
               <p>Configurar precio del domicilio</p>
             </div>
-            <div class="action-card" onclick="window.location.href='plans.html'">
+            <div class="action-card" onclick="openMyPlanModal()">
               <div class="action-icon">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
@@ -760,6 +760,107 @@
       <div class="modal-footer">
         <button class="btn-secondary" onclick="closeDeliveryCostModal()">Cancelar</button>
         <button class="btn-primary" onclick="saveDeliveryCost()">Guardar Costo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: My Plan -->
+  <div class="modal-overlay" id="my-plan-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">
+          <svg class="icon-lg" style="display: inline-block; vertical-align: middle; margin-right: 8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+          </svg>
+          Mi Plan
+        </h2>
+        <button class="modal-close" onclick="closeMyPlanModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <div id="plan-loading" style="text-align: center; padding: 40px 20px;">
+          <div class="spinner" style="margin: 0 auto 16px;"></div>
+          <p style="color: #718096;">Cargando información de tu plan...</p>
+        </div>
+        
+        <div id="plan-content" style="display: none;">
+          <!-- Plan Badge -->
+          <div style="text-align: center; margin-bottom: 24px;">
+            <div id="plan-badge" style="display: inline-block; padding: 12px 24px; border-radius: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: 600; font-size: 18px; text-transform: uppercase; letter-spacing: 1px;">
+              Plan Básico
+            </div>
+          </div>
+
+          <!-- Plan Details -->
+          <div style="background: #f7fafc; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+            <div style="display: grid; gap: 16px;">
+              <!-- Estado -->
+              <div>
+                <div style="color: #718096; font-size: 14px; margin-bottom: 4px;">Estado</div>
+                <div id="plan-status" style="color: #2d3748; font-weight: 500; font-size: 16px;">
+                  <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #48bb78; margin-right: 8px;"></span>
+                  Activo
+                </div>
+              </div>
+
+              <!-- Fecha de inicio -->
+              <div>
+                <div style="color: #718096; font-size: 14px; margin-bottom: 4px;">Inicio del plan</div>
+                <div id="plan-start-date" style="color: #2d3748; font-weight: 500; font-size: 16px;">-</div>
+              </div>
+
+              <!-- Fecha de vencimiento -->
+              <div>
+                <div style="color: #718096; font-size: 14px; margin-bottom: 4px;">Vence el</div>
+                <div id="plan-expiry-date" style="color: #2d3748; font-weight: 500; font-size: 16px;">-</div>
+              </div>
+
+              <!-- Días restantes -->
+              <div>
+                <div style="color: #718096; font-size: 14px; margin-bottom: 4px;">Días restantes</div>
+                <div id="plan-days-remaining" style="color: #667eea; font-weight: 600; font-size: 20px;">-</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Características del plan -->
+          <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+              <svg style="width: 20px; height: 20px; color: #667eea;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+              </svg>
+              <h3 style="color: #2d3748; font-size: 16px; margin: 0; font-weight: 600;">Características incluidas</h3>
+            </div>
+            <div id="plan-features" style="display: grid; gap: 12px;">
+              <!-- Features will be loaded here -->
+            </div>
+          </div>
+
+          <!-- Upgrade suggestion (for trial/emprendedor) -->
+          <div id="upgrade-suggestion" style="display: none; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 20px; color: white; text-align: center;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px;">
+              <svg style="width: 24px; height: 24px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+              </svg>
+              <h3 style="font-size: 18px; margin: 0;">Mejora tu plan</h3>
+            </div>
+            <p style="margin-bottom: 16px; opacity: 0.9;">Desbloquea más funciones y haz crecer tu negocio</p>
+            <button class="btn-primary" onclick="window.location.href='plans.html'" style="background: white; color: #667eea;">
+              Ver planes disponibles
+            </button>
+          </div>
+        </div>
+
+        <div id="plan-error" style="display: none; text-align: center; padding: 40px 20px;">
+          <svg style="width: 64px; height: 64px; margin: 0 auto 16px; color: #fc8181;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+          </svg>
+          <p style="color: #e53e3e; font-weight: 500; margin-bottom: 8px;">Error al cargar la información</p>
+          <p style="color: #718096; font-size: 14px;">Por favor intenta nuevamente</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeMyPlanModal()">Cerrar</button>
+        <button class="btn-primary" onclick="window.location.href='plans.html'">Cambiar Plan</button>
       </div>
     </div>
   </div>

@@ -56,14 +56,20 @@ if (!admin.apps.length) {
   }
 }
 
-const db = admin.database();
+// 🔥 Realtime Database (para pedidos, tenants, etc.)
+const database = admin.database();
+
+// 🔥 Firestore (para sesiones de Baileys)
+const firestore = admin.firestore();
+
+console.log('✅ Firestore inicializado para sesiones de Baileys');
 
 /**
  * Guarda un nuevo pedido en Firebase Realtime Database
  */
 async function guardarPedido(pedido) {
   try {
-    const ref = db.ref('pedidos');
+    const ref = database.ref('pedidos');
     const nuevoPedido = await ref.push(pedido);
     
     console.log(`✅ Pedido guardado en Firebase: ${nuevoPedido.key}`);
@@ -81,7 +87,7 @@ async function guardarPedido(pedido) {
  */
 async function actualizarEstadoPedido(pedidoId, nuevoEstado) {
   try {
-    const ref = db.ref(`pedidos/${pedidoId}`);
+    const ref = database.ref(`pedidos/${pedidoId}`);
     await ref.update({
       estado: nuevoEstado,
       updatedAt: new Date().toISOString()
@@ -102,7 +108,7 @@ async function actualizarEstadoPedido(pedidoId, nuevoEstado) {
  */
 async function obtenerPedidos() {
   try {
-    const ref = db.ref('pedidos');
+    const ref = database.ref('pedidos');
     const snapshot = await ref.once('value');
     
     return snapshot.val() || {};
@@ -118,7 +124,7 @@ async function obtenerPedidos() {
  */
 async function obtenerPedido(pedidoId) {
   try {
-    const ref = db.ref(`pedidos/${pedidoId}`);
+    const ref = database.ref(`pedidos/${pedidoId}`);
     const snapshot = await ref.once('value');
     
     return snapshot.val();
@@ -134,7 +140,7 @@ async function obtenerPedido(pedidoId) {
  */
 async function eliminarPedido(pedidoId) {
   try {
-    const ref = db.ref(`pedidos/${pedidoId}`);
+    const ref = database.ref(`pedidos/${pedidoId}`);
     await ref.remove();
     
     console.log(`✅ Pedido eliminado: ${pedidoId}`);
@@ -148,7 +154,8 @@ async function eliminarPedido(pedidoId) {
 }
 
 module.exports = {
-  database: db, // ✨ Exportar instancia de database para tenant-service y whatsapp-handler
+  database, // ✨ Realtime Database (pedidos, tenants, etc.)
+  db: firestore, // ✨ Firestore (sesiones de Baileys)
   guardarPedido,
   actualizarEstadoPedido,
   obtenerPedidos,

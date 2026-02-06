@@ -1532,6 +1532,184 @@ document.addEventListener('DOMContentLoaded', function() {
     loadQuickOrderState();
 
     // ====================================
+    // MY PLAN MODAL
+    // ====================================
+    
+    /**
+     * Abre el modal de Mi Plan y carga la información
+     */
+    async function openMyPlanModal() {
+      const modal = document.getElementById('my-plan-modal');
+      const loading = document.getElementById('plan-loading');
+      const content = document.getElementById('plan-content');
+      const error = document.getElementById('plan-error');
+      
+      // Mostrar modal y loading usando la clase 'active' para centrado correcto
+      modal.classList.add('active');
+      modal.style.display = 'flex';
+      modal.style.alignItems = 'center';
+      modal.style.justifyContent = 'center';
+      loading.style.display = 'block';
+      content.style.display = 'none';
+      error.style.display = 'none';
+      
+      try {
+        // Obtener información del plan desde Firebase
+        const snapshot = await firebase.database().ref(`tenants/${tenantId}/membership`).once('value');
+        const membership = snapshot.val();
+        
+        if (!membership) {
+          throw new Error('No se encontró información de membresía');
+        }
+        
+        // Procesar información del plan
+        const plan = membership.plan || 'trial';
+        const status = membership.status || 'active';
+        const startDate = membership.paidPlanStartDate || membership.createdAt;
+        const expiryDate = membership.paidPlanEndDate || membership.trialEndDate;
+        
+        // Calcular días restantes
+        const now = new Date();
+        const expiry = new Date(expiryDate);
+        const daysRemaining = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
+        
+        // Actualizar UI del plan
+        updatePlanUI(plan, status, startDate, expiryDate, daysRemaining);
+        
+        // Mostrar contenido
+        loading.style.display = 'none';
+        content.style.display = 'block';
+        
+      } catch (err) {
+        console.error('Error cargando información del plan:', err);
+        loading.style.display = 'none';
+        error.style.display = 'block';
+      }
+    }
+    
+    /**
+     * Actualiza la UI del modal con la información del plan
+     */
+    function updatePlanUI(plan, status, startDate, expiryDate, daysRemaining) {
+      // Plan badge
+      const planBadge = document.getElementById('plan-badge');
+      const planNames = {
+        'trial': 'Plan Prueba',
+        'emprendedor': 'Plan Emprendedor',
+        'profesional': 'Plan Profesional',
+        'empresarial': 'Plan Empresarial'
+      };
+      const planColors = {
+        'trial': 'linear-gradient(135deg, #718096 0%, #4a5568 100%)',
+        'emprendedor': 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)',
+        'profesional': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        'empresarial': 'linear-gradient(135deg, #f6ad55 0%, #ed8936 100%)'
+      };
+      
+      planBadge.textContent = planNames[plan] || 'Plan Desconocido';
+      planBadge.style.background = planColors[plan] || planColors['trial'];
+      
+      // Estado
+      const planStatus = document.getElementById('plan-status');
+      const statusTexts = {
+        'active': '<span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #48bb78; margin-right: 8px;"></span>Activo',
+        'expired': '<span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #e53e3e; margin-right: 8px;"></span>Expirado',
+        'cancelled': '<span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #718096; margin-right: 8px;"></span>Cancelado'
+      };
+      planStatus.innerHTML = statusTexts[status] || statusTexts['active'];
+      
+      // Fechas
+      const planStartDate = document.getElementById('plan-start-date');
+      const planExpiryDate = document.getElementById('plan-expiry-date');
+      const planDaysRemaining = document.getElementById('plan-days-remaining');
+      
+      planStartDate.textContent = startDate ? new Date(startDate).toLocaleDateString('es-CO', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      }) : '-';
+      
+      planExpiryDate.textContent = expiryDate ? new Date(expiryDate).toLocaleDateString('es-CO', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      }) : '-';
+      
+      // Días restantes con color
+      if (daysRemaining <= 0) {
+        planDaysRemaining.innerHTML = '<span style="color: #e53e3e;">Expirado</span>';
+      } else if (daysRemaining <= 7) {
+        planDaysRemaining.innerHTML = `<span style="color: #ed8936;">${daysRemaining} días</span>`;
+      } else {
+        planDaysRemaining.textContent = `${daysRemaining} días`;
+      }
+      
+      // Características del plan
+      const planFeatures = document.getElementById('plan-features');
+      const features = {
+        'trial': [
+          { icon: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z', text: 'Bot de WhatsApp básico' },
+          { icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253', text: 'Menú digital' },
+          { icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2', text: 'Gestión de pedidos' },
+          { icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', text: '7 días de prueba gratis' }
+        ],
+        'emprendedor': [
+          { icon: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z', text: 'Bot de WhatsApp completo' },
+          { icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253', text: 'Menú digital ilimitado' },
+          { icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2', text: 'Hasta 750 pedidos/mes' },
+          { icon: 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z', text: 'KDS (Kitchen Display System)' },
+          { icon: 'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z', text: 'Configuración de tiempo de entrega' },
+          { icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z', text: 'Soporte por correo electrónico' }
+        ],
+        'profesional': [
+          { icon: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z', text: 'Todo lo del Plan Emprendedor' },
+          { icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2', text: 'Hasta 1,500 pedidos/mes' },
+          { icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z', text: 'Pagos en línea (Wompi)' },
+          { icon: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z', text: 'Configuración de costo de envío' },
+          { icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', text: 'Reportes y estadísticas avanzadas' },
+          { icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z', text: 'Personalización avanzada' },
+          { icon: 'M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z', text: 'Soporte prioritario' }
+        ],
+        'empresarial': [
+          { icon: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z', text: 'Todo lo del Plan Profesional' },
+          { icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2', text: 'Hasta 3,000 pedidos/mes' },
+          { icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4', text: 'Múltiples sucursales' },
+          { icon: 'M13 10V3L4 14h7v7l9-11h-7z', text: 'Procesamiento prioritario' },
+          { icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', text: 'Análisis predictivo de ventas' },
+          { icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z', text: 'Consultoría mensual personalizada' },
+          { icon: 'M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z', text: 'Soporte 24/7 dedicado' }
+        ]
+      };
+      
+      const featureList = features[plan] || features['trial'];
+      planFeatures.innerHTML = featureList.map(f => 
+        `<div style="display: flex; align-items: flex-start; gap: 12px; color: #2d3748; font-size: 14px;">
+          <svg style="width: 20px; height: 20px; min-width: 20px; margin-top: 2px; color: #48bb78;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${f.icon}"/>
+          </svg>
+          <span>${f.text}</span>
+        </div>`
+      ).join('');
+      
+      // Sugerencia de upgrade (solo para trial y emprendedor)
+      const upgradeSuggestion = document.getElementById('upgrade-suggestion');
+      if (plan === 'trial' || plan === 'emprendedor') {
+        upgradeSuggestion.style.display = 'block';
+      } else {
+        upgradeSuggestion.style.display = 'none';
+      }
+    }
+    
+    /**
+     * Cierra el modal de Mi Plan
+     */
+    function closeMyPlanModal() {
+      const modal = document.getElementById('my-plan-modal');
+      modal.classList.remove('active');
+      modal.style.display = 'none';
+    }
+
+    // ====================================
     // EXPOSE FUNCTIONS TO GLOBAL SCOPE
     // Para que funcionen con onclick inline
     // ====================================
@@ -1564,5 +1742,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.closeDeliveryCostModal = closeDeliveryCostModal;
     window.saveDeliveryCost = saveDeliveryCost;
     window.toggleQuickOrder = toggleQuickOrder;
+    window.openMyPlanModal = openMyPlanModal;
+    window.closeMyPlanModal = closeMyPlanModal;
 
 }); // End of DOMContentLoaded

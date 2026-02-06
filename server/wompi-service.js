@@ -79,13 +79,18 @@ function generateIntegritySignature(reference, amountInCents, currency = 'COP') 
  * @param {string} signature - Firma del header x-event-checksum
  */
 function verifyWebhookSignature(payload, signature) {
-  const { event, data, timestamp } = payload;
-  const properties = data.transaction;
+  const { data, timestamp } = payload;
+  const transaction = data.transaction;
   
   // Construir string para verificación según documentación Wompi
-  const signatureString = `${event}.${timestamp}.${properties.id}.${properties.status}.${properties.amount_in_cents}`;
+  // https://docs.wompi.co/docs/colombia/eventos/
+  // Paso 1: Concatenar valores de las propiedades (transaction.id, transaction.status, transaction.amount_in_cents)
+  // Paso 2: Concatenar timestamp
+  // Paso 3: Concatenar secreto de eventos
+  // Paso 4: Aplicar SHA256 (NO HMAC)
+  const signatureString = `${transaction.id}${transaction.status}${transaction.amount_in_cents}${timestamp}${WOMPI_CONFIG.eventsSecret}`;
   const expectedSignature = crypto
-    .createHmac('sha256', WOMPI_CONFIG.eventsSecret)
+    .createHash('sha256')  // Usar hash, NO hmac
     .update(signatureString)
     .digest('hex');
   
@@ -113,6 +118,9 @@ async function createPaymentLink(tenantId, plan, email, redirectUrl) {
   const reference = `KDS-${tenantId}-${plan}-${Date.now()}`;
   const currency = 'COP';
   
+  // Agregar amount como parámetro en la URL de redirección
+  const redirectUrlWithAmount = `${redirectUrl}${redirectUrl.includes('?') ? '&' : '?'}amount=${amountInCents}&plan=${plan}`;
+  
   // Generar firma de integridad
   const integritySignature = generateIntegritySignature(reference, amountInCents, currency);
   
@@ -130,7 +138,7 @@ async function createPaymentLink(tenantId, plan, email, redirectUrl) {
         collect_shipping: false,
         currency: currency,
         amount_in_cents: amountInCents,
-        redirect_url: redirectUrl
+        redirect_url: redirectUrlWithAmount
       })
     });
     

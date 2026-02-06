@@ -101,30 +101,53 @@ class SessionManager extends EventEmitter {
       const sessionDir = path.join(__dirname, '../../sessions', tenantId);
       await fs.mkdir(sessionDir, { recursive: true });
 
-      // Intentar cargar estado de autenticación
+      // 🔥 FIX: Cargar estado de autenticación desde Firebase primero
+      const storage = require('./storage');
       let state, saveCreds;
+      
       try {
-        const authState = await useMultiFileAuthState(sessionDir);
+        // Intentar cargar desde Firebase (fuente principal)
+        logger.info(`[${tenantId}] 🔥 Intentando cargar credenciales desde Firebase...`);
+        const authState = await storage.getAuthState(tenantId);
         state = authState.state;
         saveCreds = authState.saveCreds;
-      } catch (authError) {
-        logger.warn(`[${tenantId}] Error al cargar estado de autenticación: ${authError.message}`);
-        logger.info(`[${tenantId}] Limpiando sesión corrupta y creando nueva...`);
         
-        // Limpiar carpeta de sesión corrupta
-        try {
-          const files = await fs.readdir(sessionDir);
-          for (const file of files) {
-            await fs.unlink(path.join(sessionDir, file));
-          }
-        } catch (cleanError) {
-          logger.error(`[${tenantId}] Error al limpiar sesión:`, cleanError);
+        // 🔥 VALIDACIÓN: Verificar que state y state.creds existen y son válidos
+        if (state && state.creds && typeof state.creds === 'object' && Object.keys(state.creds).length > 0) {
+          logger.info(`[${tenantId}] ✅ Credenciales válidas cargadas desde Firebase`);
+          logger.info(`[${tenantId}]    📋 Propiedades en creds: ${Object.keys(state.creds).length}`);
+        } else {
+          logger.warn(`[${tenantId}] ⚠️  Credenciales de Firebase vacías o inválidas`);
+          throw new Error('Invalid or empty credentials from Firebase');
         }
+      } catch (authError) {
+        logger.warn(`[${tenantId}] ⚠️  No se pudieron cargar credenciales desde Firebase: ${authError.message}`);
+        logger.info(`[${tenantId}] 📂 Intentando cargar desde archivos locales...`);
         
-        // Intentar crear nuevo estado
-        const authState = await useMultiFileAuthState(sessionDir);
-        state = authState.state;
-        saveCreds = authState.saveCreds;
+        // Fallback: Intentar cargar desde archivos locales
+        try {
+          const authState = await useMultiFileAuthState(sessionDir);
+          state = authState.state;
+          saveCreds = authState.saveCreds;
+          
+          // Validar credenciales locales también
+          if (state && state.creds && typeof state.creds === 'object' && Object.keys(state.creds).length > 0) {
+            logger.info(`[${tenantId}] ✅ Credenciales válidas cargadas desde archivos locales`);
+          } else {
+            logger.warn(`[${tenantId}] ⚠️  Credenciales locales vacías, creando sesión nueva...`);
+            throw new Error('Empty local credentials');
+          }
+        } catch (localError) {
+          logger.warn(`[${tenantId}] ⚠️  No hay credenciales locales válidas: ${localError.message}`);
+          logger.info(`[${tenantId}] 🆕 Iniciando sesión nueva - se generará QR`);
+          
+          // Última opción: crear nuevo estado vacío
+          const authState = await useMultiFileAuthState(sessionDir);
+          state = authState.state;
+          saveCreds = authState.saveCreds;
+          
+          logger.info(`[${tenantId}] 📝 Estado de autenticación nuevo creado`);
+        }
       }
 
       // Configurar socket de Baileys

@@ -9,3 +9,13 @@ dockerfilePath = "Dockerfile"
 startCommand = "node server/index.js"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
+
+# 🔥 FIX: Volumen persistente para sesiones de WhatsApp
+# Esto evita que las sesiones se pierdan al hacer deploy
+# NOTA: Debes crear el volumen en Railway Dashboard primero
+# 1. Ve a tu servicio en Railway
+# 2. Settings > Volumes > New Volume
+# 3. Mount Path: /app/kds-webapp/sessions
+# 4. Size: 1 GB (suficiente para ~100 sesiones)
+# [[deploy.volumes]]
+# mountPath = "/app/kds-webapp/sessions"

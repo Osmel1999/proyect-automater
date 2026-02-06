@@ -117,7 +117,9 @@ router.post('/checkout', async (req, res) => {
     }
     
     // Crear enlace de pago
-    const redirectUrl = `${req.protocol}://${req.get('host')}/payment-success.html`;
+    // Usar FRONTEND_URL o APP_URL para redirigir al frontend, no al backend (API)
+    const frontendUrl = process.env.FRONTEND_URL || process.env.APP_URL || 'https://kdsapp.site';
+    const redirectUrl = `${frontendUrl}/payment-success.html`;
     const paymentLink = await wompiService.createPaymentLink(tenantId, plan, email, redirectUrl);
     
     res.json({
