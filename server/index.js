@@ -1,7 +1,32 @@
 /**
  * Backend Node.js para Sistema de Pedidos por WhatsApp
- * Integración: Baileys (WhatsApp Web) + Firebase + KDS (Multi-tenant SaaS)
+ * Integración: Baileys (WhatsApp Web) + Firebase + KDS (Multi-tenant SaaS
  */
+
+// =====================================================================
+// 🔇 PATCH: Silenciar logs de libsignal que filtran claves criptográficas
+// libsignal/src/session_record.js hace console.info("Closing session:", session)
+// lo que vuelca claves privadas Signal/E2E completas a stdout/logs.
+// Este patch intercepta y silencia esos mensajes ANTES de cargar Baileys.
+// =====================================================================
+const _originalConsoleInfo = console.info;
+const _originalConsoleWarn = console.warn;
+
+console.info = function(...args) {
+  if (args[0] && typeof args[0] === 'string' && 
+      (args[0].includes('Closing session') || args[0].includes('Opening session'))) {
+    return; // Silenciar - contiene datos criptográficos sensibles
+  }
+  _originalConsoleInfo.apply(console, args);
+};
+
+console.warn = function(...args) {
+  if (args[0] && typeof args[0] === 'string' && args[0].includes('Session already')) {
+    return; // Silenciar - logs redundantes de libsignal
+  }
+  _originalConsoleWarn.apply(console, args);
+};
+// =====================================================================
 
 const express = require('express');
 const http = require('http');

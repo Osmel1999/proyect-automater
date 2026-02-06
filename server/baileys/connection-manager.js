@@ -337,16 +337,25 @@ function startSessionHealthMonitor() {
               continue;
             }
 
-            // Verificar estado del WebSocket
-            // FIX: Access safely to ws safely
-            const wsState = sock.ws ? sock.ws.readyState : null;
-            const isHealthy = wsState === 1; // 1 = OPEN
+            // Verificar estado de conexión usando sessionStates (fuente de verdad)
+            // sock.ws.readyState no es accesible en Baileys moderno
+            const sessionState = sessionManager.sessionStates 
+              ? sessionManager.sessionStates.get(tenantId)
+              : null;
+            const isHealthy = sessionState?.connected === true;
+            
+            // Verificación secundaria: sock.user existe si está autenticado
+            const hasUser = !!sock.user;
 
-            if (isHealthy) {
-              logger.debug(`[Heartbeat] ✅ [${tenantId}] Sesión saludable (WS:OPEN)`);
+            if (isHealthy && hasUser) {
+              logger.debug(`[Heartbeat] ✅ [${tenantId}] Sesión saludable (connected + user.id: ${sock.user?.id})`);
+              healthyCount++;
+            } else if (isHealthy && !hasUser) {
+              // Conectado pero sin user info todavía (puede pasar brevemente)
+              logger.debug(`[Heartbeat] ⏳ [${tenantId}] Sesión conectada pero sin user info aún`);
               healthyCount++;
             } else {
-              logger.warn(`[Heartbeat] ⚠️ [${tenantId}] Sesión no saludable (WS:${wsState !== null ? wsState : 'undefined'})`);
+              logger.warn(`[Heartbeat] ⚠️ [${tenantId}] Sesión no saludable (connected=${sessionState?.connected}, hasUser=${hasUser})`);
               unhealthyCount++;
 
               // Intentar reconectar
