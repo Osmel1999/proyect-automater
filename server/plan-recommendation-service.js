@@ -11,26 +11,29 @@
 
 const admin = require('firebase-admin');
 
-// Definición de planes y sus límites
+// Definición de planes y sus límites (MENSUALES)
 const PLANS = {
   emprendedor: {
     id: 'emprendedor',
     name: 'Plan Emprendedor',
-    ordersPerDay: 25,
+    ordersPerMonth: 750,
+    ordersPerDay: 25, // Promedio diario (750/30)
     price: 90000,
     priceFormatted: '$90.000 COP/mes'
   },
   profesional: {
     id: 'profesional',
     name: 'Plan Profesional',
-    ordersPerDay: 50,
+    ordersPerMonth: 1500,
+    ordersPerDay: 50, // Promedio diario (1500/30)
     price: 120000,
     priceFormatted: '$120.000 COP/mes'
   },
   empresarial: {
     id: 'empresarial',
     name: 'Plan Empresarial',
-    ordersPerDay: 100,
+    ordersPerMonth: 3000,
+    ordersPerDay: 100, // Promedio diario (3000/30)
     price: 150000,
     priceFormatted: '$150.000 COP/mes'
   }
@@ -160,13 +163,14 @@ async function getRecommendation(tenantId, currentPlan = 'trial') {
       reasons.push(`Tu pico fue de ${stats.maxOrdersInOneDay} pedidos en un día`);
     } else if (stats.maxOrdersInOneDay > 20) {
       recommendedPlan = 'emprendedor';
-      reasons.push(`Promedio de ${stats.avgOrdersPerDay} pedidos/día - perfecto para empezar`);
+      reasons.push(`Promedio de ${stats.avgOrdersPerDay} pedidos/día (~${Math.round(stats.avgOrdersPerDay * 30)} pedidos/mes) - perfecto para empezar`);
     }
     
     // 3. Si el promedio está cerca del límite del plan actual
-    const currentLimit = PLANS[currentPlan]?.ordersPerDay || 0;
-    if (currentLimit > 0 && stats.avgOrdersPerDay > currentLimit * 0.8) {
-      reasons.push(`Estás usando el ${Math.round((stats.avgOrdersPerDay / currentLimit) * 100)}% de tu límite diario`);
+    const currentLimit = PLANS[currentPlan]?.ordersPerMonth || 0;
+    const estimatedMonthlyOrders = stats.avgOrdersPerDay * 30;
+    if (currentLimit > 0 && estimatedMonthlyOrders > currentLimit * 0.8) {
+      reasons.push(`Estás usando el ${Math.round((estimatedMonthlyOrders / currentLimit) * 100)}% de tu límite mensual`);
     }
     
     // 4. Si no hay suficientes datos, dar recomendación conservadora
@@ -263,8 +267,8 @@ async function comparePlans(tenantId) {
   const stats = await getAnalyticsStats(tenantId, 7);
   
   return Object.values(PLANS).map(plan => {
-    const coversNeeds = plan.ordersPerDay >= stats.maxOrdersInOneDay;
-    const utilizationPercent = Math.round((stats.avgOrdersPerDay / plan.ordersPerDay) * 100);
+    const coversNeeds = plan.ordersPerMonth >= stats.maxOrdersInOneDay * 30;
+    const utilizationPercent = Math.round(((stats.avgOrdersPerDay * 30) / plan.ordersPerMonth) * 100);
     
     return {
       ...plan,
