@@ -30,7 +30,7 @@ function init(baileys, wompi = null) {
  */
 async function getOwnerPhone(tenantId) {
     try {
-        // Primero intentar obtener de la sesión activa de baileys
+        // 1. Intentar desde sesión activa de baileys (in-memory, más rápido)
         if (baileysService) {
             const status = await baileysService.getStatus(tenantId);
             if (status?.connected && status?.phoneNumber) {
@@ -38,7 +38,15 @@ async function getOwnerPhone(tenantId) {
             }
         }
 
-        // Si no hay sesión activa, buscar en Firebase
+        // 2. Buscar en Firebase: whatsapp/baileys/phoneNumber (donde se guarda al conectar)
+        const baileysSnap = await firebaseService.database
+            .ref(`tenants/${tenantId}/whatsapp/baileys/phoneNumber`)
+            .once('value');
+        if (baileysSnap.val()) {
+            return baileysSnap.val();
+        }
+
+        // 3. Fallback: whatsapp/phoneNumber (legacy)
         const snapshot = await firebaseService.database
             .ref(`tenants/${tenantId}/whatsapp/phoneNumber`)
             .once('value');

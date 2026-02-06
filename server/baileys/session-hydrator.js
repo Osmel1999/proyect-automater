@@ -1,6 +1,6 @@
 /**
  * Baileys Session Hydrator
- * Restaura sesiones WhatsApp desde Firestore al disco local
+ * Restaura sesiones WhatsApp desde Realtime Database (tenant data) al disco local
  * Permite sobrevivir a Railway sleep y cold starts
  */
 
@@ -10,24 +10,34 @@ const pino = require('pino');
 
 const logger = pino({ level: 'info' });
 
-// Importar storage singleton para acceder a Firestore
+// 🔑 BufferJSON: Must use the same serialization Baileys uses for local files
+const BufferJSON = {
+  replacer: (k, value) => {
+    if (Buffer.isBuffer(value) || value instanceof Uint8Array || value?.type === 'Buffer') {
+      return { type: 'Buffer', data: Buffer.from(value?.data || value).toString('base64') };
+    }
+    return value;
+  }
+};
+
+// Importar storage singleton
 const storage = require('./storage');
 
 /**
- * Hidrata una sesión local desde Firestore
+ * Hidrata una sesión local desde Firebase Realtime Database (dentro del tenant)
  * @param {string} tenantId - ID del tenant
  * @returns {Promise<boolean>} true si se hidrata exitosamente
  */
-async function hydrateLocalSessionFromFirestore(tenantId) {
+async function hydrateLocalSession(tenantId) {
   const timestamp = new Date().toISOString();
   logger.info(`[${timestamp}] [Hydrator] 💧 Hidratando sesión para ${tenantId}...`);
 
   try {
-    // 1. Obtener credenciales desde Firestore
+    // 1. Obtener credenciales desde Realtime Database (dentro del tenant)
     const sessionData = await storage.loadSessionFromFirebase(tenantId);
 
     if (!sessionData?.creds) {
-      logger.warn(`[${tenantId}] [Hydrator] ⚠️ No hay credenciales en Firestore`);
+      logger.warn(`[${tenantId}] [Hydrator] ⚠️ No hay credenciales en Firebase (tenants/${tenantId}/baileys_session)`);
       return false;
     }
 
@@ -36,11 +46,11 @@ async function hydrateLocalSessionFromFirestore(tenantId) {
     await fs.mkdir(sessionDir, { recursive: true });
     logger.debug(`[${tenantId}] [Hydrator] 📁 Directorio creado: ${sessionDir}`);
 
-    // 3. Escribir creds.json
+    // 3. Escribir creds.json — must use BufferJSON.replacer like Baileys does
     const credsPath = path.join(sessionDir, 'creds.json');
     await fs.writeFile(
       credsPath,
-      JSON.stringify(sessionData.creds, null, 2),
+      JSON.stringify(sessionData.creds, BufferJSON.replacer, 2),
       'utf-8'
     );
     logger.info(`[${tenantId}] [Hydrator] ✅ creds.json escrito (${Object.keys(sessionData.creds).length} keys)`);
@@ -52,7 +62,7 @@ async function hydrateLocalSessionFromFirestore(tenantId) {
         const keyPath = path.join(sessionDir, `app-state-sync-key-${keyId}.json`);
         await fs.writeFile(
           keyPath,
-          JSON.stringify(keyData, null, 2),
+          JSON.stringify(keyData, BufferJSON.replacer, 2),
           'utf-8'
         );
         keysWritten++;
@@ -96,7 +106,7 @@ async function hydrateBatch(tenantIds, batchSize = 5) {
     logger.info(`[Hydrator] 📦 Procesando lote ${Math.floor(i / batchSize) + 1}/${Math.ceil(tenantIds.length / batchSize)}`);
 
     const batchResults = await Promise.allSettled(
-      batch.map(tenantId => hydrateLocalSessionFromFirestore(tenantId))
+      batch.map(tenantId => hydrateLocalSession(tenantId))
     );
 
     batchResults.forEach((result, index) => {
@@ -154,7 +164,7 @@ async function needsHydration(tenantId) {
 }
 
 module.exports = {
-  hydrateLocalSessionFromFirestore,
+  hydrateLocalSession,
   hydrateBatch,
   needsHydration
 };

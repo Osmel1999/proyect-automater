@@ -9,6 +9,83 @@ const pino = require('pino');
 
 const logger = pino({ level: 'info' });
 
+// =====================================================================
+// 🔑 CRITICAL: BufferJSON serialization for Baileys credentials
+// 
+// Baileys credentials contain Buffer/Uint8Array objects (crypto keys,
+// noise keys, signing keys, etc.). Firebase Realtime Database CANNOT
+// store raw Buffer objects — it silently converts them to numbered
+// key-value objects like { 0: 123, 1: 45, ... } which corrupts the
+// data. On reconnection, Baileys receives broken credentials and the
+// WebSocket handshake fails immediately, causing an infinite
+// reconnection loop.
+//
+// Solution: Use JSON.stringify with BufferJSON.replacer before saving
+// to Firebase, and JSON.parse with BufferJSON.reviver when loading.
+// This converts Buffers to { type: 'Buffer', data: '<base64>' }
+// objects that Firebase can store safely, and restores them on read.
+// =====================================================================
+
+// BufferJSON — same logic Baileys uses internally for file auth state
+const BufferJSON = {
+  replacer: (k, value) => {
+    if (Buffer.isBuffer(value) || value instanceof Uint8Array || value?.type === 'Buffer') {
+      return { type: 'Buffer', data: Buffer.from(value?.data || value).toString('base64') };
+    }
+    return value;
+  },
+  reviver: (_, value) => {
+    if (typeof value === 'object' && value !== null && value.type === 'Buffer') {
+      // Case 1: data is base64 string (our new format after proper serialization)
+      if (typeof value.data === 'string') {
+        return Buffer.from(value.data, 'base64');
+      }
+      // Case 2: data is array of numbers (Firebase stored format / legacy)
+      // Firebase converts Buffer({ type:'Buffer', data:[176,102,...] }) keeping array intact
+      if (Array.isArray(value.data)) {
+        return Buffer.from(value.data);
+      }
+      // Case 3: data is object with numeric keys (Firebase mangled array to object)
+      // e.g. { "0": 176, "1": 102, ... }
+      if (typeof value.data === 'object' && value.data !== null) {
+        const keys = Object.keys(value.data);
+        if (keys.length > 0 && keys.every(k => !isNaN(parseInt(k, 10)))) {
+          return Buffer.from(Object.values(value.data));
+        }
+      }
+    }
+    // Case 4: Plain object with only numeric keys (deeply mangled Buffer)
+    if (typeof value === 'object' && value !== null && !Array.isArray(value) && value.type !== 'Buffer') {
+      const keys = Object.keys(value);
+      if (keys.length > 0 && keys.every(k => !isNaN(parseInt(k, 10)))) {
+        const values = Object.values(value);
+        if (values.every(v => typeof v === 'number')) {
+          return Buffer.from(values);
+        }
+      }
+    }
+    return value;
+  }
+};
+
+/**
+ * Serializes creds/keys so all Buffers become Firebase-safe JSON objects
+ * @param {object} data - raw Baileys creds or keys object
+ * @returns {object} serialized copy safe for Firebase
+ */
+function serializeForFirebase(data) {
+  return JSON.parse(JSON.stringify(data, BufferJSON.replacer));
+}
+
+/**
+ * Deserializes creds/keys restoring Buffers from their JSON representation
+ * @param {object} data - Firebase-stored data
+ * @returns {object} deserialized copy with real Buffer instances
+ */
+function deserializeFromFirebase(data) {
+  return JSON.parse(JSON.stringify(data), BufferJSON.reviver);
+}
+
 // Importar Firebase service si existe
 let firebaseService;
 try {
@@ -79,15 +156,18 @@ class Storage {
       // ✅ Guardar DENTRO del tenant (mejor organización y seguridad)
       const sessionRef = firebaseService.database.ref(`tenants/${tenantId}/baileys_session`);
 
-      // Guardar credenciales completas
+      // 🔑 Serialize Buffers before saving to Firebase
+      const serializedCreds = serializeForFirebase(sessionData.creds || sessionData);
+      const serializedKeys = sessionData.keys ? serializeForFirebase(sessionData.keys) : {};
+
       await sessionRef.set({
-        creds: sessionData.creds || sessionData,
-        keys: sessionData.keys || {},
+        creds: serializedCreds,
+        keys: serializedKeys,
         updatedAt: new Date().toISOString(),
         savedAt: Date.now()
       });
 
-      logger.info(`[${tenantId}] ✅ Credenciales guardadas en tenant data (aislado)`);
+      logger.info(`[${tenantId}] ✅ Credenciales guardadas en tenant data (serialized, aislado)`);
       
       // También actualizar flag en tenants
       await firebaseService.database.ref(`tenants/${tenantId}/restaurant/whatsappConnected`).set(true);
@@ -119,10 +199,12 @@ class Storage {
         const data = snapshot.val();
         logger.info(`[${tenantId}] ✅ Credenciales recuperadas de tenant data`);
         logger.debug(`[${tenantId}]    Guardadas: ${new Date(data.savedAt).toLocaleString()}`);
-        return {
-          creds: data.creds,
-          keys: data.keys || {}
-        };
+        
+        // 🔑 Deserialize Buffers after loading from Firebase
+        const creds = data.creds ? deserializeFromFirebase(data.creds) : null;
+        const keys = data.keys ? deserializeFromFirebase(data.keys) : {};
+        
+        return { creds, keys };
       }
 
       logger.warn(`[${tenantId}] ⚠️ No hay credenciales guardadas en tenant`);
@@ -359,10 +441,6 @@ class Storage {
     const logger = pino({ level: 'info' });
     
     // ✅ Inicializar state con estructura completa y válida
-    // IMPORTANTE: Usamos un objeto container para que saveCreds siempre
-    // tenga acceso al state actual (incluso si se reemplaza desde fuera)
-    const stateContainer = { current: null };
-    
     let state = {
       creds: undefined,
       keys: {
@@ -384,7 +462,8 @@ class Storage {
             for (const id of ids) {
               const key = `${type}-${id}`;
               if (keys[key]) {
-                data[id] = keys[key];
+                // 🔑 Deserialize Buffer fields in keys
+                data[id] = deserializeFromFirebase(keys[key]);
               }
             }
           } catch (error) {
@@ -406,7 +485,10 @@ class Storage {
             for (const category in data) {
               for (const id in data[category]) {
                 const key = `${category}-${id}`;
-                keysUpdate[key] = data[category][id];
+                // 🔑 Serialize Buffer fields in keys before saving
+                keysUpdate[key] = data[category][id] != null
+                  ? serializeForFirebase(data[category][id])
+                  : null;
               }
             }
             
@@ -443,52 +525,47 @@ class Storage {
     }
     
     // Función para guardar credenciales
-    // Baileys llama esto SIN argumentos después de mutar state.creds internamente.
-    // También se puede llamar con creds explícitos como fallback.
-    const saveCreds = async (explicitCreds) => {
-      // ✅ Obtener creds: explícitos > stateContainer (apunta al state vivo) > state original
-      const creds = explicitCreds || stateContainer.current?.creds || state.creds;
-      
-      if (!creds || typeof creds !== 'object') {
-        logger.warn(`[${tenantId}] ⚠️  saveCreds: creds es null/undefined/no-object, saltando`);
-        return;
-      }
-
-      const keyCount = Object.keys(creds).length;
-      if (keyCount === 0) {
-        logger.warn(`[${tenantId}] ⚠️  saveCreds: creds vacío (0 keys), saltando`);
-        return;
-      }
-
+    const saveCreds = async () => {
+      // ✅ VALIDACIÓN: Solo guardar si state y creds son válidos
       if (!firebaseService) {
         logger.warn(`[${tenantId}] ⚠️  Firebase no disponible, no se pueden guardar credenciales`);
         return;
       }
       
+      if (!state || !state.creds) {
+        logger.warn(`[${tenantId}] ⚠️  State o creds undefined, no se puede guardar`);
+        return;
+      }
+      
+      if (typeof state.creds !== 'object' || Object.keys(state.creds).length === 0) {
+        logger.warn(`[${tenantId}] ⚠️  Creds vacío o inválido, no se puede guardar`);
+        return;
+      }
+      
       try {
-        // ✅ Guardar en la ruta del tenant
+        // ✅ Guardar en la ruta del tenant (serializado para Firebase)
         const sessionRef = firebaseService.database
           .ref(`tenants/${tenantId}/baileys_session`);
         
+        const serializedCreds = serializeForFirebase(state.creds);
+        
         await sessionRef.update({
-          creds: creds,
+          creds: serializedCreds,
           updatedAt: new Date().toISOString(),
           savedAt: Date.now()
         });
         
-        logger.info(`[${tenantId}] ✅ Credenciales guardadas en Firebase (${keyCount} propiedades)`);
+        logger.info(`[${tenantId}] ✅ Credenciales guardadas en tenant data (serialized, ${Object.keys(state.creds).length} propiedades)`);
         
-        // Actualizar flag de conexión (sin await para no bloquear)
-        firebaseService.database.ref(`tenants/${tenantId}/restaurant/whatsappConnected`).set(true).catch(() => {});
-        firebaseService.database.ref(`tenants/${tenantId}/restaurant/connectedAt`).set(new Date().toISOString()).catch(() => {});
+        // Actualizar flag de conexión
+        await firebaseService.database.ref(`tenants/${tenantId}/restaurant/whatsappConnected`).set(true);
+        await firebaseService.database.ref(`tenants/${tenantId}/restaurant/connectedAt`).set(new Date().toISOString());
       } catch (error) {
         logger.error(`[${tenantId}] ❌ Error guardando credenciales:`, error);
-        // NO relanzar el error — Baileys no espera que saveCreds falle
       }
     };
     
-    // Exponer stateContainer para que session-manager pueda actualizar la referencia
-    return { state, saveCreds, stateContainer };
+    return { state, saveCreds };
   }
 
   /**

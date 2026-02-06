@@ -397,7 +397,7 @@ setTimeout(async () => {
       const needsHydration = await sessionHydrator.needsHydration(tenant.id);
       if (needsHydration) {
         tenantsToHydrate.push(tenant.id);
-        console.log(`[${tenant.id}] 💧 Necesita hidratación desde Firestore`);
+        console.log(`[${tenant.id}] 💧 Necesita hidratación desde Firebase`);
       } else {
         tenantsToReconnect.push(tenant.id);
         console.log(`[${tenant.id}] 📂 Tiene archivos locales, intentará reconectar`);
@@ -407,7 +407,7 @@ setTimeout(async () => {
     // Hidratar sesiones que no tienen archivos locales
     if (tenantsToHydrate.length > 0) {
       console.log('━'.repeat(50));
-      console.log(`🔄 Hidratando ${tenantsToHydrate.length} sesiones desde Firestore...`);
+      console.log(`🔄 Hidratando ${tenantsToHydrate.length} sesiones desde Firebase...`);
       
       const result = await sessionHydrator.hydrateBatch(tenantsToHydrate, 3);
       

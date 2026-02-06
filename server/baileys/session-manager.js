@@ -11,6 +11,47 @@ const EventEmitter = require('node:events');
 
 const logger = pino({ level: 'info' });
 
+// =====================================================================
+// 🔑 BufferJSON: Serialization for Baileys credentials
+// Baileys creds contain Buffer/Uint8Array crypto keys that Firebase
+// Realtime Database cannot store directly. This serializer converts
+// them to { type: 'Buffer', data: '<base64>' } for safe storage.
+// =====================================================================
+const BufferJSON = {
+  replacer: (k, value) => {
+    if (Buffer.isBuffer(value) || value instanceof Uint8Array || value?.type === 'Buffer') {
+      return { type: 'Buffer', data: Buffer.from(value?.data || value).toString('base64') };
+    }
+    return value;
+  },
+  reviver: (_, value) => {
+    if (typeof value === 'object' && value !== null && value.type === 'Buffer') {
+      if (typeof value.data === 'string') {
+        return Buffer.from(value.data, 'base64');
+      }
+      if (Array.isArray(value.data)) {
+        return Buffer.from(value.data);
+      }
+      if (typeof value.data === 'object' && value.data !== null) {
+        const keys = Object.keys(value.data);
+        if (keys.length > 0 && keys.every(k => !isNaN(parseInt(k, 10)))) {
+          return Buffer.from(Object.values(value.data));
+        }
+      }
+    }
+    if (typeof value === 'object' && value !== null && !Array.isArray(value) && value.type !== 'Buffer') {
+      const keys = Object.keys(value);
+      if (keys.length > 0 && keys.every(k => !isNaN(parseInt(k, 10)))) {
+        const values = Object.values(value);
+        if (values.every(v => typeof v === 'number')) {
+          return Buffer.from(values);
+        }
+      }
+    }
+    return value;
+  }
+};
+
 // Remove top-level require to avoid circular dependency
 // let connectionManager = null;
 // try {
@@ -91,56 +132,88 @@ class SessionManager extends EventEmitter {
       // Cargar Baileys si no está cargado
       const { default: makeWASocket, useMultiFileAuthState } = await loadBaileys();
 
-      // Si ya existe una sesión, cerrarla primero
+      // Si ya existe una sesión, desconectarla primero (SIN logout, preservar creds)
       if (this.sessions.has(tenantId)) {
         logger.info(`[${tenantId}] Cerrando sesión existente...`);
-        await this.closeSession(tenantId);
+        try {
+          const oldSocket = this.sessions.get(tenantId);
+          if (oldSocket) {
+            // Use .end() to close the WebSocket without invalidating the session
+            oldSocket.end(undefined);
+          }
+        } catch (err) {
+          logger.warn(`[${tenantId}] Error cerrando socket anterior: ${err.message}`);
+        }
+        this.sessions.delete(tenantId);
       }
 
       // Crear directorio de sesión si no existe
       const sessionDir = path.join(__dirname, '../../sessions', tenantId);
       await fs.mkdir(sessionDir, { recursive: true });
 
-      // 🔥 FIX: Cargar estado de autenticación desde Firebase primero
+      // ✅ Cargar estado de autenticación: Firebase primero, luego archivos locales
       const storage = require('./storage');
-      let state, saveCreds, stateContainer;
       
-      // SIEMPRE obtener el authState de Firebase (tiene el saveCreds correcto)
-      const firebaseAuthState = await storage.getAuthState(tenantId);
+      // PASO 1: Usar useMultiFileAuthState como base (Baileys lo requiere)
+      const { state: localState, saveCreds: saveCredsLocal } = await useMultiFileAuthState(sessionDir);
+      let state = localState;
       
-      // saveCreds SIEMPRE debe ser el de Firebase (guarda en Realtime Database)
-      saveCreds = firebaseAuthState.saveCreds;
-      stateContainer = firebaseAuthState.stateContainer;
-      state = firebaseAuthState.state;
-      
-      // Verificar si hay credenciales existentes en Firebase
-      const hasFirebaseCreds = state.creds && typeof state.creds === 'object' && Object.keys(state.creds).length > 0;
-      
-      if (hasFirebaseCreds) {
-        logger.info(`[${tenantId}] ✅ Credenciales válidas cargadas desde Firebase`);
-        logger.info(`[${tenantId}]    📋 Propiedades en creds: ${Object.keys(state.creds).length}`);
-        // Usamos state de Firebase (creds + keys de Firebase) — sesión existente
-      } else {
-        logger.info(`[${tenantId}] ℹ️  No hay credenciales en Firebase, usando useMultiFileAuthState`);
+      // PASO 2: Si hay credenciales en Firebase, sobreescribir las locales
+      try {
+        logger.info(`[${tenantId}] 🔥 Verificando credenciales en Firebase...`);
+        const firebaseSession = await storage.loadSessionFromFirebase(tenantId);
         
-        // Para sesiones nuevas o sin creds en Firebase, usar useMultiFileAuthState COMPLETO.
-        // Esto da creds + keys que operan en disco local (rápido, compatible con Baileys).
-        // Solo reemplazamos saveCreds por el de Firebase para persistir en la nube.
-        const localAuth = await useMultiFileAuthState(sessionDir);
-        state = localAuth.state;
-        
-        if (state.creds && Object.keys(state.creds).length > 0) {
-          logger.info(`[${tenantId}] 📂 Usando state local (${Object.keys(state.creds).length} props en creds)`);
+        if (firebaseSession?.creds && 
+            typeof firebaseSession.creds === 'object' && 
+            Object.keys(firebaseSession.creds).length > 0) {
+          // 🔑 loadSessionFromFirebase already deserializes via BufferJSON.reviver
+          state.creds = firebaseSession.creds;
+          logger.info(`[${tenantId}] ✅ Credenciales cargadas desde Firebase (deserialized, ${Object.keys(firebaseSession.creds).length} props)`);
         } else {
-          logger.info(`[${tenantId}] 🆕 Sesión nueva - se generará QR`);
+          logger.info(`[${tenantId}] 🆕 No hay credenciales en Firebase - se generará QR`);
         }
-        
-        // IMPORTANTE: saveCreds SIEMPRE es el de Firebase, nunca el local
-        logger.info(`[${tenantId}] 💾 saveCreds apunta a Firebase Realtime Database`);
+      } catch (fbError) {
+        logger.warn(`[${tenantId}] ⚠️ Error cargando desde Firebase: ${fbError.message}`);
       }
-
-      // Vincular stateContainer al state actual para que saveCreds lea creds correctos
-      stateContainer.current = state;
+      
+      // PASO 3: saveCreds SIEMPRE guarda en Firebase + archivos locales
+      // 🔑 Serialize Buffers (crypto keys, noise keys etc.) before saving to Firebase.
+      // Firebase RTDB cannot store raw Buffer objects — it silently corrupts them.
+      const saveCreds = async () => {
+        try {
+          // 1. Guardar localmente (para Baileys) — uses BufferJSON internally
+          await saveCredsLocal();
+          
+          // 2. Guardar en Firebase Realtime Database (dentro del tenant)
+          if (state.creds && typeof state.creds === 'object' && Object.keys(state.creds).length > 0) {
+            const firebaseService = require('../firebase-service');
+            if (firebaseService?.database) {
+              // 🔑 CRITICAL: Serialize Buffers to { type:'Buffer', data:'<base64>' }
+              const serializedCreds = JSON.parse(JSON.stringify(state.creds, BufferJSON.replacer));
+              
+              await firebaseService.database
+                .ref(`tenants/${tenantId}/baileys_session`)
+                .update({
+                  creds: serializedCreds,
+                  updatedAt: new Date().toISOString(),
+                  savedAt: Date.now()
+                });
+              
+              // Marcar como conectado
+              await firebaseService.database.ref(`tenants/${tenantId}/restaurant/whatsappConnected`).set(true);
+              await firebaseService.database.ref(`tenants/${tenantId}/restaurant/connectedAt`).set(new Date().toISOString());
+              
+              logger.info(`[${tenantId}] ✅ Credenciales guardadas en Firebase (serialized) - ${Object.keys(state.creds).length} props`);
+            } else {
+              logger.warn(`[${tenantId}] ⚠️ Firebase no disponible, solo se guardó localmente`);
+            }
+          } else {
+            logger.warn(`[${tenantId}] ⚠️ Creds vacío, no se guarda en Firebase`);
+          }
+        } catch (error) {
+          logger.error(`[${tenantId}] ❌ Error guardando credenciales:`, error.message);
+        }
+      };
 
       // Configurar socket de Baileys
       const socketConfig = {
@@ -181,9 +254,11 @@ class SessionManager extends EventEmitter {
         // Actualizar estado con QR
         if (qr) {
           logger.info(`[${tenantId}] QR Code generado`);
-          const state = this.sessionStates.get(tenantId);
-          state.qr = qr;
-          this.sessionStates.set(tenantId, state);
+          const currentState = this.sessionStates.get(tenantId);
+          if (currentState) {
+            currentState.qr = qr;
+            this.sessionStates.set(tenantId, currentState);
+          }
           this.emit('qr', tenantId, qr);
         }
 
@@ -192,17 +267,32 @@ class SessionManager extends EventEmitter {
           // Cargar Baileys para obtener DisconnectReason
           const { DisconnectReason } = await loadBaileys();
           
-          const shouldReconnect = (lastDisconnect?.error instanceof Boom)
-            ? lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut
-            : true;
+          const statusCode = (lastDisconnect?.error instanceof Boom)
+            ? lastDisconnect.error.output.statusCode
+            : 500;
+          const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
 
-          logger.info(`[${tenantId}] Conexión cerrada. Reconectar: ${shouldReconnect}`);
+          logger.info(`[${tenantId}] Conexión cerrada (code=${statusCode}). Reconectar: ${shouldReconnect}`);
 
           if (shouldReconnect) {
-            logger.info(`[${tenantId}] Intentando reconectar...`);
+            // Exponential backoff: track attempts per tenant
+            const attempts = (this._reconnectAttempts?.get(tenantId) || 0) + 1;
+            if (!this._reconnectAttempts) this._reconnectAttempts = new Map();
+            this._reconnectAttempts.set(tenantId, attempts);
+
+            if (attempts > 10) {
+              logger.error(`[${tenantId}] ❌ Demasiados intentos de reconexión (${attempts}), deteniendo. Se necesita nuevo QR.`);
+              this.sessionStates.set(tenantId, { connected: false, qr: null, reconnectFailed: true });
+              this.emit('disconnected', tenantId);
+              return;
+            }
+
+            // Backoff: 3s, 5s, 8s, 13s, 20s, 30s, 30s, ...
+            const delay = Math.min(3000 * Math.pow(1.5, attempts - 1), 30000);
+            logger.info(`[${tenantId}] Intentando reconectar en ${Math.round(delay/1000)}s (intento ${attempts}/10)...`);
             setTimeout(() => {
               this.initSession(tenantId);
-            }, 3000);
+            }, delay);
           } else {
             logger.info(`[${tenantId}] Sesión cerrada permanentemente (logout)`);
             await this.closeSession(tenantId);
@@ -210,35 +300,39 @@ class SessionManager extends EventEmitter {
           }
 
           // Actualizar estado solo si aún existe
-          const state = this.sessionStates.get(tenantId);
-          if (state) {
-            state.connected = false;
-            this.sessionStates.set(tenantId, state);
+          const currentState = this.sessionStates.get(tenantId);
+          if (currentState) {
+            currentState.connected = false;
+            this.sessionStates.set(tenantId, currentState);
           }
           this.emit('disconnected', tenantId);
 
         } else if (connection === 'open') {
           logger.info(`[${tenantId}] 🎉 Conexión establecida exitosamente`);
 
+          // Reset reconnect attempts on successful connection
+          if (this._reconnectAttempts) this._reconnectAttempts.delete(tenantId);
+
           // Obtener información del número
-          const socket = this.sessions.get(tenantId);
+          const currentSocket = this.sessions.get(tenantId);
           let phoneNumber = null;
           
-          if (socket?.user?.id) {
-            phoneNumber = socket.user.id.split(':')[0] || null;
+          if (currentSocket?.user?.id) {
+            phoneNumber = currentSocket.user.id.split(':')[0] || null;
             logger.info(`[${tenantId}] Número de teléfono: ${phoneNumber}`);
           } else {
             logger.warn(`[${tenantId}] Socket o user info no disponible aún, será actualizado después`);
           }
 
           // Actualizar estado solo si existe
-          const state = this.sessionStates.get(tenantId);
-          if (state) {
-            state.connected = true;
-            state.qr = null;
-            state.lastSeen = new Date();
-            state.phoneNumber = phoneNumber;
-            this.sessionStates.set(tenantId, state);
+          const currentState = this.sessionStates.get(tenantId);
+          if (currentState) {
+            currentState.connected = true;
+            currentState.qr = null;
+            currentState.lastSeen = new Date();
+            currentState.phoneNumber = phoneNumber;
+            currentState.reconnectFailed = false;
+            this.sessionStates.set(tenantId, currentState);
           }
 
           // Actualizar estado en connection-manager
@@ -252,17 +346,10 @@ class SessionManager extends EventEmitter {
       });
 
       // Guardar credenciales cuando se actualicen
-      // IMPORTANTE: Baileys ya mutó state.creds ANTES de emitir este evento.
-      // No pasamos argumentos — saveCreds lee de stateContainer.current.creds
-      // que apunta al mismo objeto state que Baileys acaba de mutar.
       socket.ev.on('creds.update', async () => {
-        logger.info(`[${tenantId}] 🔄 creds.update emitido por Baileys`);
-        try {
-          await saveCreds();
-          this.emit('creds-updated', tenantId);
-        } catch (err) {
-          logger.error(`[${tenantId}] ❌ Error en creds.update handler:`, err);
-        }
+        logger.info(`[${tenantId}] Credenciales actualizadas, guardando...`);
+        await saveCreds();
+        this.emit('creds-updated', tenantId);
       });
 
       // Event: Mensajes recibidos

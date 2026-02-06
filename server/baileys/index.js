@@ -190,13 +190,20 @@ class BaileysService {
   async getStatus(tenantId) {
     try {
       const connected = await this.isConnected(tenantId);
+      const sessionState = sessionManager.getSessionState(tenantId);
       const config = await storage.getWhatsAppConfig(tenantId);
+
+      // phoneNumber: prefer in-memory state (most up-to-date), fallback to Firebase
+      const phoneNumber = sessionState?.phoneNumber 
+        || config?.phoneNumber 
+        || config?.baileys?.phoneNumber 
+        || null;
 
       return {
         connected,
-        phoneNumber: config?.baileys?.phoneNumber || null,
-        lastSeen: config?.baileys?.lastSeen || null,
-        messageCount: config?.baileys?.messageCount || 0
+        phoneNumber,
+        lastSeen: config?.lastSeen || config?.baileys?.lastSeen || null,
+        messageCount: config?.messageCount || config?.baileys?.messageCount || 0
       };
     } catch (error) {
       logger.error(`[${tenantId}] Error obteniendo estado:`, error);
