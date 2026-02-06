@@ -66,17 +66,32 @@ async function loadRecommendation() {
         if (data.success) {
             recommendedPlan = data.recommendedPlan;
             
-            // Mostrar banner de recomendación
-            const banner = document.getElementById('recommendationBanner');
-            banner.classList.add('visible');
+            // Mostrar badge "Recomendado para ti" en el plan correspondiente
+            showRecommendedBadge(data.recommendedPlan);
             
-            if (data.urgency === 'high') {
-                banner.classList.add('urgency-high');
-            }
+            // Mostrar banner de recomendación solo si hay razones específicas (pedidos perdidos, etc.)
+            if (data.reasons && data.reasons.length > 0) {
+                const banner = document.getElementById('recommendationBanner');
+                const titleElement = document.getElementById('recommendationTitle');
+                
+                // Nombres de planes para mostrar
+                const planNames = {
+                    emprendedor: 'Plan Emprendedor',
+                    profesional: 'Plan Profesional',
+                    empresarial: 'Plan Empresarial'
+                };
+                
+                titleElement.textContent = `💡 Te recomendamos: ${planNames[data.recommendedPlan]}`;
+                banner.classList.add('visible');
+                
+                if (data.urgency === 'high') {
+                    banner.classList.add('urgency-high');
+                }
 
-            // Mostrar razones
-            const reasonsList = document.getElementById('recommendationReasons');
-            reasonsList.innerHTML = data.reasons.map(r => `<li>${r}</li>`).join('');
+                // Mostrar razones
+                const reasonsList = document.getElementById('recommendationReasons');
+                reasonsList.innerHTML = data.reasons.map(r => `<li>${r}</li>`).join('');
+            }
 
             // Resaltar plan recomendado
             highlightPlan(data.recommendedPlan);
@@ -94,7 +109,32 @@ async function loadRecommendation() {
     } catch (error) {
         console.error('Error cargando recomendación:', error);
         // Fallback a profesional
+        showRecommendedBadge('profesional');
         highlightPlan('profesional');
+    }
+}
+
+// Mostrar badge "Recomendado para ti" en el plan indicado
+function showRecommendedBadge(planId) {
+    // Ocultar todos los badges primero
+    document.querySelectorAll('.recommended-badge').forEach(badge => {
+        badge.style.display = 'none';
+    });
+    
+    // Mostrar el badge del plan recomendado
+    const badge = document.getElementById(`recommended-badge-${planId}`);
+    if (badge) {
+        badge.style.display = 'block';
+    }
+    
+    // Agregar clase "recommended" a la tarjeta
+    document.querySelectorAll('.plan-card').forEach(card => {
+        card.classList.remove('recommended');
+    });
+    
+    const card = document.getElementById(`plan-${planId}`);
+    if (card) {
+        card.classList.add('recommended');
     }
 }
 
