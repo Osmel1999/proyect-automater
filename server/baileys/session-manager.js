@@ -103,52 +103,44 @@ class SessionManager extends EventEmitter {
 
       // 🔥 FIX: Cargar estado de autenticación desde Firebase primero
       const storage = require('./storage');
-      let state, saveCreds;
+      let state, saveCreds, stateContainer;
       
-      try {
-        // Intentar cargar desde Firebase (fuente principal)
-        logger.info(`[${tenantId}] 🔥 Intentando cargar credenciales desde Firebase...`);
-        const authState = await storage.getAuthState(tenantId);
-        state = authState.state;
-        saveCreds = authState.saveCreds;
+      // SIEMPRE obtener el authState de Firebase (tiene el saveCreds correcto)
+      const firebaseAuthState = await storage.getAuthState(tenantId);
+      
+      // saveCreds SIEMPRE debe ser el de Firebase (guarda en Realtime Database)
+      saveCreds = firebaseAuthState.saveCreds;
+      stateContainer = firebaseAuthState.stateContainer;
+      state = firebaseAuthState.state;
+      
+      // Verificar si hay credenciales existentes en Firebase
+      const hasFirebaseCreds = state.creds && typeof state.creds === 'object' && Object.keys(state.creds).length > 0;
+      
+      if (hasFirebaseCreds) {
+        logger.info(`[${tenantId}] ✅ Credenciales válidas cargadas desde Firebase`);
+        logger.info(`[${tenantId}]    📋 Propiedades en creds: ${Object.keys(state.creds).length}`);
+        // Usamos state de Firebase (creds + keys de Firebase) — sesión existente
+      } else {
+        logger.info(`[${tenantId}] ℹ️  No hay credenciales en Firebase, usando useMultiFileAuthState`);
         
-        // 🔥 VALIDACIÓN: Verificar que state y state.creds existen y son válidos
-        if (state && state.creds && typeof state.creds === 'object' && Object.keys(state.creds).length > 0) {
-          logger.info(`[${tenantId}] ✅ Credenciales válidas cargadas desde Firebase`);
-          logger.info(`[${tenantId}]    📋 Propiedades en creds: ${Object.keys(state.creds).length}`);
+        // Para sesiones nuevas o sin creds en Firebase, usar useMultiFileAuthState COMPLETO.
+        // Esto da creds + keys que operan en disco local (rápido, compatible con Baileys).
+        // Solo reemplazamos saveCreds por el de Firebase para persistir en la nube.
+        const localAuth = await useMultiFileAuthState(sessionDir);
+        state = localAuth.state;
+        
+        if (state.creds && Object.keys(state.creds).length > 0) {
+          logger.info(`[${tenantId}] 📂 Usando state local (${Object.keys(state.creds).length} props en creds)`);
         } else {
-          logger.warn(`[${tenantId}] ⚠️  Credenciales de Firebase vacías o inválidas`);
-          throw new Error('Invalid or empty credentials from Firebase');
+          logger.info(`[${tenantId}] 🆕 Sesión nueva - se generará QR`);
         }
-      } catch (authError) {
-        logger.warn(`[${tenantId}] ⚠️  No se pudieron cargar credenciales desde Firebase: ${authError.message}`);
-        logger.info(`[${tenantId}] 📂 Intentando cargar desde archivos locales...`);
         
-        // Fallback: Intentar cargar desde archivos locales
-        try {
-          const authState = await useMultiFileAuthState(sessionDir);
-          state = authState.state;
-          saveCreds = authState.saveCreds;
-          
-          // Validar credenciales locales también
-          if (state && state.creds && typeof state.creds === 'object' && Object.keys(state.creds).length > 0) {
-            logger.info(`[${tenantId}] ✅ Credenciales válidas cargadas desde archivos locales`);
-          } else {
-            logger.warn(`[${tenantId}] ⚠️  Credenciales locales vacías, creando sesión nueva...`);
-            throw new Error('Empty local credentials');
-          }
-        } catch (localError) {
-          logger.warn(`[${tenantId}] ⚠️  No hay credenciales locales válidas: ${localError.message}`);
-          logger.info(`[${tenantId}] 🆕 Iniciando sesión nueva - se generará QR`);
-          
-          // Última opción: crear nuevo estado vacío
-          const authState = await useMultiFileAuthState(sessionDir);
-          state = authState.state;
-          saveCreds = authState.saveCreds;
-          
-          logger.info(`[${tenantId}] 📝 Estado de autenticación nuevo creado`);
-        }
+        // IMPORTANTE: saveCreds SIEMPRE es el de Firebase, nunca el local
+        logger.info(`[${tenantId}] 💾 saveCreds apunta a Firebase Realtime Database`);
       }
+
+      // Vincular stateContainer al state actual para que saveCreds lea creds correctos
+      stateContainer.current = state;
 
       // Configurar socket de Baileys
       const socketConfig = {
@@ -260,10 +252,17 @@ class SessionManager extends EventEmitter {
       });
 
       // Guardar credenciales cuando se actualicen
+      // IMPORTANTE: Baileys ya mutó state.creds ANTES de emitir este evento.
+      // No pasamos argumentos — saveCreds lee de stateContainer.current.creds
+      // que apunta al mismo objeto state que Baileys acaba de mutar.
       socket.ev.on('creds.update', async () => {
-        logger.info(`[${tenantId}] Credenciales actualizadas, guardando...`);
-        await saveCreds();
-        this.emit('creds-updated', tenantId);
+        logger.info(`[${tenantId}] 🔄 creds.update emitido por Baileys`);
+        try {
+          await saveCreds();
+          this.emit('creds-updated', tenantId);
+        } catch (err) {
+          logger.error(`[${tenantId}] ❌ Error en creds.update handler:`, err);
+        }
       });
 
       // Event: Mensajes recibidos
