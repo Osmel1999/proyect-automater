@@ -268,12 +268,12 @@
                             status: 'active'
                         };
                     } else {
-                        // Trial sin fecha de fin (legacy) - asumir 30 días desde ahora
+                        // Trial sin fecha de fin (legacy) - asumir 7 días desde ahora
                         console.warn('⚠️ Trial sin fecha de fin configurada');
                         return {
                             valid: true,
                             plan: 'trial',
-                            daysLeft: 30,
+                            daysLeft: 7,
                             status: 'active'
                         };
                     }
