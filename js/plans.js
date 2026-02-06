@@ -24,18 +24,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     const preselectedPlan = urlParams.get('plan');
 
     if (isLoggedIn) {
-        // Usuario logueado: obtener recomendación real
+        // Usuario logueado: obtener recomendación real del sistema
         await loadRecommendation();
+        
+        // NO usar el parámetro de URL si el usuario está logueado
+        // El sistema ya determinó el mejor plan basado en analytics
     } else {
-        // Usuario no logueado: mostrar banner de prueba gratis y recomendar Profesional
+        // Usuario no logueado: mostrar banner de prueba gratis
         showTrialBanner();
-        highlightPlan('profesional');
         updateButtonsForTrial();
-    }
-
-    // Si hay plan preseleccionado, resaltarlo
-    if (preselectedPlan && ['emprendedor', 'profesional', 'empresarial'].includes(preselectedPlan)) {
-        highlightPlan(preselectedPlan);
+        
+        // Si hay plan preseleccionado en URL, usarlo; sino, mostrar Profesional por defecto
+        if (preselectedPlan && ['emprendedor', 'profesional', 'empresarial'].includes(preselectedPlan)) {
+            showRecommendedBadge(preselectedPlan);
+        } else {
+            showRecommendedBadge('profesional');
+        }
     }
 });
 
@@ -116,47 +120,51 @@ async function loadRecommendation() {
 
 // Mostrar badge "Recomendado para ti" en el plan indicado
 function showRecommendedBadge(planId) {
+    console.log('🎯 Mostrando badge para plan:', planId);
+    
     // Ocultar todos los badges primero
     document.querySelectorAll('.recommended-badge').forEach(badge => {
         badge.style.display = 'none';
+    });
+    
+    // Quitar clase "recommended" de todas las tarjetas
+    document.querySelectorAll('.plan-card').forEach(card => {
+        card.classList.remove('recommended');
     });
     
     // Mostrar el badge del plan recomendado
     const badge = document.getElementById(`recommended-badge-${planId}`);
     if (badge) {
         badge.style.display = 'block';
+        console.log('✅ Badge mostrado para:', planId);
+    } else {
+        console.warn('⚠️ No se encontró badge para:', planId);
     }
     
-    // Agregar clase "recommended" a la tarjeta
-    document.querySelectorAll('.plan-card').forEach(card => {
-        card.classList.remove('recommended');
-    });
-    
-    const card = document.getElementById(`plan-${planId}`);
-    if (card) {
-        card.classList.add('recommended');
-    }
-}
-
-// Resaltar un plan como recomendado
-function highlightPlan(planId) {
-    // Quitar clase recommended de todos
-    document.querySelectorAll('.plan-card').forEach(card => {
-        card.classList.remove('recommended');
-    });
-
-    // Agregar clase al plan recomendado
+    // Agregar clase "recommended" a la tarjeta correspondiente
     const card = document.getElementById(`plan-${planId}`);
     if (card) {
         card.classList.add('recommended');
         
         // Cambiar botón a primary
         const btn = card.querySelector('.plan-cta');
-        btn.classList.remove('secondary');
-        btn.classList.add('primary');
+        if (btn) {
+            btn.classList.remove('secondary');
+            btn.classList.add('primary');
+        }
+        console.log('✅ Tarjeta resaltada:', planId);
+    } else {
+        console.warn('⚠️ No se encontró tarjeta para:', planId);
     }
-
+    
+    // Actualizar variable global
     recommendedPlan = planId;
+}
+
+// Resaltar un plan como recomendado (DEPRECADO - usa showRecommendedBadge)
+function highlightPlan(planId) {
+    // Redirigir a la nueva función
+    showRecommendedBadge(planId);
 }
 
 // Mostrar estadísticas de uso
