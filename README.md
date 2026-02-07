@@ -19,6 +19,7 @@
 - 📊 **Panel de Administración** multi-tenant con estadísticas en tiempo real
 - 🍳 **Display de Cocina (KDS)** con actualización instantánea vía WebSocket
 - 💳 **Sistema de Pagos** integrado con Wompi (Colombia)
+- 🎁 **Trial de 7 días** - prueba completa sin tarjeta de crédito
 - 👥 **Multi-tenant** - soporte para múltiples restaurantes
 - 🔐 **Autenticación Firebase** con roles de usuario
 - 🔄 **Persistencia de Sesiones WhatsApp** en Firebase Realtime Database
@@ -28,7 +29,31 @@
 
 ---
 
-## 🏗️ Arquitectura Técnica
+## � Período de Prueba
+
+### Trial de 7 Días Gratis
+
+Todos los nuevos usuarios obtienen **7 días de prueba gratuita** con acceso completo a todas las funcionalidades:
+
+✅ **Sin tarjeta de crédito requerida**  
+✅ **Acceso completo** a todas las características  
+✅ **Bot WhatsApp** completamente funcional  
+✅ **Panel KDS** y display de cocina  
+✅ **Sin límite de pedidos** durante el trial  
+
+**Al registrarte:**
+- El trial comienza automáticamente
+- Duración: 7 días desde la fecha de registro
+- Al finalizar, elige un plan para continuar
+
+**Planes disponibles después del trial:**
+- 💼 **Emprendedor** - Para negocios pequeños
+- 🚀 **Profesional** - Para restaurantes en crecimiento
+- 🏢 **Empresarial** - Para operaciones a gran escala
+
+---
+
+## �🏗️ Arquitectura Técnica
 
 ### Stack Tecnológico
 
