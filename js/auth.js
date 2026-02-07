@@ -550,10 +550,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 await firebase.database().ref('users/' + userId).set(userDataToSave);
 
                 // Create tenant data in database (nuevo registro)
-                // Calcular fecha de expiración del trial (30 días)
+                // Calcular fecha de expiración del trial (7 días)
                 const trialStartDate = new Date();
                 const trialEndDate = new Date();
-                trialEndDate.setDate(trialEndDate.getDate() + 30);
+                trialEndDate.setDate(trialEndDate.getDate() + 7);
                 
                 const tenantDataToSave = {
                     userId: userId,

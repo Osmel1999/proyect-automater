@@ -153,7 +153,7 @@ router.post('/webhook', async (req, res) => {
       await membershipService.activatePaidPlan(
         paymentData.tenantId,
         paymentData.plan,
-        30 // 30 días
+        30 // 30 días (los planes pagados siguen siendo de 30 días)
       );
       
       // Guardar registro del pago

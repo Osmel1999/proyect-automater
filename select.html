@@ -151,7 +151,7 @@
             </div>
             <div class="membership-modal-title">Tu período de prueba ha terminado</div>
             <div class="membership-modal-description">
-                Han pasado 30 días desde que comenzaste tu prueba gratuita. 
+                Han pasado 7 días desde que comenzaste tu prueba gratuita. 
                 Para seguir usando KDS App y tu bot de WhatsApp, elige un plan que se adapte a tu negocio.
             </div>
             <div class="membership-plans-summary">
@@ -268,12 +268,12 @@
                             status: 'active'
                         };
                     } else {
-                        // Trial sin fecha de fin (legacy) - asumir 30 días desde ahora
+                        // Trial sin fecha de fin (legacy) - asumir 7 días desde ahora
                         console.warn('⚠️ Trial sin fecha de fin configurada');
                         return {
                             valid: true,
                             plan: 'trial',
-                            daysLeft: 30,
+                            daysLeft: 7,
                             status: 'active'
                         };
                     }
