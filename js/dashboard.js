@@ -1532,6 +1532,201 @@ document.addEventListener('DOMContentLoaded', function() {
     loadQuickOrderState();
 
     // ====================================
+    // HORARIOS DE ATENCIÓN
+    // ====================================
+    
+    const DAYS_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const DAYS_NAMES = {
+      monday: 'Lunes', tuesday: 'Martes', wednesday: 'Miércoles',
+      thursday: 'Jueves', friday: 'Viernes', saturday: 'Sábado', sunday: 'Domingo'
+    };
+
+    function openBusinessHoursConfig() {
+      document.getElementById('business-hours-modal').classList.add('active');
+      loadBusinessHours();
+    }
+
+    function closeBusinessHoursModal() {
+      document.getElementById('business-hours-modal').classList.remove('active');
+    }
+
+    async function loadBusinessHours() {
+      try {
+        const snapshot = await firebase.database().ref(`tenants/${tenantId}/config/businessHours`).once('value');
+        const data = snapshot.val();
+
+        if (data) {
+          // Set timezone
+          const tzSelect = document.getElementById('business-timezone');
+          if (data.timezone) {
+            tzSelect.value = data.timezone;
+          }
+
+          // Set each day
+          DAYS_ORDER.forEach(day => {
+            const dayData = data.schedule && data.schedule[day];
+            const checkbox = document.getElementById(`day-${day}-active`);
+            const openInput = document.getElementById(`day-${day}-open`);
+            const closeInput = document.getElementById(`day-${day}-close`);
+
+            if (dayData) {
+              checkbox.checked = dayData.active === true;
+              openInput.value = dayData.open || '08:00';
+              closeInput.value = dayData.close || '20:00';
+            } else {
+              checkbox.checked = false;
+              openInput.value = '08:00';
+              closeInput.value = '20:00';
+            }
+
+            toggleDaySchedule(day);
+          });
+        } else {
+          // Defaults: Lunes a Sábado activos, Domingo inactivo
+          DAYS_ORDER.forEach(day => {
+            const checkbox = document.getElementById(`day-${day}-active`);
+            checkbox.checked = (day !== 'sunday');
+            toggleDaySchedule(day);
+          });
+        }
+
+        updateTimezonePreview();
+        updateBusinessHoursPreview();
+      } catch (error) {
+        console.error('Error loading business hours:', error);
+      }
+    }
+
+    function toggleDaySchedule(day) {
+      const checkbox = document.getElementById(`day-${day}-active`);
+      const timesContainer = document.getElementById(`day-${day}-times`);
+      const row = timesContainer.closest('.schedule-day-row');
+
+      if (checkbox.checked) {
+        timesContainer.classList.remove('disabled');
+        row.classList.remove('inactive');
+      } else {
+        timesContainer.classList.add('disabled');
+        row.classList.add('inactive');
+      }
+
+      updateBusinessHoursPreview();
+    }
+
+    function updateTimezonePreview() {
+      const tz = document.getElementById('business-timezone').value;
+      const previewEl = document.getElementById('timezone-preview');
+      try {
+        const now = new Date();
+        const timeStr = now.toLocaleString('es-CO', {
+          timeZone: tz,
+          weekday: 'long',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        });
+        previewEl.textContent = `Hora actual en tu zona: ${timeStr}`;
+      } catch (e) {
+        previewEl.textContent = 'Zona horaria seleccionada';
+      }
+    }
+
+    function updateBusinessHoursPreview() {
+      const previewEl = document.getElementById('business-hours-preview');
+      const activeDays = [];
+
+      DAYS_ORDER.forEach(day => {
+        const checkbox = document.getElementById(`day-${day}-active`);
+        if (checkbox.checked) {
+          const open = document.getElementById(`day-${day}-open`).value;
+          const close = document.getElementById(`day-${day}-close`).value;
+          activeDays.push(`${DAYS_NAMES[day]}: ${open} - ${close}`);
+        }
+      });
+
+      if (activeDays.length === 0) {
+        previewEl.textContent = '⚠️ No hay días activos. El bot no responderá ningún día.';
+        previewEl.style.color = '#e53e3e';
+      } else {
+        previewEl.innerHTML = activeDays.map(d => `✅ ${d}`).join('<br>');
+        previewEl.style.color = '#667eea';
+      }
+    }
+
+    function applyScheduleToAll() {
+      const mondayOpen = document.getElementById('day-monday-open').value;
+      const mondayClose = document.getElementById('day-monday-close').value;
+
+      DAYS_ORDER.forEach(day => {
+        const checkbox = document.getElementById(`day-${day}-active`);
+        if (checkbox.checked) {
+          document.getElementById(`day-${day}-open`).value = mondayOpen;
+          document.getElementById(`day-${day}-close`).value = mondayClose;
+        }
+      });
+
+      updateBusinessHoursPreview();
+      alert('✅ Horario del Lunes copiado a todos los días activos');
+    }
+
+    async function saveBusinessHours() {
+      const timezone = document.getElementById('business-timezone').value;
+      const schedule = {};
+      let hasError = false;
+
+      DAYS_ORDER.forEach(day => {
+        const active = document.getElementById(`day-${day}-active`).checked;
+        const open = document.getElementById(`day-${day}-open`).value;
+        const close = document.getElementById(`day-${day}-close`).value;
+
+        if (active) {
+          // Validate times
+          if (!open || !close) {
+            alert(`⚠️ ${DAYS_NAMES[day]}: Debes indicar hora de apertura y cierre`);
+            hasError = true;
+            return;
+          }
+          if (open >= close) {
+            alert(`⚠️ ${DAYS_NAMES[day]}: La hora de apertura (${open}) debe ser anterior a la de cierre (${close})`);
+            hasError = true;
+            return;
+          }
+        }
+
+        schedule[day] = {
+          active: active,
+          open: active ? open : null,
+          close: active ? close : null
+        };
+      });
+
+      if (hasError) return;
+
+      // Check at least one day is active
+      const anyActive = Object.values(schedule).some(d => d.active);
+      if (!anyActive) {
+        if (!confirm('⚠️ No has activado ningún día. El bot no responderá nunca.\n\n¿Deseas continuar?')) {
+          return;
+        }
+      }
+
+      try {
+        await firebase.database().ref(`tenants/${tenantId}/config/businessHours`).set({
+          enabled: true,
+          timezone: timezone,
+          schedule: schedule,
+          updatedAt: Date.now()
+        });
+
+        alert('✅ Horarios de atención guardados exitosamente');
+        closeBusinessHoursModal();
+      } catch (error) {
+        console.error('Error saving business hours:', error);
+        alert('❌ Error al guardar los horarios: ' + error.message);
+      }
+    }
+
+    // ====================================
     // MY PLAN MODAL
     // ====================================
     
@@ -1744,5 +1939,11 @@ document.addEventListener('DOMContentLoaded', function() {
     window.toggleQuickOrder = toggleQuickOrder;
     window.openMyPlanModal = openMyPlanModal;
     window.closeMyPlanModal = closeMyPlanModal;
+    window.openBusinessHoursConfig = openBusinessHoursConfig;
+    window.closeBusinessHoursModal = closeBusinessHoursModal;
+    window.saveBusinessHours = saveBusinessHours;
+    window.toggleDaySchedule = toggleDaySchedule;
+    window.applyScheduleToAll = applyScheduleToAll;
+    window.updateTimezonePreview = updateTimezonePreview;
 
 }); // End of DOMContentLoaded

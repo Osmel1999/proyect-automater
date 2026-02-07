@@ -347,6 +347,15 @@
               <h3>Costo de Envío</h3>
               <p>Configurar precio del domicilio</p>
             </div>
+            <div class="action-card" onclick="openBusinessHoursConfig()">
+              <div class="action-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                </svg>
+              </div>
+              <h3>Horarios de Atención</h3>
+              <p>Configurar días y horas de atención</p>
+            </div>
             <div class="action-card" onclick="openMyPlanModal()">
               <div class="action-icon">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -760,6 +769,192 @@
       <div class="modal-footer">
         <button class="btn-secondary" onclick="closeDeliveryCostModal()">Cancelar</button>
         <button class="btn-primary" onclick="saveDeliveryCost()">Guardar Costo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Business Hours Config -->
+  <div class="modal-overlay" id="business-hours-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">📅 Horarios de Atención</h2>
+        <button class="modal-close" onclick="closeBusinessHoursModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 16px; color: #718096;">
+          Configura los días y horarios en que tu bot estará disponible para recibir pedidos. Fuera de estos horarios, el bot no responderá.
+        </p>
+
+        <!-- Timezone Selector -->
+        <div class="form-group" style="margin-bottom: 24px;">
+          <label class="form-label">🌍 Zona Horaria de tu negocio</label>
+          <select class="form-select" id="business-timezone" onchange="updateTimezonePreview()">
+            <option value="America/Bogota">🇨🇴 Colombia (GMT-5)</option>
+            <option value="America/Mexico_City">🇲🇽 México Centro (GMT-6)</option>
+            <option value="America/Cancun">🇲🇽 México Quintana Roo (GMT-5)</option>
+            <option value="America/Tijuana">🇲🇽 México Pacífico (GMT-8)</option>
+            <option value="America/Lima">🇵🇪 Perú (GMT-5)</option>
+            <option value="America/Santiago">🇨🇱 Chile (GMT-3/-4)</option>
+            <option value="America/Argentina/Buenos_Aires">🇦🇷 Argentina (GMT-3)</option>
+            <option value="America/Caracas">🇻🇪 Venezuela (GMT-4)</option>
+            <option value="America/Guayaquil">🇪🇨 Ecuador (GMT-5)</option>
+            <option value="America/La_Paz">🇧🇴 Bolivia (GMT-4)</option>
+            <option value="America/Panama">🇵🇦 Panamá (GMT-5)</option>
+            <option value="America/Santo_Domingo">🇩🇴 Rep. Dominicana (GMT-4)</option>
+            <option value="America/Costa_Rica">🇨🇷 Costa Rica (GMT-6)</option>
+            <option value="America/Guatemala">🇬🇹 Guatemala (GMT-6)</option>
+            <option value="America/Tegucigalpa">🇭🇳 Honduras (GMT-6)</option>
+            <option value="America/El_Salvador">🇸🇻 El Salvador (GMT-6)</option>
+            <option value="America/Managua">🇳🇮 Nicaragua (GMT-6)</option>
+            <option value="America/Asuncion">🇵🇾 Paraguay (GMT-3/-4)</option>
+            <option value="America/Montevideo">🇺🇾 Uruguay (GMT-3)</option>
+            <option value="America/Havana">🇨🇺 Cuba (GMT-5)</option>
+            <option value="America/New_York">🇺🇸 EE.UU. Este (GMT-5)</option>
+            <option value="America/Chicago">🇺🇸 EE.UU. Centro (GMT-6)</option>
+            <option value="America/Denver">🇺🇸 EE.UU. Montaña (GMT-7)</option>
+            <option value="America/Los_Angeles">🇺🇸 EE.UU. Pacífico (GMT-8)</option>
+            <option value="Europe/Madrid">🇪🇸 España (GMT+1/+2)</option>
+          </select>
+          <div class="form-help" id="timezone-preview">Hora actual en tu zona: --:--</div>
+        </div>
+
+        <!-- Days Schedule -->
+        <div id="business-hours-days" style="display: flex; flex-direction: column; gap: 12px;">
+          <!-- Lunes -->
+          <div class="schedule-day-row" data-day="monday">
+            <div class="schedule-day-toggle">
+              <label class="schedule-checkbox">
+                <input type="checkbox" id="day-monday-active" onchange="toggleDaySchedule('monday')">
+                <span class="schedule-checkbox-visual"></span>
+              </label>
+              <span class="schedule-day-name">Lunes</span>
+            </div>
+            <div class="schedule-day-times" id="day-monday-times">
+              <input type="time" class="form-input schedule-time-input" id="day-monday-open" value="08:00">
+              <span style="color: #4a5568; font-weight: 500;">a</span>
+              <input type="time" class="form-input schedule-time-input" id="day-monday-close" value="20:00">
+            </div>
+          </div>
+          <!-- Martes -->
+          <div class="schedule-day-row" data-day="tuesday">
+            <div class="schedule-day-toggle">
+              <label class="schedule-checkbox">
+                <input type="checkbox" id="day-tuesday-active" onchange="toggleDaySchedule('tuesday')">
+                <span class="schedule-checkbox-visual"></span>
+              </label>
+              <span class="schedule-day-name">Martes</span>
+            </div>
+            <div class="schedule-day-times" id="day-tuesday-times">
+              <input type="time" class="form-input schedule-time-input" id="day-tuesday-open" value="08:00">
+              <span style="color: #4a5568; font-weight: 500;">a</span>
+              <input type="time" class="form-input schedule-time-input" id="day-tuesday-close" value="20:00">
+            </div>
+          </div>
+          <!-- Miércoles -->
+          <div class="schedule-day-row" data-day="wednesday">
+            <div class="schedule-day-toggle">
+              <label class="schedule-checkbox">
+                <input type="checkbox" id="day-wednesday-active" onchange="toggleDaySchedule('wednesday')">
+                <span class="schedule-checkbox-visual"></span>
+              </label>
+              <span class="schedule-day-name">Miércoles</span>
+            </div>
+            <div class="schedule-day-times" id="day-wednesday-times">
+              <input type="time" class="form-input schedule-time-input" id="day-wednesday-open" value="08:00">
+              <span style="color: #4a5568; font-weight: 500;">a</span>
+              <input type="time" class="form-input schedule-time-input" id="day-wednesday-close" value="20:00">
+            </div>
+          </div>
+          <!-- Jueves -->
+          <div class="schedule-day-row" data-day="thursday">
+            <div class="schedule-day-toggle">
+              <label class="schedule-checkbox">
+                <input type="checkbox" id="day-thursday-active" onchange="toggleDaySchedule('thursday')">
+                <span class="schedule-checkbox-visual"></span>
+              </label>
+              <span class="schedule-day-name">Jueves</span>
+            </div>
+            <div class="schedule-day-times" id="day-thursday-times">
+              <input type="time" class="form-input schedule-time-input" id="day-thursday-open" value="08:00">
+              <span style="color: #4a5568; font-weight: 500;">a</span>
+              <input type="time" class="form-input schedule-time-input" id="day-thursday-close" value="20:00">
+            </div>
+          </div>
+          <!-- Viernes -->
+          <div class="schedule-day-row" data-day="friday">
+            <div class="schedule-day-toggle">
+              <label class="schedule-checkbox">
+                <input type="checkbox" id="day-friday-active" onchange="toggleDaySchedule('friday')">
+                <span class="schedule-checkbox-visual"></span>
+              </label>
+              <span class="schedule-day-name">Viernes</span>
+            </div>
+            <div class="schedule-day-times" id="day-friday-times">
+              <input type="time" class="form-input schedule-time-input" id="day-friday-open" value="08:00">
+              <span style="color: #4a5568; font-weight: 500;">a</span>
+              <input type="time" class="form-input schedule-time-input" id="day-friday-close" value="20:00">
+            </div>
+          </div>
+          <!-- Sábado -->
+          <div class="schedule-day-row" data-day="saturday">
+            <div class="schedule-day-toggle">
+              <label class="schedule-checkbox">
+                <input type="checkbox" id="day-saturday-active" onchange="toggleDaySchedule('saturday')">
+                <span class="schedule-checkbox-visual"></span>
+              </label>
+              <span class="schedule-day-name">Sábado</span>
+            </div>
+            <div class="schedule-day-times" id="day-saturday-times">
+              <input type="time" class="form-input schedule-time-input" id="day-saturday-open" value="09:00">
+              <span style="color: #4a5568; font-weight: 500;">a</span>
+              <input type="time" class="form-input schedule-time-input" id="day-saturday-close" value="21:00">
+            </div>
+          </div>
+          <!-- Domingo -->
+          <div class="schedule-day-row" data-day="sunday">
+            <div class="schedule-day-toggle">
+              <label class="schedule-checkbox">
+                <input type="checkbox" id="day-sunday-active" onchange="toggleDaySchedule('sunday')">
+                <span class="schedule-checkbox-visual"></span>
+              </label>
+              <span class="schedule-day-name">Domingo</span>
+            </div>
+            <div class="schedule-day-times" id="day-sunday-times">
+              <input type="time" class="form-input schedule-time-input" id="day-sunday-open" value="09:00">
+              <span style="color: #4a5568; font-weight: 500;">a</span>
+              <input type="time" class="form-input schedule-time-input" id="day-sunday-close" value="21:00">
+            </div>
+          </div>
+        </div>
+
+        <!-- Copiar horario -->
+        <div style="margin-top: 16px; display: flex; gap: 8px;">
+          <button class="btn-secondary" onclick="applyScheduleToAll()" style="flex: 1; font-size: 13px;">
+            📋 Copiar Lunes a todos los días activos
+          </button>
+        </div>
+
+        <!-- Preview -->
+        <div style="background: #f7fafc; padding: 16px; border-radius: 8px; margin-top: 16px;">
+          <p style="font-size: 14px; color: #4a5568; margin-bottom: 8px;">
+            <strong>Vista previa del estado actual:</strong>
+          </p>
+          <p style="color: #667eea; font-weight: 500;" id="business-hours-preview">
+            Configura tus horarios arriba
+          </p>
+        </div>
+
+        <div style="background: #e6fffa; border-left: 4px solid #38b2ac; padding: 16px; border-radius: 4px; margin-top: 16px;">
+          <strong style="color: #234e52; display: block; margin-bottom: 8px;">💡 Importante</strong>
+          <p style="color: #234e52; font-size: 14px; line-height: 1.6; margin: 0;">
+            El bot solo responderá mensajes dentro de los horarios configurados. Fuera de horario, no enviará ninguna respuesta. 
+            Asegúrate de seleccionar correctamente la zona horaria de tu negocio.
+          </p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeBusinessHoursModal()">Cancelar</button>
+        <button class="btn-primary" onclick="saveBusinessHours()">Guardar Horarios</button>
       </div>
     </div>
   </div>

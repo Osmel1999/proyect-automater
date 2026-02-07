@@ -1005,6 +1005,58 @@ async function processMessage(tenantId, from, texto) {
   }
   
   // ====================================
+  // VALIDAR HORARIOS DE ATENCIÓN
+  // Usa la zona horaria configurada por el tenant
+  // para comparar correctamente sin importar
+  // dónde esté el servidor (ej: USA)
+  // ====================================
+  try {
+    const hoursSnapshot = await firebaseService.database.ref(`tenants/${tenantId}/config/businessHours`).once('value');
+    const businessHours = hoursSnapshot.val();
+    
+    if (businessHours && businessHours.enabled && businessHours.schedule) {
+      const timezone = businessHours.timezone || 'America/Bogota';
+      
+      // Obtener fecha/hora actual en la zona horaria del negocio
+      const nowInTz = new Date(new Date().toLocaleString('en-US', { timeZone: timezone }));
+      
+      // Mapear getDay() (0=Domingo) a nombres de días
+      const dayMapping = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const currentDayName = dayMapping[nowInTz.getDay()];
+      const currentHour = nowInTz.getHours().toString().padStart(2, '0');
+      const currentMinute = nowInTz.getMinutes().toString().padStart(2, '0');
+      const currentTime = `${currentHour}:${currentMinute}`;
+      
+      const todaySchedule = businessHours.schedule[currentDayName];
+      
+      console.log(`🕒 [Horario] Tenant ${tenantId} | TZ: ${timezone} | Día: ${currentDayName} | Hora local: ${currentTime}`);
+      
+      if (!todaySchedule || !todaySchedule.active) {
+        // Día no activo - no responder
+        console.log(`🔴 [Horario] Tenant ${tenantId} - ${currentDayName} no es día de atención. Ignorando mensaje.`);
+        return null;
+      }
+      
+      const openTime = todaySchedule.open;  // ej: "08:00"
+      const closeTime = todaySchedule.close; // ej: "20:00"
+      
+      if (currentTime < openTime || currentTime >= closeTime) {
+        // Fuera de horario - no responder
+        console.log(`🔴 [Horario] Tenant ${tenantId} - Fuera de horario (${currentTime} no está entre ${openTime} - ${closeTime}). Ignorando mensaje.`);
+        return null;
+      }
+      
+      console.log(`🟢 [Horario] Tenant ${tenantId} - Dentro de horario (${openTime} - ${closeTime})`);
+    } else {
+      // Si no hay horarios configurados, el bot responde siempre (comportamiento por defecto)
+      console.log(`ℹ️ [Horario] Tenant ${tenantId} - Sin horarios configurados, respondiendo siempre`);
+    }
+  } catch (error) {
+    console.error(`⚠️ Error verificando horarios de atención para tenant ${tenantId}:`, error);
+    // En caso de error, permitir el acceso (fail-open) para no bloquear restaurantes
+  }
+  
+  // ====================================
   // VALIDAR MEMBRESÍA DEL TENANT (1 vez al día)
   // ====================================
   try {
